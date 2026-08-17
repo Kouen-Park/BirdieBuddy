@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Add Round · Birdie Buddy</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="site-nav"></nav>
+
+    <main class="main">
+      <div class="page-header">
+        <h1>Add Round</h1>
+        <p>Fill out your scorecard hole by hole.</p>
+      </div>
+
+      <div id="form-alert"></div>
+
+      <div class="card">
+        <div class="form-grid">
+          <div class="field">
+            <label for="course-select">Course</label>
+            <select id="course-select"><option value="">Select a course&hellip;</option></select>
+          </div>
+          <div class="field">
+            <label for="date-input">Date</label>
+            <input type="date" id="date-input" />
+          </div>
+          <div class="field">
+            <label for="tee-select">Tee</label>
+            <select id="tee-select">
+              <option>White</option>
+              <option>Blue</option>
+              <option>Black</option>
+              <option>Gold</option>
+              <option>Red</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="scorecard-wrapper"></div>
+    </main>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/add-round.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Statistics · Birdie Buddy</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="site-nav"></nav>
+
+    <main class="main">
+      <div class="page-header">
+        <h1>Statistics</h1>
+        <p>Career averages and a breakdown of any individual round.</p>
+      </div>
+
+      <div id="overview-content">
+        <p class="progress-note">Loading&hellip;</p>
+      </div>
+
+      <div class="section-title">Round breakdown</div>
+      <div class="card" style="padding:16px;">
+        <div class="field" style="max-width:320px;">
+          <label for="round-select">Choose a round</label>
+          <select id="round-select"></select>
+        </div>
+      </div>
+
+      <div id="round-breakdown" style="margin-top:16px;"></div>
+    </main>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/statistics.js"></script>
+</body>
+</html>

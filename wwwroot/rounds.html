@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rounds · Birdie Buddy</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="site-nav"></nav>
+
+    <main class="main">
+      <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between;">
+        <div>
+          <h1>Rounds</h1>
+          <p>Every round you've recorded.</p>
+        </div>
+        <a href="/add-round.html" class="btn btn-flag">+ Add Round</a>
+      </div>
+
+      <div id="rounds-content">
+        <p class="progress-note">Loading&hellip;</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/rounds.js"></script>
+</body>
+</html>
