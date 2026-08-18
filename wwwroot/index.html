@@ -1,29 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Dashboard · Birdie Buddy</title>
-<link rel="stylesheet" href="/css/styles.css" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard · Birdie Buddy</title>
+
+    <link rel="stylesheet" href="/css/styles.css" />
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
-  <div class="app-shell">
-    <nav class="sidebar" id="site-nav"></nav>
 
-    <main class="main">
-      <div class="page-header">
-        <h1>Dashboard</h1>
-        <p>Your game, at a glance.</p>
-      </div>
+    <!-- Mobile top bar -->
+    <header class="mobile-header">
+        <button class="menu-button"
+                id="menu-button"
+                aria-label="Open navigation"
+                aria-controls="site-nav"
+                aria-expanded="false">
+            ☰
+        </button>
 
-      <div id="dashboard-content">
-        <p class="progress-note">Loading&hellip;</p>
-      </div>
-    </main>
-  </div>
+        <div class="mobile-brand">
+            <span class="brand-mark">⚑</span>
+            Birdie Buddy
+        </div>
+    </header>
 
-  <script src="/js/api.js"></script>
-  <script src="/js/dashboard.js"></script>
+    <!-- Mobile overlay -->
+    <div class="nav-overlay" id="nav-overlay"></div>
+
+    <div class="app-shell">
+
+        <nav class="sidebar" id="site-nav">
+            <button class="sidebar-close"
+                    id="sidebar-close"
+                    aria-label="Close navigation">
+                ×
+            </button>
+        </nav>
+
+        <main class="main">
+
+            <div class="page-header">
+                <h1>Dashboard</h1>
+                <p>Your game, at a glance.</p>
+            </div>
+
+            <div id="dashboard-content">
+                <p class="progress-note">Loading&hellip;</p>
+            </div>
+
+        </main>
+
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/dashboard.js"></script>
+
+    <script>
+            const menuButton = document.getElementById("menu-button");
+            const sidebar = document.getElementById("site-nav");
+            const sidebarClose = document.getElementById("sidebar-close");
+            const navOverlay = document.getElementById("nav-overlay");
+
+            function openMenu() {
+              sidebar.classList.add("mobile-open");
+              navOverlay.classList.add("active");
+
+              menuButton.setAttribute("aria-expanded", "true");
+              document.body.classList.add("menu-open");
+            }
+
+            function closeMenu() {
+              sidebar.classList.remove("mobile-open");
+              navOverlay.classList.remove("active");
+
+              menuButton.setAttribute("aria-expanded", "false");
+              document.body.classList.remove("menu-open");
+            }
+
+            menuButton.addEventListener("click", openMenu);
+
+            sidebarClose.addEventListener("click", closeMenu);
+
+            navOverlay.addEventListener("click", closeMenu);
+
+            /*
+             * The navigation links are inserted into #site-nav
+             * by JavaScript, so event delegation is used here.
+             */
+            sidebar.addEventListener("click", function (event) {
+              if (event.target.closest("a")) {
+                closeMenu();
+              }
+            });
+
+            /*
+             * If the browser is resized back to desktop,
+             * make sure the mobile menu is reset.
+             */
+            window.addEventListener("resize", function () {
+              if (window.innerWidth > 900) {
+                closeMenu();
+              }
+            });
+    </script>
+
 </body>
 </html>
