@@ -16,10 +16,20 @@ namespace BirdieBuddy.Migrations
                 name: "Courses",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Location = table.Column<string>(type: "text", nullable: false)
+                    Id = table.Column<int>(
+                        type: "integer",
+                        nullable: false)
+                        .Annotation(
+                            "Npgsql:ValueGenerationStrategy",
+                            NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+
+                    Name = table.Column<string>(
+                        type: "text",
+                        nullable: false),
+
+                    Location = table.Column<string>(
+                        type: "text",
+                        nullable: false)
                 },
                 constraints: table =>
                 {
@@ -30,17 +40,37 @@ namespace BirdieBuddy.Migrations
                 name: "CourseHoles",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    CourseId = table.Column<int>(type: "integer", nullable: false),
-                    HoleNumber = table.Column<int>(type: "integer", nullable: false),
-                    Par = table.Column<int>(type: "integer", nullable: false),
-                    Distance = table.Column<int>(type: "integer", nullable: false)
+                    Id = table.Column<int>(
+                        type: "integer",
+                        nullable: false)
+                        .Annotation(
+                            "Npgsql:ValueGenerationStrategy",
+                            NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+
+                    CourseId = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    HoleNumber = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    Par = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    Distance = table.Column<int>(
+                        type: "integer",
+                        nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CourseHoles", x => x.Id);
-                    table.CheckConstraint("CK_CourseHole_HoleNumber", "[HoleNumber] BETWEEN 1 AND 18");
+
+                    table.CheckConstraint(
+                        "CK_CourseHole_HoleNumber",
+                        "\"HoleNumber\" BETWEEN 1 AND 18");
+
                     table.ForeignKey(
                         name: "FK_CourseHoles_Courses_CourseId",
                         column: x => x.CourseId,
@@ -53,15 +83,29 @@ namespace BirdieBuddy.Migrations
                 name: "Rounds",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    CourseId = table.Column<int>(type: "integer", nullable: false),
-                    Date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Tee = table.Column<string>(type: "text", nullable: false)
+                    Id = table.Column<int>(
+                        type: "integer",
+                        nullable: false)
+                        .Annotation(
+                            "Npgsql:ValueGenerationStrategy",
+                            NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+
+                    CourseId = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    Date = table.Column<DateTime>(
+                        type: "timestamp with time zone",
+                        nullable: false),
+
+                    Tee = table.Column<string>(
+                        type: "text",
+                        nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Rounds", x => x.Id);
+
                     table.ForeignKey(
                         name: "FK_Rounds_Courses_CourseId",
                         column: x => x.CourseId,
@@ -74,24 +118,65 @@ namespace BirdieBuddy.Migrations
                 name: "Holes",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    RoundId = table.Column<int>(type: "integer", nullable: false),
-                    HoleNumber = table.Column<int>(type: "integer", nullable: false),
-                    Par = table.Column<int>(type: "integer", nullable: false),
-                    Score = table.Column<int>(type: "integer", nullable: false),
-                    Putts = table.Column<int>(type: "integer", nullable: false),
-                    GIR = table.Column<bool>(type: "boolean", nullable: false),
-                    FairwayHit = table.Column<bool>(type: "boolean", nullable: true),
-                    Penalty = table.Column<int>(type: "integer", nullable: false)
+                    Id = table.Column<int>(
+                        type: "integer",
+                        nullable: false)
+                        .Annotation(
+                            "Npgsql:ValueGenerationStrategy",
+                            NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+
+                    RoundId = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    HoleNumber = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    Par = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    Score = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    Putts = table.Column<int>(
+                        type: "integer",
+                        nullable: false),
+
+                    GIR = table.Column<bool>(
+                        type: "boolean",
+                        nullable: false),
+
+                    FairwayHit = table.Column<bool>(
+                        type: "boolean",
+                        nullable: true),
+
+                    Penalty = table.Column<int>(
+                        type: "integer",
+                        nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Holes", x => x.Id);
-                    table.CheckConstraint("CK_Hole_HoleNumber", "[HoleNumber] BETWEEN 1 AND 18");
-                    table.CheckConstraint("CK_Hole_Penalty", "[Penalty] >= 0");
-                    table.CheckConstraint("CK_Hole_Putts", "[Putts] >= 0");
-                    table.CheckConstraint("CK_Hole_Score", "[Score] > 0");
+
+                    table.CheckConstraint(
+                        "CK_Hole_HoleNumber",
+                        "\"HoleNumber\" BETWEEN 1 AND 18");
+
+                    table.CheckConstraint(
+                        "CK_Hole_Penalty",
+                        "\"Penalty\" >= 0");
+
+                    table.CheckConstraint(
+                        "CK_Hole_Putts",
+                        "\"Putts\" >= 0");
+
+                    table.CheckConstraint(
+                        "CK_Hole_Score",
+                        "\"Score\" > 0");
+
                     table.ForeignKey(
                         name: "FK_Holes_Rounds_RoundId",
                         column: x => x.RoundId,
