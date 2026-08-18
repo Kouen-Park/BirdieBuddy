@@ -2,16 +2,19 @@ using Microsoft.EntityFrameworkCore;
 using BirdieBuddy.Data;
 using BirdieBuddy.DTOs;
 using BirdieBuddy.Models;
+using BirdieBuddy.Services.External;
 
 namespace BirdieBuddy.Services;
 
 public class CourseService : ICourseService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IGolfCourseApiClient _golfApiClient;
 
-    public CourseService(ApplicationDbContext context)
+    public CourseService(ApplicationDbContext context, IGolfCourseApiClient golfApiClient)
     {
         _context = context;
+        _golfApiClient = golfApiClient;
     }
 
     public async Task<List<CourseSummaryDto>> GetAllAsync()
@@ -83,6 +86,76 @@ public class CourseService : ICourseService
         _context.Courses.Remove(course);
         await _context.SaveChangesAsync();
         return (true, null);
+    }
+
+    public async Task<List<ExternalCourseSummaryDto>> SearchExternalAsync(string query)
+    {
+        var results = await _golfApiClient.SearchAsync(query);
+
+        return results.Select(r => new ExternalCourseSummaryDto(
+            r.Id,
+            r.ClubName,
+            r.CourseName,
+            FormatLocation(r.Location)
+        )).ToList();
+    }
+
+    public async Task<(CourseDto? Course, string? Error)> ImportExternalAsync(int externalId, string? preferredTeeName)
+    {
+        var detail = await _golfApiClient.GetCourseAsync(externalId);
+        if (detail is null)
+            return (null, "That course couldn't be found on GolfCourseAPI.");
+
+        var candidateTees = (detail.Tees?.Male ?? new List<GolfApiTee>())
+            .Concat(detail.Tees?.Female ?? new List<GolfApiTee>())
+            .ToList();
+
+        if (candidateTees.Count == 0)
+            return (null, "GolfCourseAPI has no tee/hole data for this course.");
+
+        var tee = (!string.IsNullOrWhiteSpace(preferredTeeName)
+            ? candidateTees.FirstOrDefault(t => string.Equals(t.TeeName, preferredTeeName, StringComparison.OrdinalIgnoreCase))
+            : null) ?? candidateTees.First();
+
+        // Birdie Buddy's schema requires a full 18-hole layout - some courses
+        // in the external database only have 9-hole tee data.
+        if (tee.Holes.Count != 18)
+            return (null, $"The '{tee.TeeName}' tee only has data for {tee.Holes.Count} holes - Birdie Buddy currently requires a full 18-hole course.");
+
+        var name = string.IsNullOrWhiteSpace(detail.CourseName) || detail.CourseName == detail.ClubName
+            ? detail.ClubName
+            : $"{detail.ClubName} - {detail.CourseName}";
+
+        if (await _context.Courses.AnyAsync(c => c.Name == name))
+            return (null, $"A course named \"{name}\" already exists.");
+
+        var course = new Course
+        {
+            Name = name,
+            Location = FormatLocation(detail.Location) ?? "",
+            CourseHoles = tee.Holes.Select((h, i) => new CourseHole
+            {
+                HoleNumber = i + 1,
+                Par = h.Par,
+                Distance = (int)Math.Round(h.Yardage * 0.9144) // yards -> metres
+            }).ToList()
+        };
+
+        _context.Courses.Add(course);
+        await _context.SaveChangesAsync();
+
+        return (MapToDto(course), null);
+    }
+
+    private static string? FormatLocation(GolfApiLocation? location)
+    {
+        if (location is null) return null;
+
+        var parts = new[] { location.City, location.State, location.Country }
+            .Where(s => !string.IsNullOrWhiteSpace(s));
+
+        var joined = string.Join(", ", parts);
+        return string.IsNullOrWhiteSpace(joined) ? location.Address : joined;
     }
 
     private static CourseDto MapToDto(Course course)

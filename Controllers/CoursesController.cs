@@ -56,4 +56,36 @@ public class CoursesController : ControllerBase
 
         return NoContent();
     }
+
+    // Proxies GolfCourseAPI so the API key never has to reach the browser.
+    [HttpGet("external/search")]
+    public async Task<ActionResult<List<ExternalCourseSummaryDto>>> SearchExternal([FromQuery] string q)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+            return BadRequest(new { error = "Query parameter 'q' is required." });
+
+        try
+        {
+            return Ok(await _courseService.SearchExternalAsync(q));
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, new { error = $"Couldn't reach GolfCourseAPI: {ex.Message}" });
+        }
+    }
+
+    [HttpPost("external/{externalId:int}/import")]
+    public async Task<ActionResult<CourseDto>> ImportExternal(int externalId, [FromQuery] string? tee)
+    {
+        try
+        {
+            var (course, error) = await _courseService.ImportExternalAsync(externalId, tee);
+            if (error is not null) return BadRequest(new { error });
+            return CreatedAtAction(nameof(GetById), new { id = course!.Id }, course);
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, new { error = $"Couldn't reach GolfCourseAPI: {ex.Message}" });
+        }
+    }
 }

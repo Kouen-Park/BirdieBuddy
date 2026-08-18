@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using BirdieBuddy.Data;
 using BirdieBuddy.Services;
+using BirdieBuddy.Services.External;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,18 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// GolfCourseAPI client - BaseUrl/ApiKey come from appsettings.json or (preferably)
+// user-secrets, so the key never ends up committed to source control.
+builder.Services.AddHttpClient<IGolfCourseApiClient, GolfCourseApiClient>(client =>
+{
+    var baseUrl = builder.Configuration["GolfCourseApi:BaseUrl"] ?? "https://api.golfcourseapi.com/";
+    client.BaseAddress = new Uri(baseUrl);
+
+    var apiKey = builder.Configuration["GolfCourseApi:ApiKey"];
+    if (!string.IsNullOrWhiteSpace(apiKey))
+        client.DefaultRequestHeaders.Add("Authorization", $"Key {apiKey}");
+});
 
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IRoundService, RoundService>();

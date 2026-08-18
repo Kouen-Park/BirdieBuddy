@@ -33,6 +33,7 @@ function renderNav(active) {
     { href: '/index.html', label: 'Dashboard', key: 'dashboard' },
     { href: '/rounds.html', label: 'Rounds', key: 'rounds' },
     { href: '/add-round.html', label: 'Add Round', key: 'add-round' },
+    { href: '/courses.html', label: 'Courses', key: 'courses' },
     { href: '/statistics.html', label: 'Statistics', key: 'statistics' },
     { href: '/practice.html', label: 'Practice', key: 'practice' }
   ];

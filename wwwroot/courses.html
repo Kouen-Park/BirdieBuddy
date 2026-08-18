@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Courses · Birdie Buddy</title>
+<link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="site-nav"></nav>
+
+    <main class="main">
+      <div class="page-header">
+        <h1>Courses</h1>
+        <p>Courses you can select when adding a round.</p>
+      </div>
+
+      <div class="section-title" style="margin-top:0;">Import from GolfCourseAPI</div>
+      <div class="card" style="padding:16px;">
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="search-input" placeholder="Search by course or club name…"
+                 style="flex:1; padding:10px 12px; border:1px solid var(--line); border-radius:7px;" />
+          <button class="btn btn-flag" id="search-btn">Search</button>
+        </div>
+        <div id="search-alert"></div>
+        <div id="search-results" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="section-title">Your courses</div>
+      <div id="local-courses">
+        <p class="progress-note">Loading&hellip;</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/courses.js"></script>
+</body>
+</html>
