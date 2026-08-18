@@ -21,7 +21,7 @@ builder.Services.AddHttpClient<IGolfCourseApiClient, GolfCourseApiClient>(client
 
     var apiKey = builder.Configuration["GolfCourseApi:ApiKey"];
     if (!string.IsNullOrWhiteSpace(apiKey))
-        client.DefaultRequestHeaders.Add("Authorization", $"Key {apiKey}");
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 });
 
 builder.Services.AddScoped<ICourseService, CourseService>();

@@ -167,6 +167,10 @@ duplicated by name.
 
 ## 9. Remaining issues / things to double-check on first build
 
+- **`Properties/launchSettings.json` was missing in the first version of this project** - without it,
+  `dotnet run` starts the app in the "Production" environment instead of "Development", which
+  silently skips loading user-secrets (and disables Swagger). This has been added now; if you
+  still see empty config values, delete `bin/`/`obj/` and rebuild to make sure the fix picked up.
 - **Not compiled**: this sandbox has no .NET SDK, so run `dotnet build` first and expect to fix
   minor issues (a missing `using`, a package version mismatch) rather than assuming it's perfect.
 - **`HasCheckConstraint` on `ToTable`**: this uses the EF Core 7+ syntax. If your installed

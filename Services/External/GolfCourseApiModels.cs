@@ -4,6 +4,10 @@ namespace BirdieBuddy.Services.External;
 
 // Shapes mirror https://api.golfcourseapi.com/docs/api - only the fields we
 // actually use are mapped; anything else is ignored by System.Text.Json.
+//
+// AllowReadingFromString is applied to every numeric field: the live API
+// sometimes sends numbers as quoted strings (e.g. "id": "34") even though the
+// published docs show them unquoted, so we accept both.
 
 public class GolfApiSearchResponse
 {
@@ -14,6 +18,7 @@ public class GolfApiSearchResponse
 public class GolfApiSearchResult
 {
     [JsonPropertyName("id")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
     public int Id { get; set; }
 
     [JsonPropertyName("club_name")]
@@ -36,7 +41,10 @@ public class GolfApiLocation
 
 public class GolfApiCourseDetail
 {
-    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("id")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int Id { get; set; }
+
     [JsonPropertyName("club_name")] public string ClubName { get; set; } = string.Empty;
     [JsonPropertyName("course_name")] public string CourseName { get; set; } = string.Empty;
     [JsonPropertyName("location")] public GolfApiLocation? Location { get; set; }
@@ -52,14 +60,29 @@ public class GolfApiTees
 public class GolfApiTee
 {
     [JsonPropertyName("tee_name")] public string TeeName { get; set; } = string.Empty;
-    [JsonPropertyName("number_of_holes")] public int NumberOfHoles { get; set; }
-    [JsonPropertyName("par_total")] public int ParTotal { get; set; }
+
+    [JsonPropertyName("number_of_holes")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int NumberOfHoles { get; set; }
+
+    [JsonPropertyName("par_total")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int ParTotal { get; set; }
+
     [JsonPropertyName("holes")] public List<GolfApiHole> Holes { get; set; } = new();
 }
 
 public class GolfApiHole
 {
-    [JsonPropertyName("par")] public int Par { get; set; }
-    [JsonPropertyName("yardage")] public int Yardage { get; set; }
-    [JsonPropertyName("handicap")] public int? Handicap { get; set; }
+    [JsonPropertyName("par")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int Par { get; set; }
+
+    [JsonPropertyName("yardage")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int Yardage { get; set; }
+
+    [JsonPropertyName("handicap")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int? Handicap { get; set; }
 }

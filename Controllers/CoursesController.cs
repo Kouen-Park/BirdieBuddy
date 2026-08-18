@@ -72,6 +72,12 @@ public class CoursesController : ControllerBase
         {
             return StatusCode(502, new { error = $"Couldn't reach GolfCourseAPI: {ex.Message}" });
         }
+        catch (Exception ex)
+        {
+            // Surfaced with detail temporarily to make first-run debugging easier;
+            // narrow this back down once the external API integration is confirmed working.
+            return StatusCode(500, new { error = $"Unexpected error calling GolfCourseAPI: {ex.Message}" });
+        }
     }
 
     [HttpPost("external/{externalId:int}/import")]
@@ -86,6 +92,10 @@ public class CoursesController : ControllerBase
         catch (HttpRequestException ex)
         {
             return StatusCode(502, new { error = $"Couldn't reach GolfCourseAPI: {ex.Message}" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Unexpected error importing course: {ex.Message}" });
         }
     }
 }
