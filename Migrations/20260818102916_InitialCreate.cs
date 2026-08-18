@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -15,10 +16,10 @@ namespace BirdieBuddy.Migrations
                 name: "Courses",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Location = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Location = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -29,12 +30,12 @@ namespace BirdieBuddy.Migrations
                 name: "CourseHoles",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    CourseId = table.Column<int>(type: "int", nullable: false),
-                    HoleNumber = table.Column<int>(type: "int", nullable: false),
-                    Par = table.Column<int>(type: "int", nullable: false),
-                    Distance = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    CourseId = table.Column<int>(type: "integer", nullable: false),
+                    HoleNumber = table.Column<int>(type: "integer", nullable: false),
+                    Par = table.Column<int>(type: "integer", nullable: false),
+                    Distance = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -52,11 +53,11 @@ namespace BirdieBuddy.Migrations
                 name: "Rounds",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    CourseId = table.Column<int>(type: "int", nullable: false),
-                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Tee = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    CourseId = table.Column<int>(type: "integer", nullable: false),
+                    Date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Tee = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -73,16 +74,16 @@ namespace BirdieBuddy.Migrations
                 name: "Holes",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    RoundId = table.Column<int>(type: "int", nullable: false),
-                    HoleNumber = table.Column<int>(type: "int", nullable: false),
-                    Par = table.Column<int>(type: "int", nullable: false),
-                    Score = table.Column<int>(type: "int", nullable: false),
-                    Putts = table.Column<int>(type: "int", nullable: false),
-                    GIR = table.Column<bool>(type: "bit", nullable: false),
-                    FairwayHit = table.Column<bool>(type: "bit", nullable: true),
-                    Penalty = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RoundId = table.Column<int>(type: "integer", nullable: false),
+                    HoleNumber = table.Column<int>(type: "integer", nullable: false),
+                    Par = table.Column<int>(type: "integer", nullable: false),
+                    Score = table.Column<int>(type: "integer", nullable: false),
+                    Putts = table.Column<int>(type: "integer", nullable: false),
+                    GIR = table.Column<bool>(type: "boolean", nullable: false),
+                    FairwayHit = table.Column<bool>(type: "boolean", nullable: true),
+                    Penalty = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
