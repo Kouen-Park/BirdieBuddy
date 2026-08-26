@@ -875,3 +875,19 @@ tr.clickable {
         }
     }
 }
+
+#scorecard-wrapper {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#scorecard-wrapper table {
+    min-width: 900px;
+    border-collapse: collapse;
+}
+
+.main {
+    min-width: 0;
+}
