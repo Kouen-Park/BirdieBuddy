@@ -46,15 +46,25 @@ async function runSearch() {
       return;
     }
 
-    searchResults.innerHTML = results.map(r => `
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line);">
-        <div>
-          <div style="font-weight:600;">${r.clubName}${r.courseName && r.courseName !== r.clubName ? ' · ' + r.courseName : ''}</div>
-          <div class="progress-note">${r.location || ''}</div>
+    searchResults.innerHTML = results.map(r => {
+      const maleTeeCount = r.maleTeeCount || 0;
+      const femaleTeeCount = r.femaleTeeCount || 0;
+      const hasTeeData = maleTeeCount + femaleTeeCount > 0;
+      const teeSummary = hasTeeData
+        ? `Tee boxes: ${maleTeeCount} men's / ${femaleTeeCount} women's`
+        : 'No tee/hole data available';
+
+      return `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line);">
+          <div>
+            <div style="font-weight:600;">${r.clubName}${r.courseName && r.courseName !== r.clubName ? ' · ' + r.courseName : ''}</div>
+            <div class="progress-note">${r.location || ''}</div>
+            <div class="progress-note">${teeSummary}</div>
+          </div>
+          <button class="btn btn-ghost import-btn" data-id="${r.externalId}" ${hasTeeData ? '' : 'disabled'}>${hasTeeData ? 'Import' : 'Unavailable'}</button>
         </div>
-        <button class="btn btn-ghost import-btn" data-id="${r.externalId}">Import</button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     searchResults.querySelectorAll('.import-btn').forEach(btn => {
       btn.addEventListener('click', () => importCourse(btn));

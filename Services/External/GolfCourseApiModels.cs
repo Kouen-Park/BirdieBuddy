@@ -28,6 +28,21 @@ public class GolfApiSearchResult
 
     [JsonPropertyName("location")]
     public GolfApiLocation? Location { get; set; }
+
+    // The search endpoint returns tee counts, not full tee objects.
+    [JsonPropertyName("tees")]
+    public GolfApiTeeCounts? Tees { get; set; }
+}
+
+public class GolfApiTeeCounts
+{
+    [JsonPropertyName("male")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int Male { get; set; }
+
+    [JsonPropertyName("female")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int Female { get; set; }
 }
 
 public class GolfApiLocation

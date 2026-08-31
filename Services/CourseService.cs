@@ -96,7 +96,9 @@ public class CourseService : ICourseService
             r.Id,
             r.ClubName,
             r.CourseName,
-            FormatLocation(r.Location)
+            FormatLocation(r.Location),
+            r.Tees?.Male ?? 0,
+            r.Tees?.Female ?? 0
         )).ToList();
     }
 
@@ -111,7 +113,7 @@ public class CourseService : ICourseService
             .ToList();
 
         if (candidateTees.Count == 0)
-            return (null, "GolfCourseAPI has no tee/hole data for this course.");
+            return (null, "This course has no detailed tee/hole data on GolfCourseAPI. Please choose a course with at least one tee box.");
 
         var tee = (!string.IsNullOrWhiteSpace(preferredTeeName)
             ? candidateTees.FirstOrDefault(t => string.Equals(t.TeeName, preferredTeeName, StringComparison.OrdinalIgnoreCase))
