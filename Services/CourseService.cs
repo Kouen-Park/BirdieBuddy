@@ -93,6 +93,43 @@ public class CourseService : ICourseService
         return (true, null);
     }
 
+    public async Task<CourseCleanupResult> DeleteLegacyCoursesAsync()
+    {
+        var legacyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Whitford Golf Course",
+            "Whitford Park Golf Club",
+            "Pakuranga Golf Club",
+            string.Empty
+        };
+
+        var courses = (await _context.Courses.ToListAsync())
+            .Where(c => legacyNames.Contains(Normalize(c.Name)))
+            .ToList();
+
+        if (courses.Count == 0)
+            return new CourseCleanupResult(0, 0, Array.Empty<string>());
+
+        var courseIds = courses.Select(c => c.Id).ToList();
+        var rounds = await _context.Rounds
+            .Where(r => courseIds.Contains(r.CourseId))
+            .ToListAsync();
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        _context.Rounds.RemoveRange(rounds);
+        _context.Courses.RemoveRange(courses);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return new CourseCleanupResult(
+            courses.Count,
+            rounds.Count,
+            courses.Select(c => string.IsNullOrWhiteSpace(c.Name) ? "(blank)" : c.Name).ToList());
+    }
+
+    private static string Normalize(string? value) =>
+        string.Join(' ', (value ?? string.Empty).Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
+
     private static CourseDto MapToDto(Course course)
     {
         var tees = course.CourseTees

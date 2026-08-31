@@ -73,4 +73,11 @@ public class CoursesController : ControllerBase
     {
         return Ok(_golfNzImportJob.GetStatus());
     }
+
+    // One-time cleanup for the original demo courses and their rounds.
+    [HttpPost("cleanup-legacy-courses")]
+    public async Task<ActionResult<CourseCleanupResult>> CleanupLegacyCourses()
+    {
+        return Ok(await _courseService.DeleteLegacyCoursesAsync());
+    }
 }
