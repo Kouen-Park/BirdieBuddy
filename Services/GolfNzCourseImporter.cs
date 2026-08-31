@@ -103,7 +103,7 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
                     {
                         tee = new CourseTee
                         {
-                            CourseId = course.Id,
+                            Course = course,
                             Name = marker.Name.Trim(),
                             CourseType = courseType,
                             Gender = gender,
@@ -139,7 +139,7 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
                         {
                             hole = new CourseHole
                             {
-                                CourseTeeId = tee.Id,
+                                CourseTee = tee,
                                 HoleNumber = source.Number
                             };
                             tee.CourseHoles.Add(hole);
