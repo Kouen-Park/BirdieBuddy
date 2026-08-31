@@ -52,7 +52,7 @@ async function runSearch() {
       const hasTeeData = maleTeeCount + femaleTeeCount > 0;
       const teeSummary = hasTeeData
         ? `Tee boxes: ${maleTeeCount} men's / ${femaleTeeCount} women's`
-        : 'No tee/hole data available';
+        : 'No tee data — holes can be entered manually';
 
       return `
         <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line);">
@@ -61,7 +61,7 @@ async function runSearch() {
             <div class="progress-note">${r.location || ''}</div>
             <div class="progress-note">${teeSummary}</div>
           </div>
-          <button class="btn btn-ghost import-btn" data-id="${r.externalId}" ${hasTeeData ? '' : 'disabled'}>${hasTeeData ? 'Import' : 'Unavailable'}</button>
+          <button class="btn btn-ghost import-btn" data-id="${r.externalId}">Import</button>
         </div>
       `;
     }).join('');

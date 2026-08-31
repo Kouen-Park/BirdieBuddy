@@ -29,14 +29,15 @@
             <input type="date" id="date-input" />
           </div>
           <div class="field">
-            <label for="tee-select">Tee</label>
-            <select id="tee-select">
-              <option>White</option>
-              <option>Blue</option>
-              <option>Black</option>
-              <option>Gold</option>
-              <option>Red</option>
-            </select>
+            <label for="tee-input">Tee</label>
+            <input id="tee-input" list="tee-options" value="White" placeholder="e.g. White" maxlength="40" />
+            <datalist id="tee-options">
+              <option value="White"></option>
+              <option value="Blue"></option>
+              <option value="Black"></option>
+              <option value="Gold"></option>
+              <option value="Red"></option>
+            </datalist>
           </div>
         </div>
       </div>

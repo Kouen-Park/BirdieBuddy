@@ -2,6 +2,7 @@ renderNav('add-round');
 
 const courseSelect = document.getElementById('course-select');
 const dateInput = document.getElementById('date-input');
+const teeInput = document.getElementById('tee-input');
 const wrapper = document.getElementById('scorecard-wrapper');
 const alertBox = document.getElementById('form-alert');
 
@@ -35,9 +36,18 @@ courseSelect.addEventListener('change', async () => {
 });
 
 function renderScorecard(course) {
-  const holes = [...course.holes].sort((a, b) => a.holeNumber - b.holeNumber);
+  const courseHoles = [...course.holes].sort((a, b) => a.holeNumber - b.holeNumber);
+  const isManualScorecard = courseHoles.length === 0;
+  const holes = isManualScorecard
+    ? Array.from({ length: 18 }, (_, index) => ({ holeNumber: index + 1, par: 4 }))
+    : courseHoles;
+
+  const manualNote = isManualScorecard
+    ? '<p class="progress-note" style="margin:20px 0 0;">This course has no hole data. Enter the par for each hole below before saving.</p>'
+    : '';
 
   wrapper.innerHTML = `
+    ${manualNote}
     <div class="card" style="margin-top:20px;">
       <table class="scorecard-table">
         <thead>
@@ -62,18 +72,20 @@ function renderScorecard(course) {
   const tbody = document.getElementById('hole-rows');
 
   holes.forEach(h => {
-    const isPar3 = h.par === 3;
+    const par = Number(h.par) || 4;
+    const isPar3 = par === 3;
     const row = document.createElement('tr');
     row.dataset.holeNumber = h.holeNumber;
-    row.dataset.par = h.par;
+    row.dataset.par = par;
+    row.dataset.manualPar = isManualScorecard ? 'true' : 'false';
     row.innerHTML = `
       <td class="text-cell">${h.holeNumber}</td>
-      <td>${h.par}</td>
-      <td><input type="number" min="1" class="score-input" value="${h.par}" /></td>
+      <td>${isManualScorecard ? `<input type="number" min="3" max="6" class="par-input" value="${par}" />` : par}</td>
+      <td><input type="number" min="1" class="score-input" value="${par}" /></td>
       <td><input type="number" min="0" class="putts-input" value="2" /></td>
       <td style="text-align:center;"><input type="checkbox" class="gir-input" /></td>
-      <td class="${isPar3 ? 'na' : ''}">
-        ${isPar3 ? 'N/A' : `<select class="fairway-input"><option value="">—</option><option value="true">Hit</option><option value="false">Missed</option></select>`}
+      <td class="fairway-cell ${isPar3 ? 'na' : ''}">
+        ${isPar3 ? 'N/A' : fairwaySelectHtml()}
       </td>
       <td><input type="number" min="0" class="penalty-input" value="0" /></td>
     `;
@@ -85,14 +97,42 @@ function renderScorecard(course) {
   updateRunningTotal();
 }
 
+function fairwaySelectHtml() {
+  return '<select class="fairway-input"><option value="">—</option><option value="true">Hit</option><option value="false">Missed</option></select>';
+}
+
+function rowPar(row) {
+  const parInput = row.querySelector('.par-input');
+  return parInput ? Number(parInput.value || 0) : Number(row.dataset.par);
+}
+
+function syncFairwayField(row) {
+  if (row.dataset.manualPar !== 'true') return;
+
+  const cell = row.querySelector('.fairway-cell');
+  if (!cell) return;
+
+  const isPar3 = rowPar(row) === 3;
+  const hasSelect = !!cell.querySelector('.fairway-input');
+
+  if (isPar3 && hasSelect) {
+    cell.className = 'fairway-cell na';
+    cell.textContent = 'N/A';
+  } else if (!isPar3 && !hasSelect) {
+    cell.className = 'fairway-cell';
+    cell.innerHTML = fairwaySelectHtml();
+  }
+}
+
 function updateRunningTotal() {
   const rows = [...document.querySelectorAll('#hole-rows tr')];
   let score = 0, par = 0, putts = 0;
 
   rows.forEach(r => {
+    syncFairwayField(r);
     score += Number(r.querySelector('.score-input').value || 0);
     putts += Number(r.querySelector('.putts-input').value || 0);
-    par += Number(r.dataset.par);
+    par += rowPar(r);
   });
 
   document.getElementById('rt-score').textContent = score;
@@ -102,13 +142,21 @@ function updateRunningTotal() {
 
 async function saveRound() {
   const rows = [...document.querySelectorAll('#hole-rows tr')];
+  const tee = teeInput.value.trim();
+
+  if (!tee) {
+    showAlert('Please enter a tee name, such as White or Blue.');
+    return;
+  }
 
   const holes = rows.map(r => {
     const fairwaySelect = r.querySelector('.fairway-input');
     const fairwayValue = fairwaySelect && fairwaySelect.value !== '' ? fairwaySelect.value === 'true' : null;
+    const parInput = r.querySelector('.par-input');
 
     return {
       holeNumber: Number(r.dataset.holeNumber),
+      par: parInput ? Number(parInput.value) : null,
       score: Number(r.querySelector('.score-input').value),
       putts: Number(r.querySelector('.putts-input').value),
       gir: r.querySelector('.gir-input').checked,
@@ -120,7 +168,7 @@ async function saveRound() {
   const dto = {
     courseId: Number(courseSelect.value),
     date: dateInput.value,
-    tee: document.getElementById('tee-select').value,
+    tee,
     holes
   };
 

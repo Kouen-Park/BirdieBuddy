@@ -112,17 +112,19 @@ public class CourseService : ICourseService
             .Concat(detail.Tees?.Female ?? new List<GolfApiTee>())
             .ToList();
 
-        if (candidateTees.Count == 0)
-            return (null, "This course has no detailed tee/hole data on GolfCourseAPI. Please choose a course with at least one tee box.");
-
-        var tee = (!string.IsNullOrWhiteSpace(preferredTeeName)
+        var tee = !string.IsNullOrWhiteSpace(preferredTeeName)
             ? candidateTees.FirstOrDefault(t => string.Equals(t.TeeName, preferredTeeName, StringComparison.OrdinalIgnoreCase))
-            : null) ?? candidateTees.First();
+            : null;
+        tee ??= candidateTees.FirstOrDefault();
 
-        // Birdie Buddy's schema requires a full 18-hole layout - some courses
-        // in the external database only have 9-hole tee data.
-        if (tee.Holes.Count != 18)
-            return (null, $"The '{tee.TeeName}' tee only has data for {tee.Holes.Count} holes - Birdie Buddy currently requires a full 18-hole course.");
+        // Some API records contain only course metadata, or a tee without
+        // detailed holes. Import those records as hole-less courses so the user
+        // can enter the scorecard manually later.
+        var hasDetailedHoles = tee is not null && tee.Holes.Count > 0;
+        if (hasDetailedHoles && tee!.Holes.Count != 18)
+        {
+            return (null, $"The '{tee.TeeName}' tee only has data for {tee.Holes.Count} holes - Birdie Buddy currently requires a full 18-hole course when detailed hole data is available.");
+        }
 
         var name = string.IsNullOrWhiteSpace(detail.CourseName) || detail.CourseName == detail.ClubName
             ? detail.ClubName
@@ -135,12 +137,14 @@ public class CourseService : ICourseService
         {
             Name = name,
             Location = FormatLocation(detail.Location) ?? "",
-            CourseHoles = tee.Holes.Select((h, i) => new CourseHole
-            {
-                HoleNumber = i + 1,
-                Par = h.Par,
-                Distance = (int)Math.Round(h.Yardage * 0.9144) // yards -> metres
-            }).ToList()
+            CourseHoles = hasDetailedHoles
+                ? tee!.Holes.Select((h, i) => new CourseHole
+                {
+                    HoleNumber = i + 1,
+                    Par = h.Par,
+                    Distance = (int)Math.Round(h.Yardage * 0.9144) // yards -> metres
+                }).ToList()
+                : new List<CourseHole>()
         };
 
         _context.Courses.Add(course);

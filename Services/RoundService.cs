@@ -58,13 +58,19 @@ public class RoundService : IRoundService
 
         foreach (var holeDto in dto.Holes)
         {
-            if (!holesByNumber.TryGetValue(
-                    holeDto.HoleNumber,
-                    out var courseHole))
+            if (holeDto.HoleNumber < 1 || holeDto.HoleNumber > 18)
             {
-                return (
-                    null,
-                    $"Hole {holeDto.HoleNumber} does not exist on this course.");
+                return (null, $"Hole {holeDto.HoleNumber} must be between 1 and 18.");
+            }
+
+            var courseHole = holesByNumber.TryGetValue(holeDto.HoleNumber, out var mappedCourseHole)
+                ? mappedCourseHole
+                : null;
+            var par = courseHole?.Par ?? holeDto.Par;
+
+            if (par is null || par.Value < 3 || par.Value > 6)
+            {
+                return (null, $"Par for hole {holeDto.HoleNumber} must be between 3 and 6.");
             }
 
             if (holeDto.Score <= 0)
@@ -88,7 +94,7 @@ public class RoundService : IRoundService
                     $"Penalty for hole {holeDto.HoleNumber} cannot be negative.");
             }
 
-            if (courseHole.Par == 3 &&
+            if (par.Value == 3 &&
                 holeDto.FairwayHit.HasValue)
             {
                 return (
@@ -100,7 +106,7 @@ public class RoundService : IRoundService
             holes.Add(new Hole
             {
                 HoleNumber = holeDto.HoleNumber,
-                Par = courseHole.Par,
+                Par = par.Value,
                 Score = holeDto.Score,
                 Putts = holeDto.Putts,
                 GIR = holeDto.GIR,
@@ -194,14 +200,16 @@ public class RoundService : IRoundService
                 $"Hole {dto.HoleNumber} already exists for this round.");
         }
 
+        if (dto.HoleNumber < 1 || dto.HoleNumber > 18)
+            return (null, $"Hole {dto.HoleNumber} must be between 1 and 18.");
+
         var courseHole = round.Course?.CourseHoles
             .FirstOrDefault(h => h.HoleNumber == dto.HoleNumber);
+        var par = courseHole?.Par ?? dto.Par;
 
-        if (courseHole is null)
+        if (par is null || par.Value < 3 || par.Value > 6)
         {
-            return (
-                null,
-                $"Hole {dto.HoleNumber} does not exist on this course.");
+            return (null, $"Par for hole {dto.HoleNumber} must be between 3 and 6.");
         }
 
         if (dto.Score <= 0)
@@ -213,11 +221,14 @@ public class RoundService : IRoundService
         if (dto.Penalty < 0)
             return (null, "Penalty cannot be negative.");
 
+        if (par.Value == 3 && dto.FairwayHit.HasValue)
+            return (null, "Fairway hit does not apply to par 3 holes.");
+
         var hole = new Hole
         {
             RoundId = roundId,
             HoleNumber = dto.HoleNumber,
-            Par = courseHole.Par,
+            Par = par.Value,
             Score = dto.Score,
             Putts = dto.Putts,
             GIR = dto.GIR,
