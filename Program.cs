@@ -12,6 +12,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IGolfNzCourseImporter, GolfNzCourseImporter>();
+builder.Services.AddSingleton<IGolfNzImportJob, GolfNzImportJob>();
 
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IRoundService, RoundService>();

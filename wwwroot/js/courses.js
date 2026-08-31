@@ -28,13 +28,44 @@ async function loadLocalCourses() {
   }
 }
 
-async function importGolfNz() {
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function setImportRunning() {
   importButton.disabled = true;
-  importButton.textContent = 'Loading Golf NZ courses…';
-  importAlert.innerHTML = '';
+  importButton.textContent = 'Importing Golf NZ courses…';
+}
+
+async function waitForImport() {
+  for (let attempt = 0; attempt < 900; attempt += 1) {
+    const status = await Api.get('/courses/import-golf-nz/status');
+
+    if (status.state === 'running') {
+      setImportRunning();
+      await sleep(1000);
+      continue;
+    }
+
+    return status;
+  }
+
+  throw new Error('The Golf NZ import is taking longer than expected. Refresh the page to check its status.');
+}
+
+async function importGolfNz() {
+  setImportRunning();
+  importAlert.innerHTML = '<div class="alert">Golf NZ data is being imported in the background. You can keep this page open.</div>';
 
   try {
-    const result = await Api.post('/courses/import-golf-nz', {});
+    await Api.post('/courses/import-golf-nz', {});
+    const status = await waitForImport();
+
+    if (status.state === 'failed') {
+      throw new Error(status.error || 'Golf NZ import failed. Check the server logs.');
+    }
+
+    const result = status.result;
     importAlert.innerHTML = `
       <div class="alert success">
         Golf NZ import complete: ${result.coursesCreated} courses created, ${result.coursesUpdated} updated,

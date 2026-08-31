@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using BirdieBuddy.DTOs;
 using BirdieBuddy.Services;
@@ -10,14 +9,14 @@ namespace BirdieBuddy.Controllers;
 public class CoursesController : ControllerBase
 {
     private readonly ICourseService _courseService;
-    private readonly IGolfNzCourseImporter _golfNzCourseImporter;
+    private readonly IGolfNzImportJob _golfNzImportJob;
 
     public CoursesController(
         ICourseService courseService,
-        IGolfNzCourseImporter golfNzCourseImporter)
+        IGolfNzImportJob golfNzImportJob)
     {
         _courseService = courseService;
-        _golfNzCourseImporter = golfNzCourseImporter;
+        _golfNzImportJob = golfNzImportJob;
     }
 
     [HttpGet]
@@ -63,23 +62,15 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPost("import-golf-nz")]
-    public async Task<ActionResult<GolfNzImportResult>> ImportGolfNz(CancellationToken cancellationToken)
+    public ActionResult<GolfNzImportJobStatus> StartGolfNzImport()
     {
-        try
-        {
-            return Ok(await _golfNzCourseImporter.ImportAsync(cancellationToken));
-        }
-        catch (FileNotFoundException ex)
-        {
-            return StatusCode(500, new { error = ex.Message });
-        }
-        catch (JsonException ex)
-        {
-            return StatusCode(500, new { error = $"Golf NZ data is invalid: {ex.Message}" });
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { error = "Golf NZ import failed. Check the server logs." });
-        }
+        var started = _golfNzImportJob.TryStart(out var status);
+        return started ? Accepted(status) : Ok(status);
+    }
+
+    [HttpGet("import-golf-nz/status")]
+    public ActionResult<GolfNzImportJobStatus> GetGolfNzImportStatus()
+    {
+        return Ok(_golfNzImportJob.GetStatus());
     }
 }
