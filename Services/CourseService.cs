@@ -100,7 +100,7 @@ public class CourseService : ICourseService
         )).ToList();
     }
 
-    public async Task<(CourseDto? Course, string? Error)> ImportExternalAsync(int externalId, string? preferredTeeName)
+    public async Task<(CourseDto? Course, string? Error)> ImportExternalAsync(string externalId, string? preferredTeeName)
     {
         var detail = await _golfApiClient.GetCourseAsync(externalId);
         if (detail is null)

@@ -18,8 +18,7 @@ public class GolfApiSearchResponse
 public class GolfApiSearchResult
 {
     [JsonPropertyName("id")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("club_name")]
     public string ClubName { get; set; } = string.Empty;
@@ -42,8 +41,7 @@ public class GolfApiLocation
 public class GolfApiCourseDetail
 {
     [JsonPropertyName("id")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     [JsonPropertyName("club_name")] public string ClubName { get; set; } = string.Empty;
     [JsonPropertyName("course_name")] public string CourseName { get; set; } = string.Empty;

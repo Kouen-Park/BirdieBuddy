@@ -80,8 +80,8 @@ public class CoursesController : ControllerBase
         }
     }
 
-    [HttpPost("external/{externalId:int}/import")]
-    public async Task<ActionResult<CourseDto>> ImportExternal(int externalId, [FromQuery] string? tee)
+    [HttpPost("external/{externalId}/import")]
+    public async Task<ActionResult<CourseDto>> ImportExternal(string externalId, [FromQuery] string? tee)
     {
         try
         {

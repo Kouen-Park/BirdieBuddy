@@ -22,9 +22,9 @@ public class GolfCourseApiClient : IGolfCourseApiClient
         return result?.Courses ?? new List<GolfApiSearchResult>();
     }
 
-    public async Task<GolfApiCourseDetail?> GetCourseAsync(int externalId)
+    public async Task<GolfApiCourseDetail?> GetCourseAsync(string externalId)
     {
-        var response = await _http.GetAsync($"v1/courses/{externalId}");
+        var response = await _http.GetAsync($"v1/courses/{Uri.EscapeDataString(externalId)}");
         if (!response.IsSuccessStatusCode) return null;
 
         await using var stream = await response.Content.ReadAsStreamAsync();
