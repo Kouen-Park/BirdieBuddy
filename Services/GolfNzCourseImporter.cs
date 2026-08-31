@@ -40,6 +40,10 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
 
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         var result = new MutableResult();
+        var existingCourses = await _context.Courses
+            .Include(c => c.CourseTees)
+                .ThenInclude(t => t.CourseHoles)
+            .ToListAsync(cancellationToken);
 
         foreach (var club in clubs)
         {
@@ -47,17 +51,12 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
             if (club.ClubId <= 0 || string.IsNullOrWhiteSpace(club.ClubName))
                 continue;
 
-            var course = await _context.Courses
-                .Include(c => c.CourseTees)
-                    .ThenInclude(t => t.CourseHoles)
-                .FirstOrDefaultAsync(c => c.GolfNzClubId == club.ClubId, cancellationToken);
+            var course = existingCourses.FirstOrDefault(c => c.GolfNzClubId == club.ClubId);
 
-            // This fallback links the existing seeded Whitford Park record to
-            // Golf NZ club 491 instead of inserting a second course.
-            course ??= await _context.Courses
-                .Include(c => c.CourseTees)
-                    .ThenInclude(t => t.CourseHoles)
-                .FirstOrDefaultAsync(c => Normalize(c.Name) == Normalize(club.ClubName), cancellationToken);
+            // This in-memory fallback links the existing seeded Whitford Park
+            // record to Golf NZ club 491 instead of inserting a second course.
+            course ??= existingCourses.FirstOrDefault(c =>
+                Normalize(c.Name) == Normalize(club.ClubName));
 
             if (course is null)
             {
@@ -68,6 +67,7 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
                     Location = "New Zealand"
                 };
                 _context.Courses.Add(course);
+                existingCourses.Add(course);
                 result.CoursesCreated++;
             }
             else
