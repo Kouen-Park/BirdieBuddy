@@ -77,5 +77,15 @@ public class CoursesController : ControllerBase
         {
             return StatusCode(500, new { error = $"Golf NZ data is invalid: {ex.Message}" });
         }
+        catch (Exception ex)
+        {
+            // Keep the endpoint actionable when a production database constraint
+            // or import mapping issue occurs, without returning a stack trace.
+            return StatusCode(500, new
+            {
+                error = "Golf NZ import failed.",
+                detail = ex.GetBaseException().Message
+            });
+        }
     }
 }
