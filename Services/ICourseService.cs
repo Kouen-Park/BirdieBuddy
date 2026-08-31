@@ -9,10 +9,4 @@ public interface ICourseService
     Task<CourseDto> CreateAsync(CourseCreateDto dto);
     Task<bool> UpdateAsync(int id, CourseUpdateDto dto);
     Task<(bool Success, string? Error)> DeleteAsync(int id);
-    Task<CourseCleanupResult> DeleteLegacyCoursesAsync();
 }
-
-public sealed record CourseCleanupResult(
-    int CoursesDeleted,
-    int RoundsDeleted,
-    IReadOnlyList<string> DeletedCourseNames);
