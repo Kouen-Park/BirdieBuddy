@@ -5,6 +5,5 @@ public record ExternalCourseSummaryDto(
     string ClubName,
     string CourseName,
     string? Location,
-    int MaleTeeCount,
-    int FemaleTeeCount
+    int? ParTotal
 );

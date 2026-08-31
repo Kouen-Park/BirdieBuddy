@@ -129,41 +129,33 @@ This is clearly separated from real user data only by timing (it runs once, on a
 database) - there's no `IsSeed` flag in the schema. That's fine for a student project; call it
 out as a known simplification if asked.
 
-## 8. Importing courses from GolfCourseAPI
+## 8. Importing courses from OpenGolfAPI
 
-The **Courses** page (`/courses.html`) lets you search [GolfCourseAPI](https://golfcourseapi.com/)
-and import a course - it fetches the club/course name, location, and the par + yardage for all 18
-holes on one tee, and creates a local `Course` + 18 `CourseHole` rows from it. No course is ever
-duplicated by name.
+The **Courses** page (`/courses.html`) searches [OpenGolfAPI](https://opengolfapi.org/) and imports
+course metadata plus any available scorecard holes. OpenGolfAPI's read endpoints are keyless, so no
+API key or user-secret is required for the default integration. The application stores the course
+locally and avoids duplicate course names.
 
 **Setup:**
 
-1. Sign up for a free key at <https://golfcourseapi.com/> (up to 50 requests/day, no card needed).
-2. Set it locally with user-secrets (preferred - keeps it out of source control):
-   ```bash
-   dotnet user-secrets set "GolfCourseApi:ApiKey" "your-key-here"
-   ```
-   or, for a quick local test only, paste it directly into `appsettings.json` under
-   `GolfCourseApi:ApiKey` (don't commit a real key if you do this).
-3. Run the app and go to **Courses** → search a name → **Import**.
+1. No API key is required for course search or scorecard reads.
+2. Run the app and go to **Courses** → search a name → **Import**.
+3. If a course has no scorecard holes, it is still imported with its name and location. When adding a
+   round, Birdie Buddy creates an 18-hole manual scorecard so the user can enter each hole's par.
 
 **How it works under the hood:**
 
-- `Services/External/GolfCourseApiClient.cs` is a thin typed `HttpClient` wrapper, registered in
-  `Program.cs` with the base URL and `Authorization: Key {your-key}` header already attached, so
-  no other part of the app ever touches the raw key.
-- `CoursesController` exposes two endpoints that **proxy** the external API rather than exposing
-  it directly to the browser: `GET /api/courses/external/search?q=...` and
+- `Services/External/GolfCourseApiClient.cs` is a thin typed `HttpClient` wrapper around
+  `https://api.opengolfapi.org/`. Search uses `GET /v1/courses/search?q=...`, and detail uses
+  `GET /v1/courses/{id}`.
+- `CoursesController` exposes two endpoints that **proxy** the external API rather than exposing it
+  directly to the browser: `GET /api/courses/external/search?q=...` and
   `POST /api/courses/external/{externalId}/import`.
-- `CourseService.ImportExternalAsync` picks a tee (first male tee by default; pass
-  `?tee=TeeName` to the import endpoint for a specific one), converts yardage to metres to match
-  the schema, and rejects courses whose tee data isn't a full 18 holes (some entries in the
-  external database are 9-hole courses - Birdie Buddy's schema doesn't support those yet).
-- **Double-check the auth header format once you're signed up.** GolfCourseAPI's docs page is
-  JavaScript-rendered, so I couldn't fully confirm the exact header syntax from here - I used the
-  commonly documented `Authorization: Key {api_key}` format. If a search comes back `401`, open
-  your GolfCourseAPI dashboard's docs/examples and check the header name against
-  `GolfCourseApiClient.cs` - it's a one-line fix if it's different.
+- `CourseService.ImportExternalAsync` maps OpenGolfAPI's `scorecard` hole/par pairs into local
+  `CourseHole` rows. Tees are selected by the user when recording a round; the default suggestions
+  are White, Blue, Black, Gold, and Red, and custom tee names can be entered.
+- OpenGolfAPI is licensed under ODbL. The API attribution is retained in the upstream response;
+  applications using the data should follow the [OpenGolfAPI attribution guidance](https://opengolfapi.org/attribution).
 
 ## 9. Remaining issues / things to double-check on first build
 

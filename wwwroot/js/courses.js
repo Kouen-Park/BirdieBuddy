@@ -11,7 +11,7 @@ async function loadLocalCourses() {
     const courses = await Api.get('/courses');
 
     if (courses.length === 0) {
-      localCoursesEl.innerHTML = `<div class="card empty-state"><h3>No courses yet.</h3><p>Search GolfCourseAPI above to import one.</p></div>`;
+      localCoursesEl.innerHTML = `<div class="card empty-state"><h3>No courses yet.</h3><p>Search OpenGolfAPI above to import one.</p></div>`;
       return;
     }
 
@@ -42,17 +42,13 @@ async function runSearch() {
     const results = await Api.get(`/courses/external/search?q=${encodeURIComponent(q)}`);
 
     if (results.length === 0) {
-      searchResults.innerHTML = `<p class="progress-note">No matches on GolfCourseAPI.</p>`;
+      searchResults.innerHTML = `<p class="progress-note">No matches on OpenGolfAPI.</p>`;
       return;
     }
 
     searchResults.innerHTML = results.map(r => {
-      const maleTeeCount = r.maleTeeCount || 0;
-      const femaleTeeCount = r.femaleTeeCount || 0;
-      const hasTeeData = maleTeeCount + femaleTeeCount > 0;
-      const teeSummary = hasTeeData
-        ? `Tee boxes: ${maleTeeCount} men's / ${femaleTeeCount} women's`
-        : 'No tee data — holes can be entered manually';
+      const parSummary = r.parTotal ? `Par ${r.parTotal}` : 'Par not available';
+      const teeSummary = `${parSummary} · Tee name is selected when recording a round`;
 
       return `
         <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line);">

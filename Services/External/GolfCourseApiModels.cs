@@ -2,17 +2,16 @@ using System.Text.Json.Serialization;
 
 namespace BirdieBuddy.Services.External;
 
-// Shapes mirror https://api.golfcourseapi.com/docs/api - only the fields we
-// actually use are mapped; anything else is ignored by System.Text.Json.
-//
-// AllowReadingFromString is applied to every numeric field: the live API
-// sometimes sends numbers as quoted strings (e.g. "id": "34") even though the
-// published docs show them unquoted, so we accept both.
+// OpenGolfAPI exposes keyless read endpoints. Search returns compact course
+// records; detail returns a scorecard with hole/par pairs and no tee grouping.
 
 public class GolfApiSearchResponse
 {
     [JsonPropertyName("courses")]
     public List<GolfApiSearchResult> Courses { get; set; } = new();
+
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
 }
 
 public class GolfApiSearchResult
@@ -20,37 +19,23 @@ public class GolfApiSearchResult
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
 
-    [JsonPropertyName("club_name")]
+    [JsonPropertyName("name")]
     public string ClubName { get; set; } = string.Empty;
 
     [JsonPropertyName("course_name")]
     public string CourseName { get; set; } = string.Empty;
 
-    [JsonPropertyName("location")]
-    public GolfApiLocation? Location { get; set; }
+    [JsonPropertyName("city")]
+    public string? City { get; set; }
 
-    // The search endpoint returns tee counts, not full tee objects.
-    [JsonPropertyName("tees")]
-    public GolfApiTeeCounts? Tees { get; set; }
-}
+    [JsonPropertyName("state")]
+    public string? State { get; set; }
 
-public class GolfApiTeeCounts
-{
-    [JsonPropertyName("male")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int Male { get; set; }
+    [JsonPropertyName("type")]
+    public string? CourseType { get; set; }
 
-    [JsonPropertyName("female")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int Female { get; set; }
-}
-
-public class GolfApiLocation
-{
-    [JsonPropertyName("address")] public string? Address { get; set; }
-    [JsonPropertyName("city")] public string? City { get; set; }
-    [JsonPropertyName("state")] public string? State { get; set; }
-    [JsonPropertyName("country")] public string? Country { get; set; }
+    [JsonPropertyName("par")]
+    public int? ParTotal { get; set; }
 }
 
 public class GolfApiCourseDetail
@@ -58,44 +43,33 @@ public class GolfApiCourseDetail
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
 
-    [JsonPropertyName("club_name")] public string ClubName { get; set; } = string.Empty;
-    [JsonPropertyName("course_name")] public string CourseName { get; set; } = string.Empty;
-    [JsonPropertyName("location")] public GolfApiLocation? Location { get; set; }
-    [JsonPropertyName("tees")] public GolfApiTees? Tees { get; set; }
-}
+    [JsonPropertyName("name")]
+    public string ClubName { get; set; } = string.Empty;
 
-public class GolfApiTees
-{
-    [JsonPropertyName("male")] public List<GolfApiTee>? Male { get; set; }
-    [JsonPropertyName("female")] public List<GolfApiTee>? Female { get; set; }
-}
+    [JsonPropertyName("course_name")]
+    public string CourseName { get; set; } = string.Empty;
 
-public class GolfApiTee
-{
-    [JsonPropertyName("tee_name")] public string TeeName { get; set; } = string.Empty;
+    [JsonPropertyName("city")]
+    public string? City { get; set; }
 
-    [JsonPropertyName("number_of_holes")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int NumberOfHoles { get; set; }
+    [JsonPropertyName("state")]
+    public string? State { get; set; }
 
-    [JsonPropertyName("par_total")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int ParTotal { get; set; }
+    [JsonPropertyName("address")]
+    public string? Address { get; set; }
 
-    [JsonPropertyName("holes")] public List<GolfApiHole> Holes { get; set; } = new();
-}
-
-public class GolfApiHole
-{
     [JsonPropertyName("par")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int? ParTotal { get; set; }
+
+    [JsonPropertyName("scorecard")]
+    public List<GolfApiScorecardHole> Scorecard { get; set; } = new();
+}
+
+public class GolfApiScorecardHole
+{
+    [JsonPropertyName("hole")]
+    public int Hole { get; set; }
+
+    [JsonPropertyName("par")]
     public int Par { get; set; }
-
-    [JsonPropertyName("yardage")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int Yardage { get; set; }
-
-    [JsonPropertyName("handicap")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int? Handicap { get; set; }
 }

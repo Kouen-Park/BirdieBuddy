@@ -96,9 +96,8 @@ public class CourseService : ICourseService
             r.Id,
             r.ClubName,
             r.CourseName,
-            FormatLocation(r.Location),
-            r.Tees?.Male ?? 0,
-            r.Tees?.Female ?? 0
+            FormatLocation(r.City, r.State, null),
+            r.ParTotal
         )).ToList();
     }
 
@@ -106,25 +105,14 @@ public class CourseService : ICourseService
     {
         var detail = await _golfApiClient.GetCourseAsync(externalId);
         if (detail is null)
-            return (null, "That course couldn't be found on GolfCourseAPI.");
+            return (null, "That course couldn't be found on OpenGolfAPI.");
 
-        var candidateTees = (detail.Tees?.Male ?? new List<GolfApiTee>())
-            .Concat(detail.Tees?.Female ?? new List<GolfApiTee>())
+        var scorecard = detail.Scorecard
+            .Where(h => h.Hole >= 1 && h.Hole <= 18 && h.Par >= 3 && h.Par <= 6)
+            .GroupBy(h => h.Hole)
+            .Select(g => g.First())
+            .OrderBy(h => h.Hole)
             .ToList();
-
-        var tee = !string.IsNullOrWhiteSpace(preferredTeeName)
-            ? candidateTees.FirstOrDefault(t => string.Equals(t.TeeName, preferredTeeName, StringComparison.OrdinalIgnoreCase))
-            : null;
-        tee ??= candidateTees.FirstOrDefault();
-
-        // Some API records contain only course metadata, or a tee without
-        // detailed holes. Import those records as hole-less courses so the user
-        // can enter the scorecard manually later.
-        var hasDetailedHoles = tee is not null && tee.Holes.Count > 0;
-        if (hasDetailedHoles && tee!.Holes.Count != 18)
-        {
-            return (null, $"The '{tee.TeeName}' tee only has data for {tee.Holes.Count} holes - Birdie Buddy currently requires a full 18-hole course when detailed hole data is available.");
-        }
 
         var name = string.IsNullOrWhiteSpace(detail.CourseName) || detail.CourseName == detail.ClubName
             ? detail.ClubName
@@ -136,15 +124,13 @@ public class CourseService : ICourseService
         var course = new Course
         {
             Name = name,
-            Location = FormatLocation(detail.Location) ?? "",
-            CourseHoles = hasDetailedHoles
-                ? tee!.Holes.Select((h, i) => new CourseHole
-                {
-                    HoleNumber = i + 1,
-                    Par = h.Par,
-                    Distance = (int)Math.Round(h.Yardage * 0.9144) // yards -> metres
-                }).ToList()
-                : new List<CourseHole>()
+            Location = FormatLocation(detail.Address, detail.City, detail.State) ?? "",
+            CourseHoles = scorecard.Select(h => new CourseHole
+            {
+                HoleNumber = h.Hole,
+                Par = h.Par,
+                Distance = 0
+            }).ToList()
         };
 
         _context.Courses.Add(course);
@@ -153,15 +139,13 @@ public class CourseService : ICourseService
         return (MapToDto(course), null);
     }
 
-    private static string? FormatLocation(GolfApiLocation? location)
+    private static string? FormatLocation(string? address, string? city, string? state)
     {
-        if (location is null) return null;
-
-        var parts = new[] { location.City, location.State, location.Country }
+        var parts = new[] { city, state }
             .Where(s => !string.IsNullOrWhiteSpace(s));
 
         var joined = string.Join(", ", parts);
-        return string.IsNullOrWhiteSpace(joined) ? location.Address : joined;
+        return string.IsNullOrWhiteSpace(joined) ? address : joined;
     }
 
     private static CourseDto MapToDto(Course course)

@@ -57,7 +57,7 @@ public class CoursesController : ControllerBase
         return NoContent();
     }
 
-    // Proxies GolfCourseAPI so the API key never has to reach the browser.
+    // Proxies OpenGolfAPI so external API details stay on the server.
     [HttpGet("external/search")]
     public async Task<ActionResult<List<ExternalCourseSummaryDto>>> SearchExternal([FromQuery] string q)
     {
@@ -70,13 +70,13 @@ public class CoursesController : ControllerBase
         }
         catch (HttpRequestException ex)
         {
-            return StatusCode(502, new { error = $"Couldn't reach GolfCourseAPI: {ex.Message}" });
+            return StatusCode(502, new { error = $"Couldn't reach OpenGolfAPI: {ex.Message}" });
         }
         catch (Exception ex)
         {
             // Surfaced with detail temporarily to make first-run debugging easier;
             // narrow this back down once the external API integration is confirmed working.
-            return StatusCode(500, new { error = $"Unexpected error calling GolfCourseAPI: {ex.Message}" });
+            return StatusCode(500, new { error = $"Unexpected error calling OpenGolfAPI: {ex.Message}" });
         }
     }
 
@@ -91,7 +91,7 @@ public class CoursesController : ControllerBase
         }
         catch (HttpRequestException ex)
         {
-            return StatusCode(502, new { error = $"Couldn't reach GolfCourseAPI: {ex.Message}" });
+            return StatusCode(502, new { error = $"Couldn't reach OpenGolfAPI: {ex.Message}" });
         }
         catch (Exception ex)
         {

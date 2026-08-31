@@ -10,7 +10,7 @@ public interface ICourseService
     Task<bool> UpdateAsync(int id, CourseUpdateDto dto);
     Task<(bool Success, string? Error)> DeleteAsync(int id);
 
-    // Search GolfCourseAPI and import a course (with its 18 CourseHoles) into the local DB.
+    // Search OpenGolfAPI and import a course with its available scorecard holes into the local DB.
     Task<List<ExternalCourseSummaryDto>> SearchExternalAsync(string query);
     Task<(CourseDto? Course, string? Error)> ImportExternalAsync(string externalId, string? preferredTeeName);
 }

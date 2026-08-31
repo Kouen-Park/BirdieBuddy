@@ -14,7 +14,7 @@ public class GolfCourseApiClient : IGolfCourseApiClient
 
     public async Task<List<GolfApiSearchResult>> SearchAsync(string query)
     {
-        var response = await _http.GetAsync($"v1/search?search_query={Uri.EscapeDataString(query)}");
+        var response = await _http.GetAsync($"v1/courses/search?q={Uri.EscapeDataString(query)}");
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync();
