@@ -119,9 +119,10 @@ GET    /api/statistics/overview
 
 The application no longer calls an external golf-course API. It imports the bundled
 `scripts/golf_nz_courses.json` file through `IGolfNzCourseImporter`. The file is copied into the
-published application, and the importer runs after EF Core migrations at startup. The Courses page
-also exposes **Load Golf NZ courses** at `POST /api/courses/import-golf-nz` so the import can be
-run again safely.
+published application. The application applies EF Core migrations at startup, while the large
+course import is triggered manually from the Courses page through **Load Golf NZ courses** at
+`POST /api/courses/import-golf-nz`. This keeps the Render health check responsive and allows the
+import to be run again safely.
 
 Import is idempotent. A course is matched by `GolfNzClubId`; when that identifier is not yet stored,
 the importer falls back to a normalized case-insensitive club name. This fallback links the existing
@@ -151,7 +152,8 @@ The `AddGolfNzCourseData` migration creates `CourseTees`, moves existing `Course
 legacy tee, copies the former `Rounds.Tee` value to `LegacyTee`, and adds the Golf NZ club identifier.
 It is designed to preserve recorded rounds. Run `dotnet ef database update` in an environment with
 the configured PostgreSQL connection, or let the application apply pending migrations on startup as
-configured in `Program.cs`.
+configured in `Program.cs`. Golf NZ data loading is intentionally manual after deployment so the
+web process can start before the large JSON import begins.
 
 The JSON file must remain at `scripts/golf_nz_courses.json` in the source tree. The project file
 marks it for both output and publish, so Render's Docker build includes it in the application image.

@@ -25,16 +25,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Apply any pending migrations and seed demo data on startup - convenient for
-// a student project, though in a real deployment you would run migrations
-// as a separate release step instead of on every app start.
+// Apply pending schema migrations on startup. The large Golf NZ data import is
+// intentionally manual so the Render health check is not blocked by data loading.
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     context.Database.Migrate();
-
-    var importer = scope.ServiceProvider.GetRequiredService<IGolfNzCourseImporter>();
-    importer.ImportAsync().GetAwaiter().GetResult();
 }
 
 app.UseDefaultFiles();
