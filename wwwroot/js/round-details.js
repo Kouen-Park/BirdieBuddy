@@ -16,7 +16,7 @@ async function loadRoundDetails() {
     ]);
 
     document.getElementById('round-title').textContent = round.courseName;
-    document.getElementById('round-subtitle').textContent = `${fmtDate(round.date)} · ${round.tee} tees`;
+    document.getElementById('round-subtitle').textContent = `${fmtDate(round.date)} · Tee: ${round.tee}`;
 
     content.innerHTML = `
       <div class="stat-grid">

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using BirdieBuddy.DTOs;
 using BirdieBuddy.Services;
@@ -9,10 +10,14 @@ namespace BirdieBuddy.Controllers;
 public class CoursesController : ControllerBase
 {
     private readonly ICourseService _courseService;
+    private readonly IGolfNzCourseImporter _golfNzCourseImporter;
 
-    public CoursesController(ICourseService courseService)
+    public CoursesController(
+        ICourseService courseService,
+        IGolfNzCourseImporter golfNzCourseImporter)
     {
         _courseService = courseService;
+        _golfNzCourseImporter = golfNzCourseImporter;
     }
 
     [HttpGet]
@@ -57,45 +62,20 @@ public class CoursesController : ControllerBase
         return NoContent();
     }
 
-    // Proxies OpenGolfAPI so external API details stay on the server.
-    [HttpGet("external/search")]
-    public async Task<ActionResult<List<ExternalCourseSummaryDto>>> SearchExternal([FromQuery] string q)
-    {
-        if (string.IsNullOrWhiteSpace(q))
-            return BadRequest(new { error = "Query parameter 'q' is required." });
-
-        try
-        {
-            return Ok(await _courseService.SearchExternalAsync(q));
-        }
-        catch (HttpRequestException ex)
-        {
-            return StatusCode(502, new { error = $"Couldn't reach OpenGolfAPI: {ex.Message}" });
-        }
-        catch (Exception ex)
-        {
-            // Surfaced with detail temporarily to make first-run debugging easier;
-            // narrow this back down once the external API integration is confirmed working.
-            return StatusCode(500, new { error = $"Unexpected error calling OpenGolfAPI: {ex.Message}" });
-        }
-    }
-
-    [HttpPost("external/{externalId}/import")]
-    public async Task<ActionResult<CourseDto>> ImportExternal(string externalId, [FromQuery] string? tee)
+    [HttpPost("import-golf-nz")]
+    public async Task<ActionResult<GolfNzImportResult>> ImportGolfNz(CancellationToken cancellationToken)
     {
         try
         {
-            var (course, error) = await _courseService.ImportExternalAsync(externalId, tee);
-            if (error is not null) return BadRequest(new { error });
-            return CreatedAtAction(nameof(GetById), new { id = course!.Id }, course);
+            return Ok(await _golfNzCourseImporter.ImportAsync(cancellationToken));
         }
-        catch (HttpRequestException ex)
+        catch (FileNotFoundException ex)
         {
-            return StatusCode(502, new { error = $"Couldn't reach OpenGolfAPI: {ex.Message}" });
+            return StatusCode(500, new { error = ex.Message });
         }
-        catch (Exception ex)
+        catch (JsonException ex)
         {
-            return StatusCode(500, new { error = $"Unexpected error importing course: {ex.Message}" });
+            return StatusCode(500, new { error = $"Golf NZ data is invalid: {ex.Message}" });
         }
     }
 }

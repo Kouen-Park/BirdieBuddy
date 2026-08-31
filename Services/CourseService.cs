@@ -2,19 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using BirdieBuddy.Data;
 using BirdieBuddy.DTOs;
 using BirdieBuddy.Models;
-using BirdieBuddy.Services.External;
 
 namespace BirdieBuddy.Services;
 
 public class CourseService : ICourseService
 {
     private readonly ApplicationDbContext _context;
-    private readonly IGolfCourseApiClient _golfApiClient;
 
-    public CourseService(ApplicationDbContext context, IGolfCourseApiClient golfApiClient)
+    public CourseService(ApplicationDbContext context)
     {
         _context = context;
-        _golfApiClient = golfApiClient;
     }
 
     public async Task<List<CourseSummaryDto>> GetAllAsync()
@@ -28,7 +25,8 @@ public class CourseService : ICourseService
     public async Task<CourseDto?> GetByIdAsync(int id)
     {
         var course = await _context.Courses
-            .Include(c => c.CourseHoles)
+            .Include(c => c.CourseTees)
+                .ThenInclude(t => t.CourseHoles)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         return course is null ? null : MapToDto(course);
@@ -43,16 +41,25 @@ public class CourseService : ICourseService
             dto.Holes.Any(h => h.HoleNumber is < 1 or > 18))
             throw new ArgumentException("Hole numbers must be unique and between 1 and 18.");
 
-        var course = new Course
+        var tee = new CourseTee
         {
-            Name = dto.Name,
-            Location = dto.Location,
+            Name = "Default",
+            CourseType = "CUSTOM",
+            Gender = "",
+            NineHoles = false,
             CourseHoles = dto.Holes.Select(h => new CourseHole
             {
                 HoleNumber = h.HoleNumber,
                 Par = h.Par,
                 Distance = h.Distance
             }).ToList()
+        };
+
+        var course = new Course
+        {
+            Name = dto.Name,
+            Location = dto.Location,
+            CourseTees = new List<CourseTee> { tee }
         };
 
         _context.Courses.Add(course);
@@ -77,8 +84,6 @@ public class CourseService : ICourseService
         var course = await _context.Courses.FindAsync(id);
         if (course is null) return (false, "Course not found.");
 
-        // A Round -> Course delete is Restrict at the DB level, but we check
-        // here first so the API can return a clear 409 instead of a raw SQL error.
         bool hasRounds = await _context.Rounds.AnyAsync(r => r.CourseId == id);
         if (hasRounds)
             return (false, "Cannot delete a course that has recorded rounds.");
@@ -88,73 +93,42 @@ public class CourseService : ICourseService
         return (true, null);
     }
 
-    public async Task<List<ExternalCourseSummaryDto>> SearchExternalAsync(string query)
-    {
-        var results = await _golfApiClient.SearchAsync(query);
-
-        return results.Select(r => new ExternalCourseSummaryDto(
-            r.Id,
-            r.ClubName,
-            r.CourseName,
-            FormatLocation(r.City, r.State, null),
-            r.ParTotal
-        )).ToList();
-    }
-
-    public async Task<(CourseDto? Course, string? Error)> ImportExternalAsync(string externalId, string? preferredTeeName)
-    {
-        var detail = await _golfApiClient.GetCourseAsync(externalId);
-        if (detail is null)
-            return (null, "That course couldn't be found on OpenGolfAPI.");
-
-        var scorecard = detail.Scorecard
-            .Where(h => h.Hole >= 1 && h.Hole <= 18 && h.Par >= 3 && h.Par <= 6)
-            .GroupBy(h => h.Hole)
-            .Select(g => g.First())
-            .OrderBy(h => h.Hole)
-            .ToList();
-
-        var name = string.IsNullOrWhiteSpace(detail.CourseName) || detail.CourseName == detail.ClubName
-            ? detail.ClubName
-            : $"{detail.ClubName} - {detail.CourseName}";
-
-        if (await _context.Courses.AnyAsync(c => c.Name == name))
-            return (null, $"A course named \"{name}\" already exists.");
-
-        var course = new Course
-        {
-            Name = name,
-            Location = FormatLocation(detail.Address, detail.City, detail.State) ?? "",
-            CourseHoles = scorecard.Select(h => new CourseHole
-            {
-                HoleNumber = h.Hole,
-                Par = h.Par,
-                Distance = 0
-            }).ToList()
-        };
-
-        _context.Courses.Add(course);
-        await _context.SaveChangesAsync();
-
-        return (MapToDto(course), null);
-    }
-
-    private static string? FormatLocation(string? address, string? city, string? state)
-    {
-        var parts = new[] { city, state }
-            .Where(s => !string.IsNullOrWhiteSpace(s));
-
-        var joined = string.Join(", ", parts);
-        return string.IsNullOrWhiteSpace(joined) ? address : joined;
-    }
-
     private static CourseDto MapToDto(Course course)
     {
-        var holes = course.CourseHoles
-            .OrderBy(h => h.HoleNumber)
-            .Select(h => new CourseHoleDto(h.Id, h.HoleNumber, h.Par, h.Distance))
+        var tees = course.CourseTees
+            .OrderBy(t => t.NineHoles)
+            .ThenBy(t => t.Gender)
+            .ThenBy(t => t.Name)
+            .Select(MapToTeeDto)
             .ToList();
 
-        return new CourseDto(course.Id, course.Name, course.Location, holes);
+        // Keep the old flat Holes property populated with the first tee for
+        // clients that have not yet adopted the CourseTee response.
+        var firstHoles = tees.FirstOrDefault()?.Holes ?? new List<CourseHoleDto>();
+        return new CourseDto(course.Id, course.GolfNzClubId, course.Name, course.Location, tees, firstHoles);
+    }
+
+    private static CourseTeeDto MapToTeeDto(CourseTee tee)
+    {
+        var holes = tee.CourseHoles
+            .OrderBy(h => h.HoleNumber)
+            .Select(h => new CourseHoleDto(h.Id, h.HoleNumber, h.Par, h.Distance, h.StrokeIndex))
+            .ToList();
+
+        return new CourseTeeDto(
+            tee.Id,
+            tee.Name,
+            tee.CourseType,
+            tee.Gender,
+            tee.NineHoles,
+            tee.Rating,
+            tee.Slope,
+            tee.Colour,
+            tee.TotalPar,
+            tee.FrontNinePar,
+            tee.BackNinePar,
+            tee.FrontNineMetres,
+            tee.BackNineMetres,
+            holes);
     }
 }

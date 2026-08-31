@@ -18,6 +18,7 @@ public class RoundService : IRoundService
     {
         var rounds = await _context.Rounds
             .Include(r => r.Course)
+            .Include(r => r.CourseTee)
             .Include(r => r.Holes)
             .OrderByDescending(r => r.Date)
             .ToListAsync();
@@ -29,6 +30,7 @@ public class RoundService : IRoundService
     {
         var round = await _context.Rounds
             .Include(r => r.Course)
+            .Include(r => r.CourseTee)
             .Include(r => r.Holes)
             .FirstOrDefaultAsync(r => r.Id == id);
 
@@ -39,69 +41,45 @@ public class RoundService : IRoundService
         RoundCreateDto dto)
     {
         var course = await _context.Courses
-            .Include(c => c.CourseHoles)
+            .Include(c => c.CourseTees)
+                .ThenInclude(t => t.CourseHoles)
             .FirstOrDefaultAsync(c => c.Id == dto.CourseId);
 
         if (course is null)
             return (null, "Course not found.");
 
-        if (dto.Holes.Select(h => h.HoleNumber).Distinct().Count()
-            != dto.Holes.Count)
-        {
-            return (null, "Duplicate hole numbers submitted.");
-        }
+        var (tee, teeError) = ResolveTee(course, dto.CourseTeeId, dto.Tee, true);
+        if (teeError is not null)
+            return (null, teeError);
 
-        var holesByNumber = course.CourseHoles
-            .ToDictionary(h => h.HoleNumber);
+        var holesByNumber = tee!.CourseHoles
+            .GroupBy(h => h.HoleNumber)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        if (dto.Holes.Select(h => h.HoleNumber).Distinct().Count() != dto.Holes.Count)
+            return (null, "Duplicate hole numbers submitted.");
 
         var holes = new List<Hole>();
-
         foreach (var holeDto in dto.Holes)
         {
             if (holeDto.HoleNumber < 1 || holeDto.HoleNumber > 18)
-            {
                 return (null, $"Hole {holeDto.HoleNumber} must be between 1 and 18.");
-            }
 
             var courseHole = holesByNumber.TryGetValue(holeDto.HoleNumber, out var mappedCourseHole)
                 ? mappedCourseHole
                 : null;
             var par = courseHole?.Par ?? holeDto.Par;
-
             if (par is null || par.Value < 3 || par.Value > 6)
-            {
                 return (null, $"Par for hole {holeDto.HoleNumber} must be between 3 and 6.");
-            }
 
             if (holeDto.Score <= 0)
-            {
-                return (
-                    null,
-                    $"Score for hole {holeDto.HoleNumber} must be greater than 0.");
-            }
-
+                return (null, $"Score for hole {holeDto.HoleNumber} must be greater than 0.");
             if (holeDto.Putts < 0)
-            {
-                return (
-                    null,
-                    $"Putts for hole {holeDto.HoleNumber} cannot be negative.");
-            }
-
+                return (null, $"Putts for hole {holeDto.HoleNumber} cannot be negative.");
             if (holeDto.Penalty < 0)
-            {
-                return (
-                    null,
-                    $"Penalty for hole {holeDto.HoleNumber} cannot be negative.");
-            }
-
-            if (par.Value == 3 &&
-                holeDto.FairwayHit.HasValue)
-            {
-                return (
-                    null,
-                    $"Hole {holeDto.HoleNumber} is a par 3 - " +
-                    "fairway hit does not apply.");
-            }
+                return (null, $"Penalty for hole {holeDto.HoleNumber} cannot be negative.");
+            if (par.Value == 3 && holeDto.FairwayHit.HasValue)
+                return (null, $"Hole {holeDto.HoleNumber} is a par 3 - fairway hit does not apply.");
 
             holes.Add(new Hole
             {
@@ -118,50 +96,46 @@ public class RoundService : IRoundService
         var round = new Round
         {
             CourseId = dto.CourseId,
-
-            // PostgreSQL timestamp with time zone requires UTC.
+            CourseTee = tee,
+            LegacyTee = IsCustomTee(tee) ? tee.Name : null,
             Date = ToUtc(dto.Date),
-
-            Tee = dto.Tee,
             Holes = holes
         };
 
         _context.Rounds.Add(round);
         await _context.SaveChangesAsync();
-
         round.Course = course;
-
         return (MapToDetailDto(round), null);
     }
 
-    public async Task<bool> UpdateAsync(
-        int id,
-        RoundUpdateDto dto)
+    public async Task<bool> UpdateAsync(int id, RoundUpdateDto dto)
     {
-        var round = await _context.Rounds.FindAsync(id);
+        var round = await _context.Rounds
+            .Include(r => r.Course)
+                .ThenInclude(c => c!.CourseTees)
+            .FirstOrDefaultAsync(r => r.Id == id);
 
-        if (round is null)
+        if (round is null || round.Course is null)
             return false;
 
+        var (tee, teeError) = ResolveTee(round.Course, dto.CourseTeeId, dto.Tee, true);
+        if (teeError is not null)
+            return false;
+
+        round.CourseTee = tee;
+        round.LegacyTee = IsCustomTee(tee!) ? tee!.Name : null;
         round.Date = ToUtc(dto.Date);
-        round.Tee = dto.Tee;
-
         await _context.SaveChangesAsync();
-
         return true;
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
         var round = await _context.Rounds.FindAsync(id);
-
-        if (round is null)
-            return false;
+        if (round is null) return false;
 
         _context.Rounds.Remove(round);
-
         await _context.SaveChangesAsync();
-
         return true;
     }
 
@@ -171,56 +145,36 @@ public class RoundService : IRoundService
             .Include(r => r.Holes)
             .FirstOrDefaultAsync(r => r.Id == roundId);
 
-        if (round is null)
-            return null;
-
-        return round.Holes
-            .OrderBy(h => h.HoleNumber)
-            .Select(MapToHoleDto)
-            .ToList();
+        return round is null
+            ? null
+            : round.Holes.OrderBy(h => h.HoleNumber).Select(MapToHoleDto).ToList();
     }
 
-    public async Task<(HoleDto? Hole, string? Error)> AddHoleAsync(
-        int roundId,
-        HoleCreateDto dto)
+    public async Task<(HoleDto? Hole, string? Error)> AddHoleAsync(int roundId, HoleCreateDto dto)
     {
         var round = await _context.Rounds
             .Include(r => r.Holes)
             .Include(r => r.Course)
-                .ThenInclude(c => c!.CourseHoles)
+                .ThenInclude(c => c!.CourseTees)
+                    .ThenInclude(t => t.CourseHoles)
+            .Include(r => r.CourseTee)
+                .ThenInclude(t => t!.CourseHoles)
             .FirstOrDefaultAsync(r => r.Id == roundId);
 
-        if (round is null)
-            return (null, "Round not found.");
-
+        if (round is null) return (null, "Round not found.");
         if (round.Holes.Any(h => h.HoleNumber == dto.HoleNumber))
-        {
-            return (
-                null,
-                $"Hole {dto.HoleNumber} already exists for this round.");
-        }
-
+            return (null, $"Hole {dto.HoleNumber} already exists for this round.");
         if (dto.HoleNumber < 1 || dto.HoleNumber > 18)
             return (null, $"Hole {dto.HoleNumber} must be between 1 and 18.");
 
-        var courseHole = round.Course?.CourseHoles
+        var courseHole = round.CourseTee?.CourseHoles
             .FirstOrDefault(h => h.HoleNumber == dto.HoleNumber);
         var par = courseHole?.Par ?? dto.Par;
-
         if (par is null || par.Value < 3 || par.Value > 6)
-        {
             return (null, $"Par for hole {dto.HoleNumber} must be between 3 and 6.");
-        }
-
-        if (dto.Score <= 0)
-            return (null, "Score must be greater than 0.");
-
-        if (dto.Putts < 0)
-            return (null, "Putts cannot be negative.");
-
-        if (dto.Penalty < 0)
-            return (null, "Penalty cannot be negative.");
-
+        if (dto.Score <= 0) return (null, "Score must be greater than 0.");
+        if (dto.Putts < 0) return (null, "Putts cannot be negative.");
+        if (dto.Penalty < 0) return (null, "Penalty cannot be negative.");
         if (par.Value == 3 && dto.FairwayHit.HasValue)
             return (null, "Fairway hit does not apply to par 3 holes.");
 
@@ -237,97 +191,112 @@ public class RoundService : IRoundService
         };
 
         _context.Holes.Add(hole);
-
         await _context.SaveChangesAsync();
-
         return (MapToHoleDto(hole), null);
     }
 
-    public async Task<(bool Success, string? Error)> UpdateHoleAsync(
-        int roundId,
-        int holeId,
-        HoleUpdateDto dto)
+    public async Task<(bool Success, string? Error)> UpdateHoleAsync(int roundId, int holeId, HoleUpdateDto dto)
     {
         var hole = await _context.Holes
-            .FirstOrDefaultAsync(
-                h => h.Id == holeId &&
-                     h.RoundId == roundId);
-
-        if (hole is null)
-            return (false, "Hole not found.");
-
-        if (dto.Score <= 0)
-            return (false, "Score must be greater than 0.");
-
-        if (dto.Putts < 0)
-            return (false, "Putts cannot be negative.");
-
-        if (dto.Penalty < 0)
-            return (false, "Penalty cannot be negative.");
+            .FirstOrDefaultAsync(h => h.Id == holeId && h.RoundId == roundId);
+        if (hole is null) return (false, "Hole not found.");
+        if (dto.Score <= 0) return (false, "Score must be greater than 0.");
+        if (dto.Putts < 0) return (false, "Putts cannot be negative.");
+        if (dto.Penalty < 0) return (false, "Penalty cannot be negative.");
 
         hole.Score = dto.Score;
         hole.Putts = dto.Putts;
         hole.GIR = dto.GIR;
         hole.FairwayHit = dto.FairwayHit;
         hole.Penalty = dto.Penalty;
-
         await _context.SaveChangesAsync();
-
         return (true, null);
     }
 
-    private static DateTime ToUtc(DateTime date)
+    private static (CourseTee? Tee, string? Error) ResolveTee(
+        Course course,
+        int? requestedTeeId,
+        string? requestedTeeName,
+        bool createCustom)
     {
-        if (date.Kind == DateTimeKind.Utc)
-            return date;
+        if (requestedTeeId.HasValue)
+        {
+            var selected = course.CourseTees.FirstOrDefault(t => t.Id == requestedTeeId.Value);
+            return selected is null
+                ? (null, "The selected tee does not belong to this course.")
+                : (selected, null);
+        }
 
-        return DateTime.SpecifyKind(
-            date,
-            DateTimeKind.Utc);
+        if (!string.IsNullOrWhiteSpace(requestedTeeName))
+        {
+            var selected = course.CourseTees.FirstOrDefault(t =>
+                string.Equals(t.Name, requestedTeeName.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (selected is not null) return (selected, null);
+
+            if (createCustom)
+            {
+                var custom = new CourseTee
+                {
+                    CourseId = course.Id,
+                    Name = requestedTeeName.Trim(),
+                    CourseType = "CUSTOM",
+                    Gender = string.Empty,
+                    NineHoles = false
+                };
+                course.CourseTees.Add(custom);
+                return (custom, null);
+            }
+        }
+
+        var fallback = course.CourseTees
+            .OrderBy(t => t.NineHoles)
+            .ThenBy(t => t.Name)
+            .FirstOrDefault();
+        if (fallback is not null) return (fallback, null);
+
+        if (!createCustom) return (null, "This course has no tee configuration.");
+
+        var defaultTee = new CourseTee
+        {
+            CourseId = course.Id,
+            Name = "Default",
+            CourseType = "CUSTOM",
+            Gender = string.Empty,
+            NineHoles = false
+        };
+        course.CourseTees.Add(defaultTee);
+        return (defaultTee, null);
     }
+
+    private static bool IsCustomTee(CourseTee tee) =>
+        string.Equals(tee.CourseType, "CUSTOM", StringComparison.OrdinalIgnoreCase);
+
+    private static DateTime ToUtc(DateTime date) => date.Kind == DateTimeKind.Utc
+        ? date
+        : DateTime.SpecifyKind(date, DateTimeKind.Utc);
+
+    private static string TeeLabel(Round round) =>
+        !string.IsNullOrWhiteSpace(round.LegacyTee)
+            ? round.LegacyTee!
+            : round.CourseTee?.Name ?? "Unknown";
 
     private static RoundSummaryDto ToSummaryDto(Round r)
     {
         int totalScore = r.Holes.Sum(h => h.Score);
         int totalPar = r.Holes.Sum(h => h.Par);
-
         return new RoundSummaryDto(
-            r.Id,
-            r.CourseId,
-            r.Course?.Name ?? "",
-            r.Date,
-            r.Tee,
-            totalScore,
-            totalScore - totalPar);
+            r.Id, r.CourseId, r.Course?.Name ?? "", r.Date,
+            r.CourseTeeId, TeeLabel(r), totalScore, totalScore - totalPar);
     }
 
-    private static RoundDetailDto MapToDetailDto(
-        Round round)
+    private static RoundDetailDto MapToDetailDto(Round round)
     {
-        var holes = round.Holes
-            .OrderBy(h => h.HoleNumber)
-            .Select(MapToHoleDto)
-            .ToList();
-
+        var holes = round.Holes.OrderBy(h => h.HoleNumber).Select(MapToHoleDto).ToList();
         return new RoundDetailDto(
-            round.Id,
-            round.CourseId,
-            round.Course?.Name ?? "",
-            round.Date,
-            round.Tee,
-            holes);
+            round.Id, round.CourseId, round.Course?.Name ?? "", round.Date,
+            round.CourseTeeId, TeeLabel(round), holes);
     }
 
-    private static HoleDto MapToHoleDto(Hole h)
-    {
-        return new HoleDto(
-            h.Id,
-            h.HoleNumber,
-            h.Par,
-            h.Score,
-            h.Putts,
-            h.GIR,
-            h.FairwayHit,
-            h.Penalty);
-    }
+    private static HoleDto MapToHoleDto(Hole h) => new(
+        h.Id, h.HoleNumber, h.Par, h.Score, h.Putts, h.GIR, h.FairwayHit, h.Penalty);
 }

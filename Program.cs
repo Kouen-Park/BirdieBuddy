@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using BirdieBuddy.Data;
 using BirdieBuddy.Services;
-using BirdieBuddy.Services.External;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,12 +11,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// OpenGolfAPI provides keyless read access for course searches and scorecards.
-builder.Services.AddHttpClient<IGolfCourseApiClient, GolfCourseApiClient>(client =>
-{
-    var baseUrl = builder.Configuration["OpenGolfApi:BaseUrl"] ?? "https://api.opengolfapi.org/";
-    client.BaseAddress = new Uri(baseUrl);
-});
+builder.Services.AddScoped<IGolfNzCourseImporter, GolfNzCourseImporter>();
 
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IRoundService, RoundService>();
@@ -38,7 +32,9 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     context.Database.Migrate();
-    DbInitializer.Initialize(context);
+
+    var importer = scope.ServiceProvider.GetRequiredService<IGolfNzCourseImporter>();
+    importer.ImportAsync().GetAwaiter().GetResult();
 }
 
 app.UseDefaultFiles();

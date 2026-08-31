@@ -2,11 +2,13 @@ renderNav('add-round');
 
 const courseSelect = document.getElementById('course-select');
 const dateInput = document.getElementById('date-input');
-const teeInput = document.getElementById('tee-input');
+const teeSelect = document.getElementById('tee-select');
+const customTeeInput = document.getElementById('custom-tee-input');
 const wrapper = document.getElementById('scorecard-wrapper');
 const alertBox = document.getElementById('form-alert');
 
 let selectedCourse = null;
+let selectedTee = null;
 
 dateInput.valueAsDate = new Date();
 
@@ -25,25 +27,98 @@ async function init() {
 }
 
 courseSelect.addEventListener('change', async () => {
-  if (!courseSelect.value) { wrapper.innerHTML = ''; selectedCourse = null; return; }
+  wrapper.innerHTML = '';
+  selectedCourse = null;
+  selectedTee = null;
+  teeSelect.innerHTML = '<option value="">Loading tees…</option>';
+  teeSelect.disabled = true;
+  customTeeInput.style.display = 'none';
+
+  if (!courseSelect.value) {
+    teeSelect.innerHTML = '<option value="">Select a course first…</option>';
+    return;
+  }
 
   try {
     selectedCourse = await Api.get(`/courses/${courseSelect.value}`);
-    renderScorecard(selectedCourse);
+    populateTees(selectedCourse);
   } catch (err) {
     showAlert(`Couldn't load course details: ${err.message}`);
   }
 });
 
-function renderScorecard(course) {
-  const courseHoles = [...course.holes].sort((a, b) => a.holeNumber - b.holeNumber);
+teeSelect.addEventListener('change', () => {
+  const value = teeSelect.value;
+  if (value === '__custom__') {
+    selectedTee = null;
+    customTeeInput.style.display = 'block';
+    customTeeInput.focus();
+    renderScorecard(selectedCourse, null);
+    return;
+  }
+
+  customTeeInput.style.display = 'none';
+  selectedTee = selectedCourse?.tees?.find(t => String(t.id) === value) || null;
+  renderScorecard(selectedCourse, selectedTee);
+});
+
+customTeeInput.addEventListener('input', () => {
+  if (teeSelect.value === '__custom__') renderScorecard(selectedCourse, null);
+});
+
+function populateTees(course) {
+  const tees = [...(course.tees || [])].sort((a, b) => {
+    if (a.nineHoles !== b.nineHoles) return a.nineHoles ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
+
+  teeSelect.innerHTML = '';
+  if (tees.length === 0) {
+    teeSelect.innerHTML = '<option value="__custom__">Custom tee</option>';
+    teeSelect.disabled = false;
+    teeSelect.value = '__custom__';
+    customTeeInput.style.display = 'block';
+    customTeeInput.value = 'White';
+    renderScorecard(course, null);
+    return;
+  }
+
+  tees.forEach(tee => {
+    const opt = document.createElement('option');
+    opt.value = tee.id;
+    opt.textContent = formatTeeLabel(tee);
+    teeSelect.appendChild(opt);
+  });
+
+  const customOpt = document.createElement('option');
+  customOpt.value = '__custom__';
+  customOpt.textContent = 'Custom tee name…';
+  teeSelect.appendChild(customOpt);
+  teeSelect.disabled = false;
+
+  selectedTee = tees[0];
+  teeSelect.value = String(selectedTee.id);
+  renderScorecard(course, selectedTee);
+}
+
+function formatTeeLabel(tee) {
+  const details = [tee.courseType, tee.gender, tee.nineHoles ? '9 holes' : '18 holes']
+    .filter(Boolean)
+    .join(' · ');
+  return details ? `${tee.name} (${details})` : tee.name;
+}
+
+function renderScorecard(course, tee) {
+  if (!course) return;
+
+  const courseHoles = [...(tee?.holes || [])].sort((a, b) => a.holeNumber - b.holeNumber);
   const isManualScorecard = courseHoles.length === 0;
   const holes = isManualScorecard
-    ? Array.from({ length: 18 }, (_, index) => ({ holeNumber: index + 1, par: 4 }))
+    ? Array.from({ length: tee?.nineHoles ? 9 : 18 }, (_, index) => ({ holeNumber: index + 1, par: 4 }))
     : courseHoles;
 
   const manualNote = isManualScorecard
-    ? '<p class="progress-note" style="margin:20px 0 0;">This course has no hole data. Enter the par for each hole below before saving.</p>'
+    ? '<p class="progress-note" style="margin:20px 0 0;">This tee has no hole data. Enter the par for each hole below before saving.</p>'
     : '';
 
   wrapper.innerHTML = `
@@ -70,7 +145,6 @@ function renderScorecard(course) {
   `;
 
   const tbody = document.getElementById('hole-rows');
-
   holes.forEach(h => {
     const par = Number(h.par) || 4;
     const isPar3 = par === 3;
@@ -84,9 +158,7 @@ function renderScorecard(course) {
       <td><input type="number" min="1" class="score-input" value="${par}" /></td>
       <td><input type="number" min="0" class="putts-input" value="2" /></td>
       <td style="text-align:center;"><input type="checkbox" class="gir-input" /></td>
-      <td class="fairway-cell ${isPar3 ? 'na' : ''}">
-        ${isPar3 ? 'N/A' : fairwaySelectHtml()}
-      </td>
+      <td class="fairway-cell ${isPar3 ? 'na' : ''}">${isPar3 ? 'N/A' : fairwaySelectHtml()}</td>
       <td><input type="number" min="0" class="penalty-input" value="0" /></td>
     `;
     tbody.appendChild(row);
@@ -108,13 +180,11 @@ function rowPar(row) {
 
 function syncFairwayField(row) {
   if (row.dataset.manualPar !== 'true') return;
-
   const cell = row.querySelector('.fairway-cell');
   if (!cell) return;
 
   const isPar3 = rowPar(row) === 3;
   const hasSelect = !!cell.querySelector('.fairway-input');
-
   if (isPar3 && hasSelect) {
     cell.className = 'fairway-cell na';
     cell.textContent = 'N/A';
@@ -127,7 +197,6 @@ function syncFairwayField(row) {
 function updateRunningTotal() {
   const rows = [...document.querySelectorAll('#hole-rows tr')];
   let score = 0, par = 0, putts = 0;
-
   rows.forEach(r => {
     syncFairwayField(r);
     score += Number(r.querySelector('.score-input').value || 0);
@@ -142,10 +211,15 @@ function updateRunningTotal() {
 
 async function saveRound() {
   const rows = [...document.querySelectorAll('#hole-rows tr')];
-  const tee = teeInput.value.trim();
+  const customTee = customTeeInput.value.trim();
+  const teeName = selectedTee?.name || customTee;
 
-  if (!tee) {
-    showAlert('Please enter a tee name, such as White or Blue.');
+  if (!teeName) {
+    showAlert('Please select a tee or enter a custom tee name.');
+    return;
+  }
+  if (!courseSelect.value || rows.length === 0) {
+    showAlert('Please select a course and enter at least one hole.');
     return;
   }
 
@@ -153,7 +227,6 @@ async function saveRound() {
     const fairwaySelect = r.querySelector('.fairway-input');
     const fairwayValue = fairwaySelect && fairwaySelect.value !== '' ? fairwaySelect.value === 'true' : null;
     const parInput = r.querySelector('.par-input');
-
     return {
       holeNumber: Number(r.dataset.holeNumber),
       par: parInput ? Number(parInput.value) : null,
@@ -167,15 +240,15 @@ async function saveRound() {
 
   const dto = {
     courseId: Number(courseSelect.value),
+    courseTeeId: selectedTee?.id || null,
     date: dateInput.value,
-    tee,
+    tee: selectedTee ? null : teeName,
     holes
   };
 
   const btn = document.getElementById('save-btn');
   btn.disabled = true;
   btn.textContent = 'Saving…';
-
   try {
     const round = await Api.post('/rounds', dto);
     location.href = `/round-details.html?id=${round.id}`;

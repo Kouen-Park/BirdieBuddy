@@ -28,6 +28,7 @@ public class StatisticsService : IStatisticsService
         var rounds = await _context.Rounds
             .Include(r => r.Holes)
             .Include(r => r.Course)
+            .Include(r => r.CourseTee)
             .OrderByDescending(r => r.Date)
             .ToListAsync();
 
@@ -55,7 +56,8 @@ public class StatisticsService : IStatisticsService
         var recent = roundStats
             .Take(5)
             .Select(x => new RoundSummaryDto(
-                x.Round.Id, x.Round.CourseId, x.Round.Course?.Name ?? "", x.Round.Date, x.Round.Tee,
+                x.Round.Id, x.Round.CourseId, x.Round.Course?.Name ?? "", x.Round.Date,
+                x.Round.CourseTeeId, x.Round.CourseTee?.Name ?? x.Round.LegacyTee ?? "Unknown",
                 x.Stats.TotalScore, x.Stats.ScoreToPar))
             .ToList();
 

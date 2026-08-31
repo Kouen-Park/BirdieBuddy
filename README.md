@@ -115,63 +115,53 @@ GET    /api/statistics/round/{roundId}
 GET    /api/statistics/overview
 ```
 
-## 7. Test data
+## 7. Golf New Zealand course database
 
-`DbInitializer` seeds automatically on first run (only when the `Courses` table is empty):
+The application no longer calls an external golf-course API. It imports the bundled
+`scripts/golf_nz_courses.json` file through `IGolfNzCourseImporter`. The file is copied into the
+published application, and the importer runs after EF Core migrations at startup. The Courses page
+also exposes **Load Golf NZ courses** at `POST /api/courses/import-golf-nz` so the import can be
+run again safely.
 
-- **Fairway Ridge Golf Club** (Hamilton, NZ) - par 72, parkland-style layout
-- **Coastal Dunes Links** (Tauranga, NZ) - par 71, links-style layout with more par 3s
-- 5 sample rounds across both courses with varying skill levels (deterministic random seeds, so
-  the same data appears every time the database is recreated), enough to populate the dashboard
-  charts and trend lines immediately.
+Import is idempotent. A course is matched by `GolfNzClubId`; when that identifier is not yet stored,
+the importer falls back to a normalized case-insensitive club name. This fallback links the existing
+**Whitford Park Golf Club** record to Golf NZ club `491` instead of inserting a duplicate. Tees are
+matched by course type, gender, nine-hole flag, and case-insensitive tee name. Holes are matched by
+tee and hole number, then updated in place.
 
-This is clearly separated from real user data only by timing (it runs once, on an empty
-database) - there's no `IsSeed` flag in the schema. That's fine for a student project; call it
-out as a known simplification if asked.
+The source contains multiple course variants and repeated marker records. The importer merges
+repeated records rather than creating duplicates and keeps the first valid record for a repeated hole
+number. It also accepts partial scorecards because Golf NZ contains 9-hole and other non-standard
+layouts.
 
-## 8. Importing courses from OpenGolfAPI
+## 8. CourseTee and round data
 
-The **Courses** page (`/courses.html`) searches [OpenGolfAPI](https://opengolfapi.org/) and imports
-course metadata plus any available scorecard holes. OpenGolfAPI's read endpoints are keyless, so no
-API key or user-secret is required for the default integration. The application stores the course
-locally and avoids duplicate course names.
+Course data is modeled as `Course → CourseTee → CourseHole`. Each tee stores its Golf NZ course type,
+gender, nine-hole flag, rating, slope, colour, par totals, distances, and hole definitions. A round
+stores a nullable `CourseTeeId`; `LegacyTee` preserves the old free-text tee label for existing rounds
+that cannot be resolved during migration.
 
-**Setup:**
+When recording a round, the user selects one of the imported tees or enters a custom tee name. If the
+selected tee has no hole definitions, Birdie Buddy creates a manual scorecard and the user supplies
+the par for each entered hole. Existing rounds and score snapshots remain intact.
 
-1. No API key is required for course search or scorecard reads.
-2. Run the app and go to **Courses** → search a name → **Import**.
-3. If a course has no scorecard holes, it is still imported with its name and location. When adding a
-   round, Birdie Buddy creates an 18-hole manual scorecard so the user can enter each hole's par.
+## 9. Database migration and deployment
 
-**How it works under the hood:**
+The `AddGolfNzCourseData` migration creates `CourseTees`, moves existing `CourseHoles` under a
+legacy tee, copies the former `Rounds.Tee` value to `LegacyTee`, and adds the Golf NZ club identifier.
+It is designed to preserve recorded rounds. Run `dotnet ef database update` in an environment with
+the configured PostgreSQL connection, or let the application apply pending migrations on startup as
+configured in `Program.cs`.
 
-- `Services/External/GolfCourseApiClient.cs` is a thin typed `HttpClient` wrapper around
-  `https://api.opengolfapi.org/`. Search uses `GET /v1/courses/search?q=...`, and detail uses
-  `GET /v1/courses/{id}`.
-- `CoursesController` exposes two endpoints that **proxy** the external API rather than exposing it
-  directly to the browser: `GET /api/courses/external/search?q=...` and
-  `POST /api/courses/external/{externalId}/import`.
-- `CourseService.ImportExternalAsync` maps OpenGolfAPI's `scorecard` hole/par pairs into local
-  `CourseHole` rows. Tees are selected by the user when recording a round; the default suggestions
-  are White, Blue, Black, Gold, and Red, and custom tee names can be entered.
-- OpenGolfAPI is licensed under ODbL. The API attribution is retained in the upstream response;
-  applications using the data should follow the [OpenGolfAPI attribution guidance](https://opengolfapi.org/attribution).
+The JSON file must remain at `scripts/golf_nz_courses.json` in the source tree. The project file
+marks it for both output and publish, so Render's Docker build includes it in the application image.
+No external API key is required.
 
-## 9. Remaining issues / things to double-check on first build
+## 10. Remaining issues / things to double-check
 
-- **`Properties/launchSettings.json` was missing in the first version of this project** - without it,
-  `dotnet run` starts the app in the "Production" environment instead of "Development", which
-  silently skips loading user-secrets (and disables Swagger). This has been added now; if you
-  still see empty config values, delete `bin/`/`obj/` and rebuild to make sure the fix picked up.
-- **Not compiled**: this sandbox has no .NET SDK, so run `dotnet build` first and expect to fix
-  minor issues (a missing `using`, a package version mismatch) rather than assuming it's perfect.
-- **`HasCheckConstraint` on `ToTable`**: this uses the EF Core 7+ syntax. If your installed
-  `Microsoft.EntityFrameworkCore.SqlServer` version is older, this call signature will differ.
-- **Tee names**: `Tee` is a free-text string on `Round`, not its own entity. The Add Round page
-  offers a fixed dropdown (White/Blue/Black/Gold/Red) as a reasonable default - adjust if your
-  courses use different tee naming.
-- **No authentication**: as specified, every round belongs to nobody in particular. Adding auth
-  later means adding a `UserId` to `Round` and a migration, not a redesign.
-- **GIR% denominator**: per spec this divides by 18 (or however many holes are recorded), not by
-  "holes where GIR is possible" - unlike fairway%, GIR applies to every hole so this is correct
-  as specified, just worth knowing it's not filtered the way fairway% is.
+- **No authentication**: every round currently belongs to the shared application rather than a user.
+  Adding authentication later means adding a `UserId` to `Round` and a migration.
+- **Partial layouts**: Golf NZ contains 9-hole and other partial layouts. The UI displays the holes
+  present for the selected tee; for a tee without hole data, it creates a manual scorecard.
+- **GIR% denominator**: statistics use the number of recorded holes as the denominator, while fairway
+  percentage only considers holes where fairway data is applicable.
