@@ -798,8 +798,19 @@ tr.clickable:hover {
 #scorecard-wrapper {
     width: 100%;
     max-width: 100%;
+}
+
+.scorecard-card {
+    overflow: hidden;
+}
+
+.scorecard-scroll {
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
     scrollbar-color: var(--line-strong) transparent;
     scrollbar-width: thin;
 }
@@ -822,8 +833,10 @@ tr.clickable:hover {
     min-width: 0;
 }
 
-#scorecard-wrapper table {
-    min-width: 900px;
+#scorecard-wrapper table,
+.scorecard-scroll table {
+    width: 100%;
+    min-width: 720px;
     border-collapse: collapse;
 }
 
@@ -982,12 +995,14 @@ tr.clickable:hover {
         height: 100dvh;
         min-height: 100vh;
         padding: 30px 18px 24px;
+        z-index: 1100;
         box-shadow: 12px 0 30px rgba(4, 27, 23, 0.24);
         transform: translateX(-100%);
         transition: transform 240ms ease;
     }
 
     .sidebar.mobile-open {
+        z-index: 1100;
         transform: translateX(0);
     }
 
@@ -1139,6 +1154,11 @@ tr.clickable:hover {
     .form-actions .btn {
         width: 100%;
         justify-content: center;
+    }
+
+    .scorecard-scroll table,
+    #scorecard-wrapper table {
+        min-width: 680px;
     }
 
     .running-total {
@@ -1312,17 +1332,20 @@ tr.clickable:hover {
 }
 
 #scorecard-wrapper::-webkit-scrollbar,
+.scorecard-scroll::-webkit-scrollbar,
 .list-card::-webkit-scrollbar {
     height: 7px;
 }
 
 #scorecard-wrapper::-webkit-scrollbar-thumb,
+.scorecard-scroll::-webkit-scrollbar-thumb,
 .list-card::-webkit-scrollbar-thumb {
     border-radius: 99px;
     background: var(--line-strong);
 }
 
 #scorecard-wrapper::-webkit-scrollbar-track,
+.scorecard-scroll::-webkit-scrollbar-track,
 .list-card::-webkit-scrollbar-track {
     background: transparent;
 }

@@ -124,14 +124,16 @@ function renderScorecard(course, tee) {
   wrapper.innerHTML = `
     ${manualNote}
     <div class="card scorecard-card">
-      <table class="scorecard-table">
-        <thead>
-          <tr>
-            <th>Hole</th><th>Par</th><th>Score</th><th>Putts</th><th>GIR</th><th>Fairway</th><th>Penalty</th>
-          </tr>
-        </thead>
-        <tbody id="hole-rows"></tbody>
-      </table>
+      <div class="scorecard-scroll">
+        <table class="scorecard-table">
+          <thead>
+            <tr>
+              <th>Hole</th><th>Par</th><th>Score</th><th>Putts</th><th>GIR</th><th>Fairway</th><th>Penalty</th>
+            </tr>
+          </thead>
+          <tbody id="hole-rows"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="running-total">
