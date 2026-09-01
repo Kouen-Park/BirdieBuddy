@@ -5,6 +5,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace BirdieBuddy.Migrations;
 
+[Migration("20260901120000_AddUserOwnership")]
 public partial class AddUserOwnership : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
