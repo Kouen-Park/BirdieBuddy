@@ -1563,3 +1563,35 @@ tr.clickable {
         margin-bottom: 31px;
     }
 }
+
+
+.rounds-page-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 24px;
+}
+
+.rounds-page-header::before {
+    grid-column: 1 / -1;
+}
+
+.rounds-page-header > div {
+    min-width: 0;
+}
+
+.rounds-page-header > .btn {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+@media (max-width: 600px) {
+    .rounds-page-header {
+        display: block;
+    }
+
+    .rounds-page-header > .btn {
+        width: 100%;
+        margin-top: 17px;
+    }
+}
