@@ -1227,9 +1227,7 @@ tr.clickable:hover {
 }
 
 .page-header > .btn {
-    position: absolute;
-    right: 0;
-    bottom: 23px;
+    position: static;
     flex-shrink: 0;
     margin-top: 0;
 }
@@ -1309,7 +1307,7 @@ tr.clickable:hover {
 
 @media (min-width: 601px) {
     .page-header > .btn {
-        position: absolute;
+        position: static;
     }
 }
 
