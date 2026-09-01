@@ -1,0 +1,225 @@
+using System;
+using BirdieBuddy.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+
+#nullable disable
+
+namespace BirdieBuddy.Migrations;
+
+[DbContext(typeof(ApplicationDbContext))]
+public partial class AddUserOwnership : Migration
+{
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
+    {
+#pragma warning disable 612, 618
+        modelBuilder
+            .HasAnnotation("ProductVersion", "8.0.8")
+            .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+        NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+        modelBuilder.Entity("BirdieBuddy.Models.User", b =>
+        {
+            b.Property<int>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("integer");
+            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+            b.Property<string>("Email").IsRequired().HasMaxLength(320).HasColumnType("character varying(320)");
+            b.Property<string>("DisplayName").IsRequired().HasMaxLength(80).HasColumnType("character varying(80)");
+            b.Property<string>("PasswordHash").IsRequired().HasColumnType("text");
+            b.Property<string>("PasswordSalt").IsRequired().HasColumnType("text");
+            b.Property<DateTime>("CreatedAt").HasColumnType("timestamp with time zone");
+            b.HasKey("Id");
+            b.HasIndex("Email").IsUnique();
+            b.ToTable("Users");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.Course", b =>
+        {
+            b.Property<int>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("integer");
+            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+            b.Property<int?>("UserId").HasColumnType("integer");
+            b.Property<int?>("GolfNzClubId").HasColumnType("integer");
+            b.Property<string>("Location").IsRequired().HasColumnType("text");
+            b.Property<string>("Name").IsRequired().HasColumnType("text");
+            b.HasKey("Id");
+            b.HasIndex("GolfNzClubId").IsUnique();
+            b.HasIndex("UserId");
+            b.ToTable("Courses");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.CourseTee", b =>
+        {
+            b.Property<int>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("integer");
+            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+            b.Property<int>("CourseId").HasColumnType("integer");
+            b.Property<string>("CourseType").IsRequired().HasColumnType("text");
+            b.Property<string>("Gender").IsRequired().HasColumnType("text");
+            b.Property<bool>("NineHoles").HasColumnType("boolean");
+            b.Property<string>("Name").IsRequired().HasColumnType("text");
+            b.Property<decimal?>("Rating").HasColumnType("numeric");
+            b.Property<int?>("Slope").HasColumnType("integer");
+            b.Property<string>("Colour").HasColumnType("text");
+            b.Property<int?>("TotalPar").HasColumnType("integer");
+            b.Property<int?>("FrontNinePar").HasColumnType("integer");
+            b.Property<int?>("BackNinePar").HasColumnType("integer");
+            b.Property<int?>("FrontNineMetres").HasColumnType("integer");
+            b.Property<int?>("BackNineMetres").HasColumnType("integer");
+            b.HasKey("Id");
+            b.HasIndex("CourseId", "CourseType", "Gender", "NineHoles", "Name").IsUnique();
+            b.ToTable("CourseTees");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.CourseHole", b =>
+        {
+            b.Property<int>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("integer");
+            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+            b.Property<int>("CourseTeeId").HasColumnType("integer");
+            b.Property<int>("Distance").HasColumnType("integer");
+            b.Property<int>("HoleNumber").HasColumnType("integer");
+            b.Property<int>("Par").HasColumnType("integer");
+            b.Property<int?>("StrokeIndex").HasColumnType("integer");
+            b.HasKey("Id");
+            b.HasIndex("CourseTeeId", "HoleNumber").IsUnique();
+            b.ToTable("CourseHoles", t =>
+            {
+                t.HasCheckConstraint("CK_CourseHole_HoleNumber", "\"HoleNumber\" BETWEEN 1 AND 18");
+            });
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.Hole", b =>
+        {
+            b.Property<int>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("integer");
+            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+            b.Property<bool?>("FairwayHit").HasColumnType("boolean");
+            b.Property<bool>("GIR").HasColumnType("boolean");
+            b.Property<int>("HoleNumber").HasColumnType("integer");
+            b.Property<int>("Par").HasColumnType("integer");
+            b.Property<int>("Penalty").HasColumnType("integer");
+            b.Property<int>("Putts").HasColumnType("integer");
+            b.Property<int>("RoundId").HasColumnType("integer");
+            b.Property<int>("Score").HasColumnType("integer");
+            b.HasKey("Id");
+            b.HasIndex("RoundId", "HoleNumber").IsUnique();
+            b.ToTable("Holes", t =>
+            {
+                t.HasCheckConstraint("CK_Hole_HoleNumber", "\"HoleNumber\" BETWEEN 1 AND 18");
+                t.HasCheckConstraint("CK_Hole_Penalty", "\"Penalty\" >= 0");
+                t.HasCheckConstraint("CK_Hole_Putts", "\"Putts\" >= 0");
+                t.HasCheckConstraint("CK_Hole_Score", "\"Score\" > 0");
+            });
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.Round", b =>
+        {
+            b.Property<int>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("integer");
+            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+            b.Property<int?>("UserId").HasColumnType("integer");
+            b.Property<int>("CourseId").HasColumnType("integer");
+            b.Property<int?>("CourseTeeId").HasColumnType("integer");
+            b.Property<DateTime>("Date").HasColumnType("timestamp with time zone");
+            b.Property<string>("LegacyTee").HasColumnType("text");
+            b.HasKey("Id");
+            b.HasIndex("CourseId");
+            b.HasIndex("CourseTeeId");
+            b.HasIndex("UserId");
+            b.ToTable("Rounds");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.CourseTee", b =>
+        {
+            b.HasOne("BirdieBuddy.Models.Course", "Course")
+                .WithMany("CourseTees")
+                .HasForeignKey("CourseId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+            b.Navigation("Course");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.CourseHole", b =>
+        {
+            b.HasOne("BirdieBuddy.Models.CourseTee", "CourseTee")
+                .WithMany("CourseHoles")
+                .HasForeignKey("CourseTeeId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+            b.Navigation("CourseTee");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.Hole", b =>
+        {
+            b.HasOne("BirdieBuddy.Models.Round", "Round")
+                .WithMany("Holes")
+                .HasForeignKey("RoundId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+            b.Navigation("Round");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.Course", b =>
+        {
+            b.HasOne("BirdieBuddy.Models.User", "User")
+                .WithMany("Courses")
+                .HasForeignKey("UserId")
+                .OnDelete(DeleteBehavior.Restrict);
+            b.Navigation("User");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.Round", b =>
+        {
+            b.HasOne("BirdieBuddy.Models.User", "User")
+                .WithMany("Rounds")
+                .HasForeignKey("UserId")
+                .OnDelete(DeleteBehavior.Restrict);
+            b.Navigation("User");
+            b.HasOne("BirdieBuddy.Models.Course", "Course")
+                .WithMany("Rounds")
+                .HasForeignKey("CourseId")
+                .OnDelete(DeleteBehavior.Restrict)
+                .IsRequired();
+            b.HasOne("BirdieBuddy.Models.CourseTee", "CourseTee")
+                .WithMany()
+                .HasForeignKey("CourseTeeId")
+                .OnDelete(DeleteBehavior.Restrict);
+            b.Navigation("Course");
+            b.Navigation("CourseTee");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.User", b =>
+        {
+            b.Navigation("Courses");
+            b.Navigation("Rounds");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.Course", b =>
+        {
+            b.Navigation("CourseTees");
+            b.Navigation("Rounds");
+            b.Navigation("User");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.CourseTee", b =>
+        {
+            b.Navigation("CourseHoles");
+        });
+
+        modelBuilder.Entity("BirdieBuddy.Models.Round", b =>
+        {
+            b.Navigation("Holes");
+        });
+#pragma warning restore 612, 618
+    }
+}
