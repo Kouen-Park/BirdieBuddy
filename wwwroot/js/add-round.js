@@ -118,12 +118,12 @@ function renderScorecard(course, tee) {
     : courseHoles;
 
   const manualNote = isManualScorecard
-    ? '<p class="progress-note" style="margin:20px 0 0;">This tee has no hole data. Enter the par for each hole below before saving.</p>'
+    ? '<p class="progress-note manual-note">This tee has no hole data. Enter the par for each hole below before saving.</p>'
     : '';
 
   wrapper.innerHTML = `
     ${manualNote}
-    <div class="card" style="margin-top:20px;">
+    <div class="card scorecard-card">
       <table class="scorecard-table">
         <thead>
           <tr>
@@ -138,7 +138,7 @@ function renderScorecard(course, tee) {
       <div class="rt-item"><div class="rt-label">Score</div><div class="rt-value" id="rt-score">0</div></div>
       <div class="rt-item"><div class="rt-label">To Par</div><div class="rt-value" id="rt-topar">E</div></div>
       <div class="rt-item"><div class="rt-label">Putts</div><div class="rt-value" id="rt-putts">0</div></div>
-      <div style="margin-left:auto;">
+      <div class="running-total-actions">
         <button class="btn btn-flag" id="save-btn">Save Round</button>
       </div>
     </div>

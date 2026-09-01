@@ -57,32 +57,38 @@ function renderNav(active) {
         {
             href: '/index.html',
             label: 'Dashboard',
-            key: 'dashboard'
+            key: 'dashboard',
+            icon: '◌'
         },
         {
             href: '/rounds.html',
             label: 'Rounds',
-            key: 'rounds'
+            key: 'rounds',
+            icon: '↗'
         },
         {
             href: '/add-round.html',
             label: 'Add Round',
-            key: 'add-round'
+            key: 'add-round',
+            icon: '+'
         },
         {
             href: '/courses.html',
             label: 'Courses',
-            key: 'courses'
+            key: 'courses',
+            icon: '⌂'
         },
         {
             href: '/statistics.html',
             label: 'Statistics',
-            key: 'statistics'
+            key: 'statistics',
+            icon: '◒'
         },
         {
             href: '/practice.html',
             label: 'Practice',
-            key: 'practice'
+            key: 'practice',
+            icon: '✧'
         }
     ];
 
@@ -106,11 +112,13 @@ function renderNav(active) {
     <ul class="nav-list">
       ${items.map(item => `
         <li>
-          <a
-            href="${item.href}"
-            class="${item.key === active ? 'active' : ''}">
-            ${item.label}
-          </a>
+            <a
+              href="${item.href}"
+              class="${item.key === active ? 'active' : ''}"
+              data-icon="${item.icon}"
+              aria-current="${item.key === active ? 'page' : 'false'}">
+              ${item.label}
+            </a>
         </li>
       `).join('')}
     </ul>
