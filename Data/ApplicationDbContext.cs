@@ -9,6 +9,7 @@ public class ApplicationDbContext : DbContext
         DbContextOptions<ApplicationDbContext> options
     ) : base(options) { }
 
+    public DbSet<User> Users => Set<User>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<CourseTee> CourseTees => Set<CourseTee>();
     public DbSet<CourseHole> CourseHoles => Set<CourseHole>();
@@ -21,9 +22,33 @@ public class ApplicationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.Email)
+            .HasMaxLength(320);
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.DisplayName)
+            .HasMaxLength(80);
+
         modelBuilder.Entity<Course>()
             .HasIndex(c => c.GolfNzClubId)
             .IsUnique();
+
+        modelBuilder.Entity<Course>()
+            .HasOne(c => c.User)
+            .WithMany(u => u.Courses)
+            .HasForeignKey(c => c.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Round>()
+            .HasOne(r => r.User)
+            .WithMany(u => u.Rounds)
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<CourseTee>()
             .HasOne(ct => ct.Course)

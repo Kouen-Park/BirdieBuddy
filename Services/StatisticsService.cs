@@ -8,17 +8,22 @@ namespace BirdieBuddy.Services;
 public class StatisticsService : IStatisticsService
 {
     private readonly ApplicationDbContext _context;
+    private readonly ICurrentUser _currentUser;
 
-    public StatisticsService(ApplicationDbContext context)
+    public StatisticsService(ApplicationDbContext context, ICurrentUser currentUser)
     {
         _context = context;
+        _currentUser = currentUser;
     }
+
+    private int CurrentUserId => _currentUser.Id ?? 0;
 
     public async Task<RoundStatisticsDto?> GetRoundStatisticsAsync(int roundId)
     {
         var round = await _context.Rounds
+            .Where(r => r.Id == roundId && r.UserId == CurrentUserId)
             .Include(r => r.Holes)
-            .FirstOrDefaultAsync(r => r.Id == roundId);
+            .FirstOrDefaultAsync();
 
         return round is null ? null : BuildRoundStatistics(roundId, round.Holes);
     }
@@ -26,6 +31,7 @@ public class StatisticsService : IStatisticsService
     public async Task<OverviewStatisticsDto> GetOverviewStatisticsAsync()
     {
         var rounds = await _context.Rounds
+            .Where(r => r.UserId == CurrentUserId)
             .Include(r => r.Holes)
             .Include(r => r.Course)
             .Include(r => r.CourseTee)

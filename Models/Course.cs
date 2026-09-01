@@ -6,6 +6,10 @@ public class Course
 {
     public int Id { get; set; }
 
+    // Null means a shared Golf NZ reference course; non-null means a member-owned course.
+    public int? UserId { get; set; }
+    public User? User { get; set; }
+
     // Stable identity from Golf New Zealand. Nullable for legacy local courses.
     public int? GolfNzClubId { get; set; }
 

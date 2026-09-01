@@ -8,15 +8,20 @@ namespace BirdieBuddy.Services;
 public class CourseService : ICourseService
 {
     private readonly ApplicationDbContext _context;
+    private readonly ICurrentUser _currentUser;
 
-    public CourseService(ApplicationDbContext context)
+    public CourseService(ApplicationDbContext context, ICurrentUser currentUser)
     {
         _context = context;
+        _currentUser = currentUser;
     }
+
+    private int CurrentUserId => _currentUser.Id ?? 0;
 
     public async Task<List<CourseSummaryDto>> GetAllAsync()
     {
         return await _context.Courses
+            .Where(c => c.UserId == null || c.UserId == CurrentUserId)
             .OrderBy(c => c.Name)
             .Select(c => new CourseSummaryDto(c.Id, c.Name, c.Location))
             .ToListAsync();
@@ -25,6 +30,7 @@ public class CourseService : ICourseService
     public async Task<CourseDto?> GetByIdAsync(int id)
     {
         var course = await _context.Courses
+            .Where(c => c.UserId == null || c.UserId == CurrentUserId)
             .Include(c => c.CourseTees)
                 .ThenInclude(t => t.CourseHoles)
             .FirstOrDefaultAsync(c => c.Id == id);
@@ -57,6 +63,7 @@ public class CourseService : ICourseService
 
         var course = new Course
         {
+            UserId = CurrentUserId,
             Name = dto.Name,
             Location = dto.Location,
             CourseTees = new List<CourseTee> { tee }
@@ -70,7 +77,8 @@ public class CourseService : ICourseService
 
     public async Task<bool> UpdateAsync(int id, CourseUpdateDto dto)
     {
-        var course = await _context.Courses.FindAsync(id);
+        var course = await _context.Courses
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
         if (course is null) return false;
 
         course.Name = dto.Name;
@@ -81,10 +89,11 @@ public class CourseService : ICourseService
 
     public async Task<(bool Success, string? Error)> DeleteAsync(int id)
     {
-        var course = await _context.Courses.FindAsync(id);
+        var course = await _context.Courses
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
         if (course is null) return (false, "Course not found.");
 
-        bool hasRounds = await _context.Rounds.AnyAsync(r => r.CourseId == id);
+        bool hasRounds = await _context.Rounds.AnyAsync(r => r.CourseId == id && r.UserId == CurrentUserId);
         if (hasRounds)
             return (false, "Cannot delete a course that has recorded rounds.");
 

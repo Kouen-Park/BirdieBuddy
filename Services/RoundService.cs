@@ -8,15 +8,20 @@ namespace BirdieBuddy.Services;
 public class RoundService : IRoundService
 {
     private readonly ApplicationDbContext _context;
+    private readonly ICurrentUser _currentUser;
 
-    public RoundService(ApplicationDbContext context)
+    public RoundService(ApplicationDbContext context, ICurrentUser currentUser)
     {
         _context = context;
+        _currentUser = currentUser;
     }
+
+    private int CurrentUserId => _currentUser.Id ?? 0;
 
     public async Task<List<RoundSummaryDto>> GetAllAsync()
     {
         var rounds = await _context.Rounds
+            .Where(r => r.UserId == CurrentUserId)
             .Include(r => r.Course)
             .Include(r => r.CourseTee)
             .Include(r => r.Holes)
@@ -29,10 +34,11 @@ public class RoundService : IRoundService
     public async Task<RoundDetailDto?> GetByIdAsync(int id)
     {
         var round = await _context.Rounds
+            .Where(r => r.Id == id && r.UserId == CurrentUserId)
             .Include(r => r.Course)
             .Include(r => r.CourseTee)
             .Include(r => r.Holes)
-            .FirstOrDefaultAsync(r => r.Id == id);
+            .FirstOrDefaultAsync();
 
         return round is null ? null : MapToDetailDto(round);
     }
@@ -41,6 +47,7 @@ public class RoundService : IRoundService
         RoundCreateDto dto)
     {
         var course = await _context.Courses
+            .Where(c => c.UserId == null || c.UserId == CurrentUserId)
             .Include(c => c.CourseTees)
                 .ThenInclude(t => t.CourseHoles)
             .FirstOrDefaultAsync(c => c.Id == dto.CourseId);
@@ -95,6 +102,7 @@ public class RoundService : IRoundService
 
         var round = new Round
         {
+            UserId = CurrentUserId,
             CourseId = dto.CourseId,
             CourseTee = tee,
             LegacyTee = IsCustomTee(tee) ? tee.Name : null,
@@ -111,9 +119,10 @@ public class RoundService : IRoundService
     public async Task<bool> UpdateAsync(int id, RoundUpdateDto dto)
     {
         var round = await _context.Rounds
+            .Where(r => r.Id == id && r.UserId == CurrentUserId)
             .Include(r => r.Course)
                 .ThenInclude(c => c!.CourseTees)
-            .FirstOrDefaultAsync(r => r.Id == id);
+            .FirstOrDefaultAsync();
 
         if (round is null || round.Course is null)
             return false;
@@ -131,7 +140,8 @@ public class RoundService : IRoundService
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var round = await _context.Rounds.FindAsync(id);
+        var round = await _context.Rounds
+            .FirstOrDefaultAsync(r => r.Id == id && r.UserId == CurrentUserId);
         if (round is null) return false;
 
         _context.Rounds.Remove(round);
@@ -142,8 +152,9 @@ public class RoundService : IRoundService
     public async Task<List<HoleDto>?> GetHolesAsync(int roundId)
     {
         var round = await _context.Rounds
+            .Where(r => r.Id == roundId && r.UserId == CurrentUserId)
             .Include(r => r.Holes)
-            .FirstOrDefaultAsync(r => r.Id == roundId);
+            .FirstOrDefaultAsync();
 
         return round is null
             ? null
@@ -159,7 +170,7 @@ public class RoundService : IRoundService
                     .ThenInclude(t => t.CourseHoles)
             .Include(r => r.CourseTee)
                 .ThenInclude(t => t!.CourseHoles)
-            .FirstOrDefaultAsync(r => r.Id == roundId);
+            .FirstOrDefaultAsync(r => r.Id == roundId && r.UserId == CurrentUserId);
 
         if (round is null) return (null, "Round not found.");
         if (round.Holes.Any(h => h.HoleNumber == dto.HoleNumber))
@@ -198,7 +209,8 @@ public class RoundService : IRoundService
     public async Task<(bool Success, string? Error)> UpdateHoleAsync(int roundId, int holeId, HoleUpdateDto dto)
     {
         var hole = await _context.Holes
-            .FirstOrDefaultAsync(h => h.Id == holeId && h.RoundId == roundId);
+            .Include(h => h.Round)
+            .FirstOrDefaultAsync(h => h.Id == holeId && h.RoundId == roundId && h.Round!.UserId == CurrentUserId);
         if (hole is null) return (false, "Hole not found.");
         if (dto.Score <= 0) return (false, "Score must be greater than 0.");
         if (dto.Putts < 0) return (false, "Putts cannot be negative.");

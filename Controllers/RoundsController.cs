@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using BirdieBuddy.DTOs;
 using BirdieBuddy.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BirdieBuddy.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/rounds")]
 public class RoundsController : ControllerBase
 {

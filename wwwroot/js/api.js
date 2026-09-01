@@ -9,6 +9,12 @@ const Api = {
             ...options
         });
 
+        if (res.status === 401 && !['/login.html', '/signup.html'].includes(window.location.pathname)) {
+            const returnUrl = `${window.location.pathname}${window.location.search}`;
+            window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
+            throw new Error('Authentication required.');
+        }
+
         if (res.status === 204) return null;
 
         const isJson = res.headers
@@ -123,12 +129,48 @@ function renderNav(active) {
       `).join('')}
     </ul>
 
+    <div class="sidebar-account" id="sidebar-account">
+      <div class="account-label">Signed in as</div>
+      <div class="account-name" id="current-user-name">Loading…</div>
+      <button class="logout-button" id="logout-button" type="button">Log out</button>
+    </div>
+
     <div class="sidebar-footer">
       Round tracking &amp; performance analysis
     </div>
   `;
 
     setupMobileNavigation();
+    hydrateCurrentUser();
+}
+
+
+async function hydrateCurrentUser() {
+    const publicPages = ['/login.html', '/signup.html'];
+    if (publicPages.includes(window.location.pathname)) return;
+
+    try {
+        const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        if (!response.ok) {
+            const returnUrl = `${window.location.pathname}${window.location.search}`;
+            window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
+            return;
+        }
+
+        const user = await response.json();
+        const name = document.getElementById('current-user-name');
+        if (name) name.textContent = user.displayName || user.email;
+
+        const logoutButton = document.getElementById('logout-button');
+        logoutButton?.addEventListener('click', async () => {
+            logoutButton.disabled = true;
+            await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+            window.location.replace('/login.html');
+        });
+    } catch {
+        const returnUrl = `${window.location.pathname}${window.location.search}`;
+        window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
+    }
 }
 
 

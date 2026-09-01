@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in · Birdie Buddy</title>
+    <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="auth-page">
+    <main class="auth-card">
+        <a class="auth-brand" href="login.html" aria-label="Birdie Buddy home">
+            <span class="brand-mark">⚑</span>
+            Birdie Buddy
+        </a>
+        <h1>Welcome back.</h1>
+        <p>Sign in to keep your rounds and performance notes together.</p>
+        <div id="auth-error" class="alert error auth-error" role="alert" hidden></div>
+        <form id="auth-form" class="auth-form" novalidate>
+            <div class="field">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" required />
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required />
+            </div>
+            <button id="auth-submit" class="btn btn-primary" type="submit">Sign in</button>
+        </form>
+        <p class="auth-switch">New to Birdie Buddy? <a href="signup.html">Create an account</a></p>
+    </main>
+    <script src="js/auth.js"></script>
+</body>
+</html>

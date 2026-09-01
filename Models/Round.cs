@@ -5,6 +5,10 @@ public class Round
 {
     public int Id { get; set; }
 
+    // Null keeps legacy rounds private and unassigned during the ownership migration.
+    public int? UserId { get; set; }
+    public User? User { get; set; }
+
     public int CourseId { get; set; }
     public Course? Course { get; set; }
 

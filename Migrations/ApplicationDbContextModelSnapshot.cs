@@ -22,17 +22,35 @@ namespace BirdieBuddy.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BirdieBuddy.Models.User", b =>
+            {
+                b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer");
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                b.Property<string>("Email").IsRequired().HasMaxLength(320).HasColumnType("character varying(320)");
+                b.Property<string>("DisplayName").IsRequired().HasMaxLength(80).HasColumnType("character varying(80)");
+                b.Property<string>("PasswordHash").IsRequired().HasColumnType("text");
+                b.Property<string>("PasswordSalt").IsRequired().HasColumnType("text");
+                b.Property<DateTime>("CreatedAt").HasColumnType("timestamp with time zone");
+                b.HasKey("Id");
+                b.HasIndex("Email").IsUnique();
+                b.ToTable("Users");
+            });
+
             modelBuilder.Entity("BirdieBuddy.Models.Course", b =>
             {
                 b.Property<int>("Id")
                     .ValueGeneratedOnAdd()
                     .HasColumnType("integer");
                 NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                b.Property<int?>("UserId").HasColumnType("integer");
                 b.Property<int?>("GolfNzClubId").HasColumnType("integer");
                 b.Property<string>("Location").IsRequired().HasColumnType("text");
                 b.Property<string>("Name").IsRequired().HasColumnType("text");
                 b.HasKey("Id");
                 b.HasIndex("GolfNzClubId").IsUnique();
+                b.HasIndex("UserId");
                 b.ToTable("Courses");
             });
 
@@ -110,6 +128,7 @@ namespace BirdieBuddy.Migrations
                     .ValueGeneratedOnAdd()
                     .HasColumnType("integer");
                 NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                b.Property<int?>("UserId").HasColumnType("integer");
                 b.Property<int>("CourseId").HasColumnType("integer");
                 b.Property<int?>("CourseTeeId").HasColumnType("integer");
                 b.Property<DateTime>("Date").HasColumnType("timestamp with time zone");
@@ -117,6 +136,7 @@ namespace BirdieBuddy.Migrations
                 b.HasKey("Id");
                 b.HasIndex("CourseId");
                 b.HasIndex("CourseTeeId");
+                b.HasIndex("UserId");
                 b.ToTable("Rounds");
             });
 
@@ -150,8 +170,22 @@ namespace BirdieBuddy.Migrations
                 b.Navigation("Round");
             });
 
+            modelBuilder.Entity("BirdieBuddy.Models.Course", b =>
+            {
+                b.HasOne("BirdieBuddy.Models.User", "User")
+                    .WithMany("Courses")
+                    .HasForeignKey("UserId")
+                    .OnDelete(DeleteBehavior.Restrict);
+                b.Navigation("User");
+            });
+
             modelBuilder.Entity("BirdieBuddy.Models.Round", b =>
             {
+                b.HasOne("BirdieBuddy.Models.User", "User")
+                    .WithMany("Rounds")
+                    .HasForeignKey("UserId")
+                    .OnDelete(DeleteBehavior.Restrict);
+                b.Navigation("User");
                 b.HasOne("BirdieBuddy.Models.Course", "Course")
                     .WithMany("Rounds")
                     .HasForeignKey("CourseId")
@@ -165,10 +199,17 @@ namespace BirdieBuddy.Migrations
                 b.Navigation("CourseTee");
             });
 
+            modelBuilder.Entity("BirdieBuddy.Models.User", b =>
+            {
+                b.Navigation("Courses");
+                b.Navigation("Rounds");
+            });
+
             modelBuilder.Entity("BirdieBuddy.Models.Course", b =>
             {
                 b.Navigation("CourseTees");
                 b.Navigation("Rounds");
+                b.Navigation("User");
             });
 
             modelBuilder.Entity("BirdieBuddy.Models.CourseTee", b =>

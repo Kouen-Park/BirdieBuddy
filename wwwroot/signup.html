@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create account · Birdie Buddy</title>
+    <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="auth-page" data-auth-mode="register">
+    <main class="auth-card">
+        <a class="auth-brand" href="login.html" aria-label="Birdie Buddy home">
+            <span class="brand-mark">⚑</span>
+            Birdie Buddy
+        </a>
+        <h1>Start your round log.</h1>
+        <p>Create an account and keep your game history private to you.</p>
+        <div id="auth-error" class="alert error auth-error" role="alert" hidden></div>
+        <form id="auth-form" class="auth-form" novalidate>
+            <div class="field">
+                <label for="displayName">Display name</label>
+                <input id="displayName" name="displayName" type="text" autocomplete="name" minlength="2" maxlength="80" required />
+            </div>
+            <div class="field">
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" autocomplete="email" required />
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required />
+            </div>
+            <button id="auth-submit" class="btn btn-flag" type="submit">Create account</button>
+        </form>
+        <p class="auth-switch">Already have an account? <a href="login.html">Sign in</a></p>
+    </main>
+    <script src="js/auth.js"></script>
+</body>
+</html>
