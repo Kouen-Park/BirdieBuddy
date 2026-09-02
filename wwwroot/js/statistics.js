@@ -3,17 +3,27 @@ renderNav('statistics');
 const overviewEl = document.getElementById('overview-content');
 const roundSelect = document.getElementById('round-select');
 const breakdownEl = document.getElementById('round-breakdown');
+const statsFilters = document.getElementById('stats-filters');
+
+function overviewPath() {
+  const params = new URLSearchParams();
+  [['courseId', 'stats-course'], ['holeCount', 'stats-holes'], ['from', 'stats-from'], ['to', 'stats-to']].forEach(([key, id]) => {
+    const value = document.getElementById(id).value;
+    if (value) params.set(key, value);
+  });
+  return `/statistics/overview?${params}`;
+}
 
 async function loadOverview() {
   try {
-    const data = await Api.get('/statistics/overview');
+    const data = await Api.get(overviewPath());
 
     if (data.roundsPlayed === 0) {
       overviewEl.innerHTML = `
         <div class="card empty-state">
           <h3>No rounds recorded yet.</h3>
           <p>Play your first round and let Birdie Buddy track your game.</p>
-          <a href="/add-round.html" class="btn btn-flag" style="margin-top:14px;">Add your first round</a>
+          <a href="/live-round.html" class="btn btn-flag space-top">Start your first round</a>
         </div>`;
       return;
     }
@@ -35,13 +45,14 @@ async function loadOverview() {
 async function loadRoundOptions() {
   try {
     const rounds = await Api.get('/rounds');
-    if (rounds.length === 0) {
+    const completedRounds = rounds.filter(r => r.status === 'Completed');
+    if (completedRounds.length === 0) {
       roundSelect.innerHTML = `<option>No rounds yet</option>`;
       return;
     }
 
-    roundSelect.innerHTML = rounds
-      .map(r => `<option value="${r.id}">${fmtDate(r.date)} · ${r.courseName} (${r.totalScore})</option>`)
+    roundSelect.innerHTML = completedRounds
+      .map(r => `<option value="${r.id}">${fmtDate(r.date)} · ${escapeHtml(r.courseName)} (${r.totalScore})</option>`)
       .join('');
 
     roundSelect.addEventListener('change', () => loadRoundBreakdown(roundSelect.value));
@@ -86,3 +97,8 @@ function parCard(label, s) {
 
 loadOverview();
 loadRoundOptions();
+statsFilters.addEventListener('submit', event => { event.preventDefault(); loadOverview(); });
+Api.get('/courses').then(courses => {
+  const select = document.getElementById('stats-course');
+  courses.forEach(course => { const option = document.createElement('option'); option.value = course.id; option.textContent = course.name; select.append(option); });
+});

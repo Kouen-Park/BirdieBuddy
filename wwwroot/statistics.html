@@ -16,19 +16,27 @@
         <p>Career averages and a breakdown of any individual round.</p>
       </div>
 
+      <form class="card stats-filters" id="stats-filters">
+        <div class="field"><label for="stats-course">Course</label><select id="stats-course"><option value="">All courses</option></select></div>
+        <div class="field"><label for="stats-holes">Round length</label><select id="stats-holes"><option value="">All rounds</option><option value="9">9 holes</option><option value="18">18 holes</option></select></div>
+        <div class="field"><label for="stats-from">From</label><input id="stats-from" type="date" /></div>
+        <div class="field"><label for="stats-to">To</label><input id="stats-to" type="date" /></div>
+        <button class="btn btn-secondary">Update view</button>
+      </form>
+
       <div id="overview-content">
         <p class="progress-note">Loading&hellip;</p>
       </div>
 
       <div class="section-title">Round breakdown</div>
-      <div class="card" style="padding:16px;">
-        <div class="field" style="max-width:320px;">
+      <div class="card filter-card">
+        <div class="field round-filter">
           <label for="round-select">Choose a round</label>
           <select id="round-select"></select>
         </div>
       </div>
 
-      <div id="round-breakdown" style="margin-top:16px;"></div>
+      <div id="round-breakdown" class="round-breakdown"></div>
     </main>
   </div>
 

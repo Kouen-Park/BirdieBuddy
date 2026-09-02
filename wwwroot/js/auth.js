@@ -32,14 +32,16 @@ authForm?.addEventListener('submit', async event => {
         };
 
     try {
+        const csrfResponse = await fetch('/api/security/csrf', { credentials: 'same-origin' });
+        const csrf = await csrfResponse.json();
         const response = await fetch(isRegister ? '/api/auth/register' : '/api/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.token },
             credentials: 'same-origin',
             body: JSON.stringify(payload)
         });
         const body = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(body?.error || 'Something went wrong. Please try again.');
+        if (!response.ok) throw new Error(body?.detail || body?.title || 'Something went wrong. Please try again.');
         window.location.replace(getReturnUrl());
     } catch (error) {
         showAuthError(error.message);

@@ -6,19 +6,26 @@ async function loadDashboard() {
   const el = document.getElementById('dashboard-content');
 
   try {
-    const data = await Api.get('/statistics/overview');
+    const [data, draftPage] = await Promise.all([
+      Api.get('/statistics/overview'),
+      Api.get('/rounds/page?status=Draft&limit=1')
+    ]);
+
+    const draft = draftPage.items[0];
 
     if (data.roundsPlayed === 0) {
       el.innerHTML = `
+        ${draft ? `<a class="resume-round" href="/live-round.html?id=${draft.id}"><span><small>Round in progress</small><strong>${escapeHtml(draft.courseName)}</strong><em>${draft.holesPlayed} of ${draft.expectedHoles} holes saved</em></span><b>Resume →</b></a>` : ''}
         <div class="card empty-state">
           <h3>No rounds recorded yet.</h3>
           <p>Play your first round and let Birdie Buddy track your game.</p>
-          <a href="/add-round.html" class="btn btn-flag" style="margin-top:14px;">Add your first round</a>
+          <a href="/live-round.html" class="btn btn-flag space-top">Start your first round</a>
         </div>`;
       return;
     }
 
     el.innerHTML = `
+      ${draft ? `<a class="resume-round" href="/live-round.html?id=${draft.id}"><span><small>Round in progress</small><strong>${escapeHtml(draft.courseName)}</strong><em>${draft.holesPlayed} of ${draft.expectedHoles} holes saved</em></span><b>Resume →</b></a>` : `<a class="resume-round new-round" href="/live-round.html"><span><small>Ready for the first tee?</small><strong>Start a live round</strong><em>Your scorecard saves after every hole.</em></span><b>Start →</b></a>`}
       <div class="stat-grid">
         ${statCard('Average Score', data.averageScore.toFixed(1))}
         ${statCard('Best Score', data.bestScore, 'accent')}
@@ -40,9 +47,9 @@ async function loadDashboard() {
           <thead><tr><th>Date</th><th class="text-cell">Course</th><th>Score</th><th>To Par</th></tr></thead>
           <tbody>
             ${data.recentRounds.map(r => `
-              <tr class="clickable" onclick="location.href='/round-details.html?id=${r.id}'">
+              <tr class="clickable" data-round-id="${r.id}" tabindex="0">
                 <td>${fmtDate(r.date)}</td>
-                <td class="text-cell">${r.courseName}</td>
+                <td class="text-cell">${escapeHtml(r.courseName)}</td>
                 <td>${r.totalScore}</td>
                 <td><span class="pill ${toParPillClass(r.scoreToPar)}">${toPar(r.scoreToPar)}</span></td>
               </tr>`).join('')}
@@ -51,10 +58,22 @@ async function loadDashboard() {
       </div>
     `;
 
+    if (data.insights?.length) {
+      el.insertAdjacentHTML('beforeend', `<div class="section-title">Your next focus</div>${insightCard(data.insights[0])}`);
+    }
+    el.querySelectorAll('[data-round-id]').forEach(row => {
+      const open = () => location.href = `/round-details.html?id=${row.dataset.roundId}`;
+      row.addEventListener('click', open);
+      row.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') open(); });
+    });
     drawCharts(data);
   } catch (err) {
     el.innerHTML = `<div class="alert error">Couldn't load the dashboard: ${err.message}</div>`;
   }
+}
+
+function insightCard(insight) {
+  return `<article class="card insight-card"><span class="eyebrow">Based on recent rounds</span><h3>${escapeHtml(insight.title)}</h3><p>${escapeHtml(insight.evidence)}</p><strong>${escapeHtml(insight.recommendation)}</strong><a href="/practice.html">Open practice plan →</a></article>`;
 }
 
 function statCard(label, value, extraClass = '') {

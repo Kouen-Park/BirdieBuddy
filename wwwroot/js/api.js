@@ -2,10 +2,23 @@
 // instead of calling fetch() directly so error handling stays in one place.
 const Api = {
     base: '/api',
+    csrfToken: null,
+
+    async getCsrfToken() {
+        if (this.csrfToken) return this.csrfToken;
+        const response = await fetch('/api/security/csrf', { credentials: 'same-origin' });
+        if (!response.ok) throw new Error('Could not initialize a secure session.');
+        this.csrfToken = (await response.json()).token;
+        return this.csrfToken;
+    },
 
     async request(path, options = {}) {
+        const method = (options.method || 'GET').toUpperCase();
+        const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) headers['X-CSRF-TOKEN'] = await this.getCsrfToken();
         const res = await fetch(this.base + path, {
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            headers,
             ...options
         });
 
@@ -24,7 +37,7 @@ const Api = {
         const body = isJson ? await res.json() : null;
 
         if (!res.ok) {
-            const message = body?.error || `Request failed (${res.status})`;
+            const message = body?.detail || body?.error || body?.title || `Request failed (${res.status})`;
             throw new Error(message);
         }
 
@@ -73,8 +86,8 @@ function renderNav(active) {
             icon: '↗'
         },
         {
-            href: '/add-round.html',
-            label: 'Add Round',
+            href: '/live-round.html',
+            label: 'Start Round',
             key: 'add-round',
             icon: '+'
         },
@@ -95,6 +108,12 @@ function renderNav(active) {
             label: 'Practice',
             key: 'practice',
             icon: '✧'
+        },
+        {
+            href: '/account.html',
+            label: 'Account',
+            key: 'account',
+            icon: '•'
         }
     ];
 
@@ -164,7 +183,7 @@ async function hydrateCurrentUser() {
         const logoutButton = document.getElementById('logout-button');
         logoutButton?.addEventListener('click', async () => {
             logoutButton.disabled = true;
-            await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+            await Api.post('/auth/logout', {});
             window.location.replace('/login.html');
         });
     } catch {
@@ -279,7 +298,7 @@ function setupMobileNavigation() {
 
 
 function fmtDate(dateStr) {
-    const d = new Date(dateStr);
+    const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? `${dateStr}T00:00:00` : dateStr);
 
     return d.toLocaleDateString(
         undefined,
@@ -323,4 +342,10 @@ function scoreMarkClass(score, par) {
 
 function pct(n) {
     return `${Math.round(n)}%`;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 }

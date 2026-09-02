@@ -25,6 +25,6 @@ public class StatisticsController : ControllerBase
     }
 
     [HttpGet("overview")]
-    public async Task<ActionResult<OverviewStatisticsDto>> GetOverview()
-        => Ok(await _statisticsService.GetOverviewStatisticsAsync());
+    public async Task<ActionResult<OverviewStatisticsDto>> GetOverview([FromQuery] StatisticsQueryDto query)
+        => Ok(await _statisticsService.GetOverviewStatisticsAsync(query));
 }

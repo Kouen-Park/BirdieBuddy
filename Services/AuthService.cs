@@ -13,6 +13,8 @@ public interface IAuthService
     Task<(CurrentUserDto? User, string? Error)> RegisterAsync(RegisterDto dto);
     Task<CurrentUserDto?> ValidateLoginAsync(LoginDto dto);
     Task<CurrentUserDto?> GetByIdAsync(int id);
+    Task<(CurrentUserDto? User, string? Error)> UpdateProfileAsync(int id, UpdateProfileDto dto);
+    Task<string?> ChangePasswordAsync(int id, ChangePasswordDto dto);
 }
 
 public sealed class AuthService : IAuthService
@@ -84,6 +86,41 @@ public sealed class AuthService : IAuthService
     {
         var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
         return user is null ? null : ToDto(user);
+    }
+
+    public async Task<(CurrentUserDto? User, string? Error)> UpdateProfileAsync(int id, UpdateProfileDto dto)
+    {
+        var name = (dto.DisplayName ?? string.Empty).Trim();
+        if (name.Length is < 2 or > 80) return (null, "Display name must be between 2 and 80 characters.");
+        var user = await _context.Users.FindAsync(id);
+        if (user is null) return (null, "Account not found.");
+        user.DisplayName = name;
+        await _context.SaveChangesAsync();
+        return (ToDto(user), null);
+    }
+
+    public async Task<string?> ChangePasswordAsync(int id, ChangePasswordDto dto)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user is null) return "Account not found.";
+        byte[] salt;
+        byte[] expected;
+        try
+        {
+            salt = Convert.FromBase64String(user.PasswordSalt);
+            expected = Convert.FromBase64String(user.PasswordHash);
+        }
+        catch (FormatException) { return "Current password is incorrect."; }
+        if (!CryptographicOperations.FixedTimeEquals(HashPassword(dto.CurrentPassword ?? string.Empty, salt), expected))
+            return "Current password is incorrect.";
+        var password = dto.NewPassword ?? string.Empty;
+        if (password.Length < 8 || !Regex.IsMatch(password, "[A-Za-z]") || !Regex.IsMatch(password, "\\d"))
+            return "New password must be at least 8 characters and include a letter and a number.";
+        var newSalt = RandomNumberGenerator.GetBytes(SaltSize);
+        user.PasswordSalt = Convert.ToBase64String(newSalt);
+        user.PasswordHash = Convert.ToBase64String(HashPassword(password, newSalt));
+        await _context.SaveChangesAsync();
+        return null;
     }
 
     private static byte[] HashPassword(string password, byte[] salt) =>

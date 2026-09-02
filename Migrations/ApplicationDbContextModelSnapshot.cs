@@ -133,6 +133,11 @@ namespace BirdieBuddy.Migrations
                 b.Property<int?>("CourseTeeId").HasColumnType("integer");
                 b.Property<DateTime>("Date").HasColumnType("timestamp with time zone");
                 b.Property<string>("LegacyTee").HasColumnType("text");
+                b.Property<string>("Status").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)");
+                b.Property<DateTime>("StartedAt").HasColumnType("timestamp with time zone");
+                b.Property<DateTime?>("CompletedAt").HasColumnType("timestamp with time zone");
+                b.Property<DateTime>("UpdatedAt").HasColumnType("timestamp with time zone");
+                b.Property<int>("CurrentHole").HasColumnType("integer");
                 b.HasKey("Id");
                 b.HasIndex("CourseId");
                 b.HasIndex("CourseTeeId");

@@ -4,28 +4,50 @@ public record RoundSummaryDto(
     int Id,
     int CourseId,
     string CourseName,
-    DateTime Date,
+    DateOnly Date,
     int? CourseTeeId,
     string Tee,
     int TotalScore,
-    int ScoreToPar);
+    int ScoreToPar,
+    string Status = "Completed",
+    int HolesPlayed = 0,
+    int ExpectedHoles = 18);
 
 public record RoundDetailDto(
     int Id,
     int CourseId,
     string CourseName,
-    DateTime Date,
+    DateOnly Date,
     int? CourseTeeId,
     string Tee,
-    List<HoleDto> Holes);
+    List<HoleDto> Holes,
+    string Status = "Completed",
+    int CurrentHole = 1,
+    int ExpectedHoles = 18,
+    DateTime? UpdatedAt = null);
 
 // CourseTeeId is preferred. Tee is retained as an optional compatibility field
 // so older clients can still submit a tee name while the service resolves it.
 public record RoundCreateDto(
     int CourseId,
-    DateTime Date,
+    DateOnly Date,
     int? CourseTeeId,
     string? Tee,
     List<HoleCreateDto> Holes);
 
-public record RoundUpdateDto(DateTime Date, int? CourseTeeId, string? Tee);
+public record RoundUpdateDto(DateOnly Date, int? CourseTeeId, string? Tee);
+
+public record RoundStartDto(int CourseId, DateOnly Date, int? CourseTeeId, string? Tee);
+
+public record HoleUpsertDto(int? Par, int Score, int Putts, bool GIR, bool? FairwayHit, int Penalty);
+
+public record RoundQueryDto(
+    int? Cursor,
+    int Limit = 20,
+    int? CourseId = null,
+    DateOnly? From = null,
+    DateOnly? To = null,
+    string? Status = null,
+    int? HoleCount = null);
+
+public record RoundPageDto(List<RoundSummaryDto> Items, int? NextCursor);

@@ -32,7 +32,7 @@ courseSelect.addEventListener('change', async () => {
   selectedTee = null;
   teeSelect.innerHTML = '<option value="">Loading tees…</option>';
   teeSelect.disabled = true;
-  customTeeInput.style.display = 'none';
+  customTeeInput.hidden = true;
 
   if (!courseSelect.value) {
     teeSelect.innerHTML = '<option value="">Select a course first…</option>';
@@ -51,13 +51,13 @@ teeSelect.addEventListener('change', () => {
   const value = teeSelect.value;
   if (value === '__custom__') {
     selectedTee = null;
-    customTeeInput.style.display = 'block';
+    customTeeInput.hidden = false;
     customTeeInput.focus();
     renderScorecard(selectedCourse, null);
     return;
   }
 
-  customTeeInput.style.display = 'none';
+  customTeeInput.hidden = true;
   selectedTee = selectedCourse?.tees?.find(t => String(t.id) === value) || null;
   renderScorecard(selectedCourse, selectedTee);
 });
@@ -77,7 +77,7 @@ function populateTees(course) {
     teeSelect.innerHTML = '<option value="__custom__">Custom tee</option>';
     teeSelect.disabled = false;
     teeSelect.value = '__custom__';
-    customTeeInput.style.display = 'block';
+    customTeeInput.hidden = false;
     customTeeInput.value = 'White';
     renderScorecard(course, null);
     return;
@@ -159,7 +159,7 @@ function renderScorecard(course, tee) {
       <td>${isManualScorecard ? `<input type="number" min="3" max="6" class="par-input" value="${par}" />` : par}</td>
       <td><input type="number" min="1" class="score-input" value="${par}" /></td>
       <td><input type="number" min="0" class="putts-input" value="2" /></td>
-      <td style="text-align:center;"><input type="checkbox" class="gir-input" /></td>
+      <td class="center-cell"><input type="checkbox" class="gir-input" /></td>
       <td class="fairway-cell ${isPar3 ? 'na' : ''}">${isPar3 ? 'N/A' : fairwaySelectHtml()}</td>
       <td><input type="number" min="0" class="penalty-input" value="0" /></td>
     `;
@@ -262,7 +262,7 @@ async function saveRound() {
 }
 
 function showAlert(message) {
-  alertBox.innerHTML = `<div class="alert error">${message}</div>`;
+  alertBox.innerHTML = `<div class="alert error">${escapeHtml(message)}</div>`;
 }
 
 init();

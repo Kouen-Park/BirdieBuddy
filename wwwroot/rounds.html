@@ -16,8 +16,17 @@
           <h1>Rounds</h1>
           <p>Every round you've recorded.</p>
         </div>
-        <a href="add-round.html" class="btn btn-flag">+ Add Round</a>
+        <a href="live-round.html" class="btn btn-flag">Start round</a>
       </div>
+
+      <form class="card round-filters" id="round-filters">
+        <div class="field"><label for="filter-course">Course</label><select id="filter-course"><option value="">All courses</option></select></div>
+        <div class="field"><label for="filter-status">Status</label><select id="filter-status"><option value="">All statuses</option><option>Completed</option><option value="Draft">In progress</option><option>Abandoned</option></select></div>
+        <div class="field"><label for="filter-holes">Round length</label><select id="filter-holes"><option value="">Any length</option><option value="9">9 holes</option><option value="18">18 holes</option></select></div>
+        <div class="field"><label for="filter-from">From</label><input type="date" id="filter-from" /></div>
+        <div class="field"><label for="filter-to">To</label><input type="date" id="filter-to" /></div>
+        <button class="btn btn-secondary" type="submit">Apply filters</button>
+      </form>
 
       <div id="rounds-content">
         <p class="progress-note">Loading&hellip;</p>

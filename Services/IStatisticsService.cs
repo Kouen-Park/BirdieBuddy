@@ -5,5 +5,5 @@ namespace BirdieBuddy.Services;
 public interface IStatisticsService
 {
     Task<RoundStatisticsDto?> GetRoundStatisticsAsync(int roundId);
-    Task<OverviewStatisticsDto> GetOverviewStatisticsAsync();
+    Task<OverviewStatisticsDto> GetOverviewStatisticsAsync(StatisticsQueryDto? query = null);
 }

@@ -21,6 +21,10 @@ public class RoundsController : ControllerBase
     public async Task<ActionResult<List<RoundSummaryDto>>> GetAll()
         => Ok(await _roundService.GetAllAsync());
 
+    [HttpGet("page")]
+    public async Task<ActionResult<RoundPageDto>> GetPage([FromQuery] RoundQueryDto query)
+        => Ok(await _roundService.GetPageAsync(query));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<RoundDetailDto>> GetById(int id)
     {
@@ -32,9 +36,39 @@ public class RoundsController : ControllerBase
     public async Task<ActionResult<RoundDetailDto>> Create(RoundCreateDto dto)
     {
         var (round, error) = await _roundService.CreateAsync(dto);
-        if (error is not null) return BadRequest(new { error });
+        if (error is not null) return Problem(detail: error, statusCode: 400, title: "Round could not be created.");
         return CreatedAtAction(nameof(GetById), new { id = round!.Id }, round);
     }
+
+    [HttpPost("drafts")]
+    public async Task<ActionResult<RoundDetailDto>> StartDraft(RoundStartDto dto)
+    {
+        var (round, error) = await _roundService.StartAsync(dto);
+        if (error is not null) return Problem(detail: error, statusCode: 400, title: "Round could not be started.");
+        return CreatedAtAction(nameof(GetById), new { id = round!.Id }, round);
+    }
+
+    [HttpPut("{roundId:int}/holes/by-number/{holeNumber:int}")]
+    public async Task<ActionResult<HoleDto>> UpsertHole(int roundId, int holeNumber, HoleUpsertDto dto)
+    {
+        var (hole, error) = await _roundService.UpsertHoleAsync(roundId, holeNumber, dto);
+        if (error is not null)
+            return Problem(detail: error, statusCode: error == "Round not found." ? 404 : 400, title: "Hole could not be saved.");
+        return Ok(hole);
+    }
+
+    [HttpPost("{roundId:int}/complete")]
+    public async Task<ActionResult<RoundDetailDto>> Complete(int roundId)
+    {
+        var (round, error) = await _roundService.CompleteAsync(roundId);
+        if (error is not null)
+            return Problem(detail: error, statusCode: error == "Round not found." ? 404 : 400, title: "Round could not be completed.");
+        return Ok(round);
+    }
+
+    [HttpPost("{roundId:int}/abandon")]
+    public async Task<IActionResult> Abandon(int roundId)
+        => await _roundService.AbandonAsync(roundId) ? NoContent() : NotFound();
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, RoundUpdateDto dto)
@@ -62,7 +96,7 @@ public class RoundsController : ControllerBase
     {
         var (hole, error) = await _roundService.AddHoleAsync(roundId, dto);
         if (error is not null)
-            return error == "Round not found." ? NotFound(new { error }) : BadRequest(new { error });
+            return Problem(detail: error, statusCode: error == "Round not found." ? 404 : 400, title: "Hole could not be added.");
 
         return CreatedAtAction(nameof(GetHoles), new { roundId }, hole);
     }
@@ -72,7 +106,7 @@ public class RoundsController : ControllerBase
     {
         var (success, error) = await _roundService.UpdateHoleAsync(roundId, holeId, dto);
         if (!success)
-            return error == "Hole not found." ? NotFound(new { error }) : BadRequest(new { error });
+            return Problem(detail: error, statusCode: error == "Hole not found." ? 404 : 400, title: "Hole could not be updated.");
 
         return NoContent();
     }

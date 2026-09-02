@@ -50,6 +50,11 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(r => r.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<Round>()
+            .Property(r => r.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         modelBuilder.Entity<CourseTee>()
             .HasOne(ct => ct.Course)
             .WithMany(c => c.CourseTees)

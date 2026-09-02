@@ -12,13 +12,16 @@ public class CoursesController : ControllerBase
 {
     private readonly ICourseService _courseService;
     private readonly IGolfNzImportJob _golfNzImportJob;
+    private readonly IConfiguration _configuration;
 
     public CoursesController(
         ICourseService courseService,
-        IGolfNzImportJob golfNzImportJob)
+        IGolfNzImportJob golfNzImportJob,
+        IConfiguration configuration)
     {
         _courseService = courseService;
         _golfNzImportJob = golfNzImportJob;
+        _configuration = configuration;
     }
 
     [HttpGet]
@@ -42,7 +45,7 @@ public class CoursesController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return Problem(detail: ex.Message, statusCode: 400, title: "Course could not be created.");
         }
     }
 
@@ -58,7 +61,7 @@ public class CoursesController : ControllerBase
     {
         var (success, error) = await _courseService.DeleteAsync(id);
         if (!success)
-            return error == "Course not found." ? NotFound(new { error }) : Conflict(new { error });
+            return Problem(detail: error, statusCode: error == "Course not found." ? 404 : 409, title: "Course could not be deleted.");
 
         return NoContent();
     }
@@ -66,6 +69,7 @@ public class CoursesController : ControllerBase
     [HttpPost("import-golf-nz")]
     public ActionResult<GolfNzImportJobStatus> StartGolfNzImport()
     {
+        if (!IsImportAdministrator()) return NotFound();
         var started = _golfNzImportJob.TryStart(out var status);
         return started ? Accepted(status) : Ok(status);
     }
@@ -73,7 +77,18 @@ public class CoursesController : ControllerBase
     [HttpGet("import-golf-nz/status")]
     public ActionResult<GolfNzImportJobStatus> GetGolfNzImportStatus()
     {
+        if (!IsImportAdministrator()) return NotFound();
         return Ok(_golfNzImportJob.GetStatus());
+    }
+
+    private bool IsImportAdministrator()
+    {
+        var configured = _configuration["Administration:ImportKey"];
+        var supplied = Request.Headers["X-Admin-Key"].ToString();
+        if (string.IsNullOrWhiteSpace(configured) || string.IsNullOrWhiteSpace(supplied)) return false;
+        var configuredHash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(configured));
+        var suppliedHash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(supplied));
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(configuredHash, suppliedHash);
     }
 
 }

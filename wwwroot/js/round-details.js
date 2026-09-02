@@ -15,6 +15,7 @@ async function loadRoundDetails() {
       Api.get(`/statistics/round/${roundId}`)
     ]);
 
+    if (round.status === 'Draft') return location.replace(`/live-round.html?id=${round.id}`);
     document.getElementById('round-title').textContent = round.courseName;
     document.getElementById('round-subtitle').textContent = `${fmtDate(round.date)} · Tee: ${round.tee}`;
 
@@ -62,10 +63,31 @@ async function loadRoundDetails() {
         ${parTypeCard('Par 4', stats.par4)}
         ${parTypeCard('Par 5', stats.par5)}
       </div>
+      <div class="detail-actions">
+        <button class="btn btn-secondary" id="edit-round">Edit round details</button>
+        <button class="text-button danger-text" id="delete-round">Delete round</button>
+      </div>
     `;
+    document.getElementById('edit-round').addEventListener('click', () => editRound(round));
+    document.getElementById('delete-round').addEventListener('click', deleteRound);
   } catch (err) {
     content.innerHTML = `<div class="alert error">Couldn't load this round: ${err.message}</div>`;
   }
+}
+
+async function editRound(round) {
+  const date = prompt('Round date (YYYY-MM-DD)', round.date.slice(0, 10));
+  if (!date) return;
+  try {
+    await Api.put(`/rounds/${round.id}`, { date, courseTeeId: round.courseTeeId, tee: round.tee });
+    location.reload();
+  } catch (error) { content.insertAdjacentHTML('afterbegin', `<div class="alert error">${escapeHtml(error.message)}</div>`); }
+}
+
+async function deleteRound() {
+  if (!confirm('Delete this round permanently?')) return;
+  try { await Api.del(`/rounds/${roundId}`); location.href = '/rounds.html'; }
+  catch (error) { content.insertAdjacentHTML('afterbegin', `<div class="alert error">${escapeHtml(error.message)}</div>`); }
 }
 
 function statCard(label, value, extraClass = '') {

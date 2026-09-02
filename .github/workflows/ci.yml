@@ -1,0 +1,15 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet restore BirdieBuddy.csproj
+      - run: dotnet build BirdieBuddy.csproj --configuration Release --no-restore
+      - run: dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj --configuration Release

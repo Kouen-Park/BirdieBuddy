@@ -21,7 +21,11 @@ public record RoundStatisticsDto(
     ParTypeStatsDto Par5
 );
 
-public record TrendPointDto(int RoundId, DateTime Date, double Value);
+public record TrendPointDto(int RoundId, DateOnly Date, double Value);
+
+public record PerformanceInsightDto(string Code, string Title, string Evidence, string Recommendation, string Severity);
+
+public record StatisticsQueryDto(int? CourseId = null, DateOnly? From = null, DateOnly? To = null, int? HoleCount = null);
 
 public record OverviewStatisticsDto(
     int RoundsPlayed,
@@ -33,5 +37,8 @@ public record OverviewStatisticsDto(
     List<RoundSummaryDto> RecentRounds,
     List<TrendPointDto> ScoreTrend,
     List<TrendPointDto> GirTrend,
-    List<TrendPointDto> PuttsTrend
+    List<TrendPointDto> PuttsTrend,
+    double? RecentFiveScoreToPar = null,
+    double? RecentTenScoreToPar = null,
+    List<PerformanceInsightDto>? Insights = null
 );
