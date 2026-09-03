@@ -6,8 +6,11 @@ const params = new URLSearchParams(location.search);
 let round = null;
 let course = null;
 let currentHole = 1;
-let saving = false;
-const queueKey = 'birdiebuddy.liveQueue';
+let store = null;
+let syncTimer = null;
+let blockedNavigation = false;
+let finalizing = false;
+let holeNumbers = [];
 
 const clean = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const setStatus = (message, state = '') => { statusEl.textContent = message; statusEl.dataset.state = state; };
@@ -16,10 +19,33 @@ async function init() {
   const id = params.get('id');
   if (!id) return renderStart();
   try {
-    round = await Api.get(`/rounds/${id}`);
-    if (round.status !== 'Draft') return location.replace(`/round-details.html?id=${id}`);
-    course = await Api.get(`/courses/${round.courseId}`);
-    currentHole = Math.max(1, Math.min(round.currentHole || 1, round.expectedHoles));
+    let userId;
+    let verified = false;
+    try {
+      userId = (await Api.get('/auth/me')).id;
+      sessionStorage.setItem('birdiebuddy.liveUser', String(userId));
+      verified = true;
+    } catch (error) {
+      if (navigator.onLine) throw error;
+      userId = Number(sessionStorage.getItem('birdiebuddy.liveUser'));
+      if (!userId) throw new Error('Open this round online once before using its offline draft.');
+    }
+    store = new LiveDraftStore(localStorage, userId, Number(id));
+    if (verified) {
+      round = await Api.get(`/rounds/${id}`);
+      if (round.status !== 'Draft') {
+        if (store.pending()) throw new Error('This round is no longer a draft. Unsynced device changes are preserved; review the round before resolving them.');
+        return location.replace(`/round-details.html?id=${id}`);
+      }
+      course = await Api.get(`/courses/${round.courseId}`);
+      store.seed(round, course);
+    }
+    const cached = store.view();
+    if (!cached) throw new Error('No offline copy is available. Reconnect to open this round.');
+    round = cached.round;
+    course = cached.course;
+    holeNumbers = round.holeNumbers || Array.from({ length: round.expectedHoles }, (_, i) => i + 1);
+    currentHole = holeNumbers.includes(cached.currentHole) ? cached.currentHole : holeNumbers[0];
     renderHole();
     await flushQueue();
   } catch (error) {
@@ -41,7 +67,8 @@ async function renderStart() {
       </form>`;
     const courseSelect = document.getElementById('live-course');
     const teeSelect = document.getElementById('live-tee');
-    document.getElementById('live-date').valueAsDate = new Date();
+    const today = new Date();
+    document.getElementById('live-date').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     courseSelect.addEventListener('change', async () => {
       teeSelect.disabled = true;
       teeSelect.innerHTML = '<option>Loading…</option>';
@@ -77,34 +104,37 @@ async function startRound(event) {
 
 function holeDefinition(number) {
   const tee = course?.tees?.find(t => t.id === round.courseTeeId);
-  return tee?.holes?.find(h => h.holeNumber === number) || { holeNumber: number, par: 4, distance: 0 };
+  return tee?.holes?.find(h => h.holeNumber === number) || { holeNumber: number, par: 4, distance: 0, manual: true };
 }
 
 function renderHole() {
+  const cached = store.view();
+  if (cached) round = cached.round;
   const definition = holeDefinition(currentHole);
   const saved = round.holes.find(h => h.holeNumber === currentHole);
   const par = saved?.par || definition.par || 4;
   root.innerHTML = `
     <header class="live-round-header">
       <div><span class="eyebrow">${clean(round.courseName)}</span><h1>${clean(round.tee)}</h1></div>
-      <div class="round-progress"><strong>${round.holes.length}</strong><span>of ${round.expectedHoles} saved</span></div>
+      <div class="round-progress"><strong>${round.holes.length}</strong><span>of ${holeNumbers.length} recorded · ${store.pending()} pending</span></div>
     </header>
     <section class="yardage-page" aria-labelledby="hole-heading">
       <div class="hole-identity"><span>Hole</span><strong id="hole-heading">${currentHole}</strong><span>Par ${par}${definition.distance ? ` · ${definition.distance}m` : ''}</span></div>
       ${counter('score', 'Score', saved?.score ?? par, 1, 20)}
       ${counter('putts', 'Putts', saved?.putts ?? 2, 0, 10)}
       <div class="live-options">
+        ${definition.manual ? `<label>Par <select id="manual-par">${[3, 4, 5, 6].map(value => `<option ${value === par ? 'selected' : ''}>${value}</option>`).join('')}</select></label>` : ''}
         ${toggle('gir', 'Green in regulation', saved?.gir)}
         ${par === 3 ? '<div class="option-na">Fairway · Not applicable on par 3</div>' : segmentedFairway(saved?.fairwayHit)}
         ${counter('penalty', 'Penalty strokes', saved?.penalty ?? 0, 0, 20, true)}
       </div>
     </section>
     <div class="live-actions">
-      <button class="btn btn-secondary" id="previous-hole" ${currentHole === 1 ? 'disabled' : ''}>Previous</button>
-      <button class="btn btn-primary" id="save-hole">${currentHole === round.expectedHoles ? 'Save hole' : 'Save & next'}</button>
-      ${currentHole === round.expectedHoles ? '<button class="btn btn-flag" id="finish-round">Finish round</button>' : ''}
+      <button class="btn btn-secondary" id="previous-hole" ${currentHole === holeNumbers[0] ? 'disabled' : ''}>Previous</button>
+      <button class="btn btn-primary" id="save-hole">${currentHole === holeNumbers.at(-1) ? 'Save hole' : 'Save & next'}</button>
+      ${currentHole === holeNumbers.at(-1) ? '<button class="btn btn-flag" id="finish-round">Finish round</button>' : ''}
     </div>
-    <div class="live-secondary-actions"><button class="text-button danger-text" id="abandon-round">Abandon round</button></div>`;
+    <div class="live-secondary-actions"><button class="text-button" id="retry-sync">Retry sync</button><button class="text-button danger-text" id="abandon-round">Abandon round</button></div>`;
   bindControls();
 }
 
@@ -118,70 +148,102 @@ function bindControls() {
   root.querySelectorAll('[data-counter]').forEach(button => button.addEventListener('click', () => {
     const output = document.getElementById(`${button.dataset.counter}-value`);
     output.textContent = Math.max(Number(output.dataset.min), Math.min(Number(output.dataset.max), Number(output.textContent) + Number(button.dataset.delta)));
+    captureChange();
   }));
-  document.getElementById('previous-hole').addEventListener('click', () => { currentHole -= 1; renderHole(); });
+  root.querySelectorAll('input, select').forEach(input => input.addEventListener('change', () => {
+    captureChange();
+    if (input.id === 'manual-par' && !blockedNavigation) renderHole();
+  }));
+  document.getElementById('previous-hole').addEventListener('click', () => navigate(-1));
   document.getElementById('save-hole').addEventListener('click', () => saveHole(true));
   document.getElementById('finish-round')?.addEventListener('click', finishRound);
   document.getElementById('abandon-round').addEventListener('click', abandonRound);
+  document.getElementById('retry-sync').addEventListener('click', flushQueue);
 }
 
 function payload() {
   const definition = holeDefinition(currentHole);
   const fairway = root.querySelector('input[name="fairway"]:checked');
-  return { par: definition.par || 4, score: Number(document.getElementById('score-value').textContent), putts: Number(document.getElementById('putts-value').textContent), gir: document.getElementById('gir-input').checked, fairwayHit: fairway ? fairway.value === 'true' : null, penalty: Number(document.getElementById('penalty-value').textContent) };
+  const par = Number(document.getElementById('manual-par')?.value || definition.par || 4);
+  return { par, score: Number(document.getElementById('score-value').textContent), putts: Number(document.getElementById('putts-value').textContent), gir: document.getElementById('gir-input').checked, fairwayHit: par === 3 ? null : fairway ? fairway.value === 'true' : null, penalty: Number(document.getElementById('penalty-value').textContent) };
 }
 
-async function saveHole(advance) {
-  if (saving) return false;
-  saving = true;
-  setStatus('Saving…', 'saving');
-  const item = { roundId: round.id, holeNumber: currentHole, payload: payload() };
+function captureChange() {
   try {
-    const hole = await Api.put(`/rounds/${round.id}/holes/by-number/${currentHole}`, item.payload);
-    round.holes = round.holes.filter(h => h.holeNumber !== currentHole).concat(hole);
-    setStatus('Saved', 'saved');
-    if (advance && currentHole < round.expectedHoles) currentHole += 1;
-    renderHole();
+    store.queue(currentHole, payload());
+    blockedNavigation = false;
+    setStatus('Saved on this device — syncing…', 'saving');
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(flushQueue, 600);
     return true;
   } catch (error) {
-    if (!navigator.onLine || /fetch/i.test(error.message)) {
-      const queue = JSON.parse(localStorage.getItem(queueKey) || '[]').filter(q => !(q.roundId === item.roundId && q.holeNumber === item.holeNumber));
-      queue.push(item);
-      localStorage.setItem(queueKey, JSON.stringify(queue));
-      round.holes = round.holes.filter(h => h.holeNumber !== currentHole).concat({ holeNumber: currentHole, ...item.payload });
-      setStatus('Saved on this device — waiting for connection', 'offline');
-      if (advance && currentHole < round.expectedHoles) currentHole += 1;
-      renderHole();
-      return true;
-    } else setStatus(error.message, 'error');
+    blockedNavigation = true;
+    setStatus(error.message, 'error');
     return false;
-  } finally { saving = false; }
-}
-
-async function flushQueue() {
-  if (!navigator.onLine) return;
-  const queue = JSON.parse(localStorage.getItem(queueKey) || '[]');
-  const remaining = [];
-  for (const item of queue) {
-    try { await Api.put(`/rounds/${item.roundId}/holes/by-number/${item.holeNumber}`, item.payload); }
-    catch { remaining.push(item); }
   }
-  localStorage.setItem(queueKey, JSON.stringify(remaining));
-  if (!remaining.length && queue.length) { round = await Api.get(`/rounds/${round.id}`); setStatus('Offline changes synced', 'saved'); renderHole(); }
 }
 
-async function finishRound() {
-  if (!(await saveHole(false))) return;
-  try { await flushQueue(); const completed = await Api.post(`/rounds/${round.id}/complete`, {}); location.href = `/round-details.html?id=${completed.id}`; }
+function navigate(delta) {
+  if (blockedNavigation || finalizing) return;
+  const next = holeNumbers[holeNumbers.indexOf(currentHole) + delta];
+  if (!next) return;
+  try { store.navigate(next); currentHole = next; renderHole(); }
   catch (error) { setStatus(error.message, 'error'); }
 }
 
+function saveHole(advance) {
+  if (finalizing || !captureChange()) return;
+  if (advance) navigate(1);
+  flushQueue();
+}
+
+async function flushQueue() {
+  clearTimeout(syncTimer);
+  if (!store) return false;
+  if (!navigator.onLine) { setStatus('Offline — changes are saved on this device', 'offline'); return false; }
+  try {
+    setStatus('Syncing…', 'saving');
+    await store.flush(
+      (number, data) => Api.put(`/rounds/${store.roundId}/holes/by-number/${number}`, data),
+      async () => (await Api.get('/auth/me')).id);
+    const pending = store.pending();
+    setStatus(pending ? `${pending} holes waiting to sync` : 'All changes saved to server', pending ? 'saving' : 'saved');
+    const progress = root.querySelector('.round-progress span');
+    if (progress) progress.textContent = `of ${holeNumbers.length} recorded · ${pending} pending`;
+    const count = root.querySelector('.round-progress strong');
+    if (count) count.textContent = store.view().round.holes.length;
+    return pending === 0;
+  } catch (error) {
+    setStatus(`${error.message} Your device copy is preserved.`, 'error');
+    return false;
+  }
+}
+
+async function finishRound() {
+  if (finalizing || !captureChange()) return;
+  finalizing = true;
+  root.querySelectorAll('button, input, select').forEach(control => control.disabled = true);
+  try {
+    if (!(await flushQueue())) return;
+    const completed = await Api.post(`/rounds/${round.id}/complete`, {});
+    location.href = `/round-details.html?id=${completed.id}`;
+  } catch (error) { setStatus(error.message, 'error'); }
+  finally { finalizing = false; renderHole(); }
+}
+
 async function abandonRound() {
+  if (finalizing || blockedNavigation) return;
   if (!confirm('Abandon this round? Its saved holes will remain in your history.')) return;
-  await Api.post(`/rounds/${round.id}/abandon`, {});
-  location.href = '/rounds.html';
+  finalizing = true;
+  root.querySelectorAll('button, input, select').forEach(control => control.disabled = true);
+  try {
+    if (!(await flushQueue())) return;
+    await Api.post(`/rounds/${round.id}/abandon`, {});
+    location.href = '/rounds.html';
+  } catch (error) { setStatus(error.message, 'error'); }
+  finally { finalizing = false; renderHole(); }
 }
 
 window.addEventListener('online', flushQueue);
-window.addEventListener('beforeunload', event => { if (saving) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload', event => { if (blockedNavigation || store?.pending()) { event.preventDefault(); event.returnValue = ''; } });
 init();

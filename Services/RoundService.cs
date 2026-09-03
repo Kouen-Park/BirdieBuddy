@@ -7,6 +7,7 @@ namespace BirdieBuddy.Services;
 
 public class RoundService : IRoundService
 {
+    public const string ConflictMessage = "This round changed in another session. Review the server record before retrying.";
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUser _currentUser;
 
@@ -23,7 +24,7 @@ public class RoundService : IRoundService
         var rounds = await _context.Rounds
             .Where(r => r.UserId == CurrentUserId)
             .Include(r => r.Course)
-            .Include(r => r.CourseTee)
+            .Include(r => r.CourseTee).ThenInclude(t => t!.CourseHoles)
             .Include(r => r.Holes)
             .OrderByDescending(r => r.Date)
             .ToListAsync();
@@ -49,7 +50,7 @@ public class RoundService : IRoundService
 
         var items = await rounds
             .Include(r => r.Course)
-            .Include(r => r.CourseTee)
+            .Include(r => r.CourseTee).ThenInclude(t => t!.CourseHoles)
             .Include(r => r.Holes)
             .OrderByDescending(r => r.Id)
             .Take(limit + 1)
@@ -62,6 +63,7 @@ public class RoundService : IRoundService
 
     public async Task<(RoundDetailDto? Round, string? Error)> StartAsync(RoundStartDto dto)
     {
+        if (dto.Date == default) return (null, "A round date is required.");
         var course = await _context.Courses
             .Where(c => c.UserId == null || c.UserId == CurrentUserId)
             .Include(c => c.CourseTees).ThenInclude(t => t.CourseHoles)
@@ -81,7 +83,7 @@ public class RoundService : IRoundService
             Status = RoundStatus.Draft,
             StartedAt = now,
             UpdatedAt = now,
-            CurrentHole = 1
+            CurrentHole = ExpectedHoleNumbers(tee).First()
         };
         _context.Rounds.Add(round);
         await _context.SaveChangesAsync();
@@ -97,13 +99,23 @@ public class RoundService : IRoundService
             .FirstOrDefaultAsync(r => r.Id == roundId && r.UserId == CurrentUserId);
         if (round is null) return (null, "Round not found.");
         if (round.Status != RoundStatus.Draft) return (null, "Only a draft round can be edited live.");
-        if (holeNumber is < 1 or > 18) return (null, "Hole number must be between 1 and 18.");
+        var expectedNumbers = ExpectedHoleNumbers(round.CourseTee);
+        if (!expectedNumbers.Contains(holeNumber)) return (null, "This hole does not belong to the selected layout.");
 
         var par = round.CourseTee?.CourseHoles.FirstOrDefault(h => h.HoleNumber == holeNumber)?.Par ?? dto.Par;
         var validation = ValidateHole(holeNumber, par, dto.Score, dto.Putts, dto.FairwayHit, dto.Penalty);
         if (validation is not null) return (null, validation);
 
         var hole = round.Holes.FirstOrDefault(h => h.HoleNumber == holeNumber);
+        if (dto.CheckExpected)
+        {
+            var actual = hole is null ? null : MapToHoleDto(hole);
+            // An acknowledged request may be retried after its response was lost.
+            if (actual is not null && actual.Par == par && actual.Score == dto.Score && actual.Putts == dto.Putts &&
+                actual.GIR == dto.GIR && actual.FairwayHit == dto.FairwayHit && actual.Penalty == dto.Penalty)
+                return (actual, null);
+            if (actual != dto.ExpectedHole) return (null, ConflictMessage);
+        }
         if (hole is null)
         {
             hole = new Hole { RoundId = roundId, HoleNumber = holeNumber };
@@ -115,7 +127,8 @@ public class RoundService : IRoundService
         hole.GIR = dto.GIR;
         hole.FairwayHit = par == 3 ? null : dto.FairwayHit;
         hole.Penalty = dto.Penalty;
-        round.CurrentHole = Math.Min(ExpectedHoles(round), holeNumber + 1);
+        // Saving does not imply navigation. Reopening returns to the last edited hole.
+        round.CurrentHole = holeNumber;
         round.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return (MapToHoleDto(hole), null);
@@ -124,13 +137,19 @@ public class RoundService : IRoundService
     public async Task<(RoundDetailDto? Round, string? Error)> CompleteAsync(int roundId)
     {
         var round = await _context.Rounds
-            .Include(r => r.Holes).Include(r => r.Course).Include(r => r.CourseTee)
+            .Include(r => r.Holes).Include(r => r.Course)
+            .Include(r => r.CourseTee).ThenInclude(t => t!.CourseHoles)
             .FirstOrDefaultAsync(r => r.Id == roundId && r.UserId == CurrentUserId);
         if (round is null) return (null, "Round not found.");
         if (round.Status != RoundStatus.Draft) return (null, "Only a draft round can be completed.");
-        var expected = ExpectedHoles(round);
-        if (round.Holes.Count != expected || round.Holes.Select(h => h.HoleNumber).Distinct().Count() != expected)
-            return (null, $"Record all {expected} holes before completing the round.");
+        var expected = ExpectedHoleNumbers(round.CourseTee);
+        if (round.Holes.Count != expected.Count || !expected.SequenceEqual(round.Holes.Select(h => h.HoleNumber).OrderBy(n => n)))
+            return (null, $"Record all {expected.Count} holes in the selected layout before completing the round.");
+        foreach (var hole in round.Holes)
+        {
+            var validation = ValidateHole(hole.HoleNumber, hole.Par, hole.Score, hole.Putts, hole.FairwayHit, hole.Penalty);
+            if (validation is not null) return (null, validation);
+        }
         round.Status = RoundStatus.Completed;
         round.CompletedAt = DateTime.UtcNow;
         round.UpdatedAt = round.CompletedAt.Value;
@@ -153,7 +172,7 @@ public class RoundService : IRoundService
         var round = await _context.Rounds
             .Where(r => r.Id == id && r.UserId == CurrentUserId)
             .Include(r => r.Course)
-            .Include(r => r.CourseTee)
+            .Include(r => r.CourseTee).ThenInclude(t => t!.CourseHoles)
             .Include(r => r.Holes)
             .FirstOrDefaultAsync();
 
@@ -163,6 +182,8 @@ public class RoundService : IRoundService
     public async Task<(RoundDetailDto? Round, string? Error)> CreateAsync(
         RoundCreateDto dto)
     {
+        if (dto.Date == default) return (null, "A round date is required.");
+        if (dto.Holes is null || dto.Holes.Count == 0) return (null, "Record the scorecard before completing a round.");
         var course = await _context.Courses
             .Where(c => c.UserId == null || c.UserId == CurrentUserId)
             .Include(c => c.CourseTees)
@@ -183,6 +204,10 @@ public class RoundService : IRoundService
         if (dto.Holes.Select(h => h.HoleNumber).Distinct().Count() != dto.Holes.Count)
             return (null, "Duplicate hole numbers submitted.");
 
+        var expected = ExpectedHoleNumbers(tee);
+        if (!expected.SequenceEqual(dto.Holes.Select(h => h.HoleNumber).OrderBy(n => n)))
+            return (null, $"Record all {expected.Count} holes in the selected layout before completing the round.");
+
         var holes = new List<Hole>();
         foreach (var holeDto in dto.Holes)
         {
@@ -193,22 +218,13 @@ public class RoundService : IRoundService
                 ? mappedCourseHole
                 : null;
             var par = courseHole?.Par ?? holeDto.Par;
-            if (par is null || par.Value < 3 || par.Value > 6)
-                return (null, $"Par for hole {holeDto.HoleNumber} must be between 3 and 6.");
-
-            if (holeDto.Score <= 0)
-                return (null, $"Score for hole {holeDto.HoleNumber} must be greater than 0.");
-            if (holeDto.Putts < 0)
-                return (null, $"Putts for hole {holeDto.HoleNumber} cannot be negative.");
-            if (holeDto.Penalty < 0)
-                return (null, $"Penalty for hole {holeDto.HoleNumber} cannot be negative.");
-            if (par.Value == 3 && holeDto.FairwayHit.HasValue)
-                return (null, $"Hole {holeDto.HoleNumber} is a par 3 - fairway hit does not apply.");
+            var validation = ValidateHole(holeDto.HoleNumber, par, holeDto.Score, holeDto.Putts, holeDto.FairwayHit, holeDto.Penalty);
+            if (validation is not null) return (null, validation);
 
             holes.Add(new Hole
             {
                 HoleNumber = holeDto.HoleNumber,
-                Par = par.Value,
+                Par = par!.Value,
                 Score = holeDto.Score,
                 Putts = holeDto.Putts,
                 GIR = holeDto.GIR,
@@ -245,16 +261,21 @@ public class RoundService : IRoundService
                 .ThenInclude(c => c!.CourseTees)
             .FirstOrDefaultAsync();
 
-        if (round is null || round.Course is null)
+        if (round is null || round.Course is null || round.Status == RoundStatus.Abandoned || dto.Date == default)
             return false;
 
         var (tee, teeError) = ResolveTee(round.Course, dto.CourseTeeId, dto.Tee, true);
         if (teeError is not null)
             return false;
 
+        // Reassigning a tee without migrating the score snapshots would corrupt history.
+        if (round.CourseTeeId != tee!.Id && await _context.Holes.AnyAsync(h => h.RoundId == id))
+            return false;
+
         round.CourseTee = tee;
         round.LegacyTee = IsCustomTee(tee!) ? tee!.Name : null;
         round.Date = ToUtc(dto.Date);
+        round.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return true;
     }
@@ -294,27 +315,23 @@ public class RoundService : IRoundService
             .FirstOrDefaultAsync(r => r.Id == roundId && r.UserId == CurrentUserId);
 
         if (round is null) return (null, "Round not found.");
+        if (round.Status != RoundStatus.Draft) return (null, "Only a draft round can accept new holes.");
         if (round.Holes.Any(h => h.HoleNumber == dto.HoleNumber))
             return (null, $"Hole {dto.HoleNumber} already exists for this round.");
-        if (dto.HoleNumber < 1 || dto.HoleNumber > 18)
-            return (null, $"Hole {dto.HoleNumber} must be between 1 and 18.");
+        if (!ExpectedHoleNumbers(round.CourseTee).Contains(dto.HoleNumber))
+            return (null, "This hole does not belong to the selected layout.");
 
         var courseHole = round.CourseTee?.CourseHoles
             .FirstOrDefault(h => h.HoleNumber == dto.HoleNumber);
         var par = courseHole?.Par ?? dto.Par;
-        if (par is null || par.Value < 3 || par.Value > 6)
-            return (null, $"Par for hole {dto.HoleNumber} must be between 3 and 6.");
-        if (dto.Score <= 0) return (null, "Score must be greater than 0.");
-        if (dto.Putts < 0) return (null, "Putts cannot be negative.");
-        if (dto.Penalty < 0) return (null, "Penalty cannot be negative.");
-        if (par.Value == 3 && dto.FairwayHit.HasValue)
-            return (null, "Fairway hit does not apply to par 3 holes.");
+        var validation = ValidateHole(dto.HoleNumber, par, dto.Score, dto.Putts, dto.FairwayHit, dto.Penalty);
+        if (validation is not null) return (null, validation);
 
         var hole = new Hole
         {
             RoundId = roundId,
             HoleNumber = dto.HoleNumber,
-            Par = par.Value,
+            Par = par!.Value,
             Score = dto.Score,
             Putts = dto.Putts,
             GIR = dto.GIR,
@@ -323,6 +340,8 @@ public class RoundService : IRoundService
         };
 
         _context.Holes.Add(hole);
+        round.CurrentHole = dto.HoleNumber;
+        round.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return (MapToHoleDto(hole), null);
     }
@@ -333,15 +352,17 @@ public class RoundService : IRoundService
             .Include(h => h.Round)
             .FirstOrDefaultAsync(h => h.Id == holeId && h.RoundId == roundId && h.Round!.UserId == CurrentUserId);
         if (hole is null) return (false, "Hole not found.");
-        if (dto.Score <= 0) return (false, "Score must be greater than 0.");
-        if (dto.Putts < 0) return (false, "Putts cannot be negative.");
-        if (dto.Penalty < 0) return (false, "Penalty cannot be negative.");
+        if (hole.Round!.Status != RoundStatus.Completed)
+            return (false, "Use live entry for draft rounds; abandoned rounds cannot be edited.");
+        var validation = ValidateHole(hole.HoleNumber, hole.Par, dto.Score, dto.Putts, dto.FairwayHit, dto.Penalty);
+        if (validation is not null) return (false, validation);
 
         hole.Score = dto.Score;
         hole.Putts = dto.Putts;
         hole.GIR = dto.GIR;
         hole.FairwayHit = dto.FairwayHit;
         hole.Penalty = dto.Penalty;
+        hole.Round.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return (true, null);
     }
@@ -432,10 +453,15 @@ public class RoundService : IRoundService
         return new RoundDetailDto(
             round.Id, round.CourseId, round.Course?.Name ?? "", DateOnly.FromDateTime(round.Date),
             round.CourseTeeId, TeeLabel(round), holes, round.Status.ToString(),
-            round.CurrentHole, ExpectedHoles(round), round.UpdatedAt);
+            round.CurrentHole, ExpectedHoles(round), round.UpdatedAt, ExpectedHoleNumbers(round.CourseTee));
     }
 
-    private static int ExpectedHoles(Round round) => round.CourseTee?.NineHoles == true ? 9 : 18;
+    private static List<int> ExpectedHoleNumbers(CourseTee? tee) =>
+        tee?.CourseHoles.Count > 0
+            ? tee.CourseHoles.Select(h => h.HoleNumber).Distinct().OrderBy(n => n).ToList()
+            : Enumerable.Range(1, tee?.NineHoles == true ? 9 : 18).ToList();
+
+    private static int ExpectedHoles(Round round) => ExpectedHoleNumbers(round.CourseTee).Count;
 
     private static string? ValidateHole(int holeNumber, int? par, int score, int putts, bool? fairwayHit, int penalty)
     {
@@ -443,6 +469,7 @@ public class RoundService : IRoundService
         if (score is < 1 or > 20) return $"Score for hole {holeNumber} must be between 1 and 20.";
         if (putts is < 0 or > 10) return $"Putts for hole {holeNumber} must be between 0 and 10.";
         if (penalty is < 0 or > 20) return $"Penalty for hole {holeNumber} must be between 0 and 20.";
+        if (putts + penalty > score) return $"Putts and penalties for hole {holeNumber} cannot exceed the score.";
         if (par == 3 && fairwayHit.HasValue) return $"Hole {holeNumber} is a par 3 - fairway hit does not apply.";
         return null;
     }

@@ -36,6 +36,7 @@ Run the tests with:
 
 ```bash
 dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj
+node --test tests/browser/*.test.cjs
 ```
 
 ## Render deployment
@@ -61,6 +62,18 @@ GET  /api/rounds/page?status=Draft&limit=20&courseId=&from=&to=&holeCount=
 ```
 
 The hole upsert route is idempotent for `(roundId, holeNumber)`. A round is one of `Draft`, `Completed`, or `Abandoned`; only drafts accept live hole updates. The legacy all-at-once `POST /api/rounds` remains supported.
+
+### Live entry reliability
+
+- Each input change is stored locally immediately, then synchronized after a 600ms debounce. Previous/next navigation preserves pending changes.
+- Device drafts are scoped by user and round. Requests are serialized; newer edits made during a save remain queued. Web Locks coordinate synchronization between supporting browser tabs.
+- Replays check the signed-in user and submit `checkExpected: true` with the previously read `expectedHole` (or `null` for an unrecorded hole). Conflicts return HTTP 409 and keep local data instead of overwriting the server.
+- EF uses the existing `UpdatedAt` column as a concurrency token. This mapping change does not require a new database column. Clients that omit `checkExpected` keep the older unconditional update contract; migrate them to the guarded contract.
+- Completion and abandonment require an empty successfully synchronized outbox. Actual tee hole numbers are used, including back-nine layouts numbered 10–18; completed scorecards must match the whole selected layout.
+- The old unscoped `birdiebuddy.liveQueue` is deliberately not replayed or deleted because its owning account is unknown. Preserve it for manual recovery if it contains unsynced historical input.
+- Local drafts are not a backup or a full offline-installable application. The page/assets must already be available, and reopening an offline draft uses the current tab's previously verified identity. Conflict comparison/resolution UI and PostgreSQL-backed race testing remain follow-up work.
+
+For a manual UI smoke check without real accounts or a database, run `node tests/browser/smoke-server.cjs` and open `http://127.0.0.1:4173/live-round.html?id=1`. This fixture uses in-memory mock API responses; it does not replace the real HTTP/backend tests.
 
 ## Golf NZ catalogue administration
 

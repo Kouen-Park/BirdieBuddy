@@ -55,6 +55,8 @@ public class ApplicationDbContext : DbContext
             .HasConversion<string>()
             .HasMaxLength(20);
 
+        modelBuilder.Entity<Round>().Property(r => r.UpdatedAt).IsConcurrencyToken();
+
         modelBuilder.Entity<CourseTee>()
             .HasOne(ct => ct.Course)
             .WithMany(c => c.CourseTees)

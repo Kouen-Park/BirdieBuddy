@@ -24,7 +24,8 @@ public record RoundDetailDto(
     string Status = "Completed",
     int CurrentHole = 1,
     int ExpectedHoles = 18,
-    DateTime? UpdatedAt = null);
+    DateTime? UpdatedAt = null,
+    List<int>? HoleNumbers = null);
 
 // CourseTeeId is preferred. Tee is retained as an optional compatibility field
 // so older clients can still submit a tee name while the service resolves it.
@@ -39,7 +40,8 @@ public record RoundUpdateDto(DateOnly Date, int? CourseTeeId, string? Tee);
 
 public record RoundStartDto(int CourseId, DateOnly Date, int? CourseTeeId, string? Tee);
 
-public record HoleUpsertDto(int? Par, int Score, int Putts, bool GIR, bool? FairwayHit, int Penalty);
+public record HoleUpsertDto(int? Par, int Score, int Putts, bool GIR, bool? FairwayHit, int Penalty,
+    bool CheckExpected = false, HoleDto? ExpectedHole = null);
 
 public record RoundQueryDto(
     int? Cursor,

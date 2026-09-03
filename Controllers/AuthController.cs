@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace BirdieBuddy.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/auth")]
 public class AuthController : ControllerBase
 {

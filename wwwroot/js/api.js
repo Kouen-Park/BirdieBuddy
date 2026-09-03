@@ -24,9 +24,9 @@ const Api = {
         const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
         if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) headers['X-CSRF-TOKEN'] = await this.getCsrfToken();
         const res = await fetch(this.base + path, {
+            ...options,
             credentials: 'same-origin',
-            headers,
-            ...options
+            headers
         });
 
         if (res.status === 401 && !['/login.html', '/signup.html'].includes(window.location.pathname)) {
@@ -37,15 +37,15 @@ const Api = {
 
         if (res.status === 204) return null;
 
-        const isJson = res.headers
-            .get('content-type')
-            ?.includes('application/json');
+        const isJson = /\bjson\b/i.test(res.headers.get('content-type') || '');
 
-        const body = isJson ? await res.json() : null;
+        const body = isJson ? await res.json().catch(() => null) : null;
 
         if (!res.ok) {
             const message = body?.detail || body?.error || body?.title || `Request failed (${res.status})`;
-            throw new Error(message);
+            const error = new Error(message);
+            error.status = res.status;
+            throw error;
         }
 
         return body;
@@ -177,11 +177,12 @@ async function hydrateCurrentUser() {
 
     try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
-        if (!response.ok) {
+        if (response.status === 401) {
             const returnUrl = `${window.location.pathname}${window.location.search}`;
             window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
             return;
         }
+        if (!response.ok) throw new Error('Account connection unavailable.');
 
         const user = await response.json();
         const name = document.getElementById('current-user-name');
@@ -191,11 +192,14 @@ async function hydrateCurrentUser() {
         logoutButton?.addEventListener('click', async () => {
             logoutButton.disabled = true;
             await Api.post('/auth/logout', {});
+            sessionStorage.removeItem('birdiebuddy.liveUser');
+            Api.csrfToken = null;
             window.location.replace('/login.html');
         });
     } catch {
-        const returnUrl = `${window.location.pathname}${window.location.search}`;
-        window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
+        // A network outage is not a sign-out. Keep the offline scorecard open.
+        const name = document.getElementById('current-user-name');
+        if (name) name.textContent = 'Connection unavailable';
     }
 }
 

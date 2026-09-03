@@ -5,6 +5,8 @@ using BirdieBuddy.Controllers;
 using BirdieBuddy.Data;
 using BirdieBuddy.Infrastructure;
 using BirdieBuddy.Services;
+using BirdieBuddy.DTOs;
+using BirdieBuddy.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
@@ -13,6 +15,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.FileProviders;
 using Xunit;
 
 namespace BirdieBuddy.Tests;
@@ -36,8 +39,20 @@ public sealed class AuthFlowTests
         var databaseName = Guid.NewGuid().ToString();
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(databaseName));
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+        builder.Services.AddScoped<IRoundService, RoundService>();
 
         await using var app = builder.Build();
+        app.UseBirdieBuddySecurityHeaders();
+        var projectDirectory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (projectDirectory is not null && !File.Exists(Path.Combine(projectDirectory.FullName, "BirdieBuddy.csproj")))
+            projectDirectory = projectDirectory.Parent;
+        Assert.NotNull(projectDirectory);
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(Path.Combine(projectDirectory.FullName, "wwwroot"))
+        });
         app.UseRouting();
         app.UseRateLimiter();
         app.UseAuthentication();
@@ -48,9 +63,14 @@ public sealed class AuthFlowTests
         {
             using var handler = new HttpClientHandler { CookieContainer = new CookieContainer(), AllowAutoRedirect = false };
             using var client = new HttpClient(handler) { BaseAddress = new Uri(app.Urls.Single()) };
+            var page = await client.GetAsync("/login.html");
+            Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+            Assert.Contains("frame-ancestors 'none'", page.Headers.GetValues("Content-Security-Policy").Single());
+            Assert.Equal("nosniff", page.Headers.GetValues("X-Content-Type-Options").Single());
             var csrf = await client.GetAsync("/api/security/csrf");
             Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
             Assert.Equal("application/json", csrf.Content.Headers.ContentType?.MediaType);
+            Assert.True(csrf.Headers.CacheControl?.NoStore);
             var token = (await csrf.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token").GetString();
             Assert.False(string.IsNullOrWhiteSpace(token));
 
@@ -77,6 +97,30 @@ public sealed class AuthFlowTests
             Assert.Equal(HttpStatusCode.OK, login.StatusCode);
             var me = await client.GetFromJsonAsync<JsonElement>("/api/auth/me");
             Assert.Equal(credentials.email, me.GetProperty("email").GetString());
+
+            int courseId;
+            int teeId;
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var tee = new CourseTee { Name = "Test", NineHoles = true,
+                    CourseHoles = Enumerable.Range(1, 9).Select(n => new CourseHole { HoleNumber = n, Par = 4 }).ToList() };
+                var course = new Course { Name = "HTTP test course", CourseTees = new() { tee } };
+                db.Courses.Add(course);
+                await db.SaveChangesAsync();
+                courseId = course.Id;
+                teeId = tee.Id;
+            }
+            await RefreshToken(client);
+            var started = await client.PostAsJsonAsync("/api/rounds/drafts", new RoundStartDto(courseId, new(2026, 9, 3), teeId, null));
+            Assert.Equal(HttpStatusCode.Created, started.StatusCode);
+            var draft = await started.Content.ReadFromJsonAsync<RoundDetailDto>();
+            var route = $"/api/rounds/{draft!.Id}/holes/by-number/1";
+            var saved = await client.PutAsJsonAsync(route, new HoleUpsertDto(4, 4, 2, true, true, 0, true));
+            Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+            var stale = await client.PutAsJsonAsync(route, new HoleUpsertDto(4, 5, 2, false, false, 0, true));
+            Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+            Assert.Equal("application/problem+json", stale.Content.Headers.ContentType?.MediaType);
         }
         finally { await app.StopAsync(); }
     }

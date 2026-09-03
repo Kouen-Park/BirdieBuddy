@@ -53,7 +53,7 @@ public class RoundsController : ControllerBase
     {
         var (hole, error) = await _roundService.UpsertHoleAsync(roundId, holeNumber, dto);
         if (error is not null)
-            return Problem(detail: error, statusCode: error == "Round not found." ? 404 : 400, title: "Hole could not be saved.");
+            return Problem(detail: error, statusCode: error == RoundService.ConflictMessage ? 409 : error == "Round not found." ? 404 : 400, title: "Hole could not be saved.");
         return Ok(hole);
     }
 
