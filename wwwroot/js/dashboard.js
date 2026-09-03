@@ -27,29 +27,30 @@ async function loadDashboard() {
     el.innerHTML = `
       ${draft ? `<a class="resume-round" href="/live-round.html?id=${draft.id}"><span><small>Round in progress</small><strong>${escapeHtml(draft.courseName)}</strong><em>${draft.holesPlayed} of ${draft.expectedHoles} holes saved</em></span><b>Resume →</b></a>` : `<a class="resume-round new-round" href="/live-round.html"><span><small>Ready for the first tee?</small><strong>Start a live round</strong><em>Your scorecard saves after every hole.</em></span><b>Start →</b></a>`}
       <div class="stat-grid">
-        ${statCard('Average Score', data.averageScore.toFixed(1))}
-        ${statCard('Best Score', data.bestScore, 'accent')}
-        ${statCard('Average Putts', data.averagePutts.toFixed(1))}
+        ${statCard('Completed rounds', data.roundsPlayed)}
+        ${statCard('Putts per hole', data.averagePuttsPerHole.toFixed(2))}
         ${statCard('GIR %', pct(data.averageGirPercentage))}
         ${statCard('Fairway %', data.averageFairwayPercentage != null ? pct(data.averageFairwayPercentage) : '—')}
       </div>
+      ${roundLengthSummary(data)}
 
       <div class="section-title">Performance trends</div>
       <div class="chart-grid">
-        <div class="card chart-card"><h3>Score trend</h3><canvas id="scoreChart" height="160"></canvas></div>
+        <div class="card chart-card"><h3>Score to par per hole</h3><p>All completed rounds · 0 = par</p><canvas id="scoreChart" height="160" role="img" aria-label="Score to par per hole over time"></canvas></div>
         <div class="card chart-card"><h3>GIR % trend</h3><canvas id="girChart" height="160"></canvas></div>
-        <div class="card chart-card"><h3>Putting trend</h3><canvas id="puttsChart" height="160"></canvas></div>
+        <div class="card chart-card"><h3>Putts per hole</h3><p>All completed rounds · strokes per hole</p><canvas id="puttsChart" height="160" role="img" aria-label="Putts per hole over time"></canvas></div>
       </div>
 
       <div class="section-title">Recent rounds</div>
       <div class="card list-card">
         <table>
-          <thead><tr><th>Date</th><th class="text-cell">Course</th><th>Score</th><th>To Par</th></tr></thead>
+          <thead><tr><th>Date</th><th class="text-cell">Course</th><th>Holes</th><th>Score</th><th>To Par</th></tr></thead>
           <tbody>
             ${data.recentRounds.map(r => `
               <tr class="clickable" data-round-id="${r.id}" tabindex="0">
                 <td>${fmtDate(r.date)}</td>
                 <td class="text-cell">${escapeHtml(r.courseName)}</td>
+                <td>${r.holesPlayed}</td>
                 <td>${r.totalScore}</td>
                 <td><span class="pill ${toParPillClass(r.scoreToPar)}">${toPar(r.scoreToPar)}</span></td>
               </tr>`).join('')}
@@ -68,7 +69,7 @@ async function loadDashboard() {
     });
     drawCharts(data);
   } catch (err) {
-    el.innerHTML = `<div class="alert error">Couldn't load the dashboard: ${err.message}</div>`;
+    el.innerHTML = `<div class="alert error">Couldn't load the dashboard: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -81,7 +82,7 @@ function statCard(label, value, extraClass = '') {
 }
 
 function drawCharts(data) {
-  const labels = data.scoreTrend.map(p => fmtDate(p.date));
+  const labels = data.scoreToParPerHoleTrend.map(p => fmtDate(p.date));
 
   const baseOptions = {
     responsive: true,
@@ -94,7 +95,7 @@ function drawCharts(data) {
 
   new Chart(document.getElementById('scoreChart'), {
     type: 'line',
-    data: { labels, datasets: [{ data: data.scoreTrend.map(p => p.value), borderColor: CHART_COLORS.fairway, backgroundColor: CHART_COLORS.fairway, tension: 0.3, pointRadius: 3 }] },
+    data: { labels, datasets: [{ label: 'Score to par per hole', data: data.scoreToParPerHoleTrend.map(p => p.value), borderColor: CHART_COLORS.fairway, backgroundColor: CHART_COLORS.fairway, tension: 0.3, pointRadius: 3 }] },
     options: baseOptions
   });
 
@@ -106,7 +107,7 @@ function drawCharts(data) {
 
   new Chart(document.getElementById('puttsChart'), {
     type: 'line',
-    data: { labels, datasets: [{ data: data.puttsTrend.map(p => p.value), borderColor: '#5a7a92', backgroundColor: '#5a7a92', tension: 0.3, pointRadius: 3 }] },
+    data: { labels, datasets: [{ label: 'Putts per hole', data: data.puttsPerHoleTrend.map(p => p.value), borderColor: '#5a7a92', backgroundColor: '#5a7a92', tension: 0.3, pointRadius: 3 }] },
     options: baseOptions
   });
 }

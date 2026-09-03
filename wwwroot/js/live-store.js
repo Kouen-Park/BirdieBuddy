@@ -50,6 +50,27 @@ class LiveDraftStore {
 
   pending() { return Object.keys(this.read()?.edits || {}).length; }
 
+  async resolve(number, revision, serverRound, choice) {
+    if (!['server', 'local'].includes(choice)) throw new Error('Choose a conflict resolution.');
+    await this.inFlight?.catch(() => {});
+    const apply = async () => {
+      const state = this.read();
+      if (serverRound.id !== this.roundId || serverRound.status !== 'Draft')
+        throw new Error('This round is no longer editable. Your device copy is preserved.');
+      if (state?.edits[number]?.revision !== revision)
+        throw new Error('Your local input changed. Close this comparison and review it again.');
+      const serverHole = serverRound.holes.find(h => h.holeNumber === number) || null;
+      state.round = serverRound;
+      if (choice === 'server') delete state.edits[number];
+      else {
+        state.edits[number].expected = serverHole;
+        state.edits[number].revision = globalThis.crypto.randomUUID();
+      }
+      this.write(state);
+    };
+    return globalThis.navigator?.locks ? globalThis.navigator.locks.request(this.key, apply) : apply();
+  }
+
   view() {
     const state = this.read();
     if (!state) return null;
@@ -69,7 +90,9 @@ class LiveDraftStore {
         if (Number(await verifyUser()) !== this.userId)
           throw new Error('Your signed-in account changed. Sign back in to the original account to sync this draft.');
         const [number, sent] = entry;
-        const saved = await send(Number(number), { ...sent.payload, checkExpected: true, expectedHole: sent.expected });
+        let saved;
+        try { saved = await send(Number(number), { ...sent.payload, checkExpected: true, expectedHole: sent.expected }); }
+        catch (error) { if (error.status === 409) error.holeNumber = Number(number); throw error; }
         const latest = this.read();
         if (!latest) return;
         latest.round.holes = latest.round.holes.filter(h => h.holeNumber !== Number(number)).concat(saved);

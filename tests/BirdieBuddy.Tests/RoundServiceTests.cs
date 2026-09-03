@@ -168,6 +168,26 @@ public sealed class RoundServiceTests
         return new ApplicationDbContext(options);
     }
 
+    [Fact]
+    public async Task CompletedHoleEditsRejectStaleSnapshotsAndOtherOwners()
+    {
+        await using var db = CreateDatabase();
+        var (course, tee) = SeedCourse(db, nineHoles: true);
+        var service = new RoundService(db, new TestUser(7));
+        var (draft, _) = await service.StartAsync(new(course.Id, new(2026, 9, 3), tee.Id, null));
+        foreach (var n in Enumerable.Range(1, 9))
+            await service.UpsertHoleAsync(draft!.Id, n, new(4, 4, 2, true, true, 0));
+        var completed = (await service.CompleteAsync(draft!.Id)).Round!;
+        var original = completed.Holes[0];
+        var change = new HoleUpdateDto(5, 2, false, false, 0, true, original);
+        Assert.False((await new RoundService(db, new TestUser(8)).UpdateHoleAsync(draft.Id, original.Id, change)).Success);
+        Assert.True((await service.UpdateHoleAsync(draft.Id, original.Id, change)).Success);
+        Assert.True((await service.UpdateHoleAsync(draft.Id, original.Id, change)).Success);
+        Assert.Equal(RoundService.ConflictMessage,
+            (await service.UpdateHoleAsync(draft.Id, original.Id, change with { Score = 6 })).Error);
+        Assert.Equal(5, (await service.GetByIdAsync(draft.Id))!.Holes[0].Score);
+    }
+
     private static (Course Course, CourseTee Tee) SeedCourse(ApplicationDbContext db, bool nineHoles = false)
     {
         var tee = new CourseTee

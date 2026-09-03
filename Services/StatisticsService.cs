@@ -32,8 +32,10 @@ public class StatisticsService : IStatisticsService
     {
         query ??= new StatisticsQueryDto();
         var roundQuery = _context.Rounds
-            .Where(r => r.UserId == CurrentUserId && r.Status == RoundStatus.Completed);
+            .AsNoTracking()
+            .Where(r => r.UserId == CurrentUserId && r.Status == RoundStatus.Completed && r.Holes.Any());
         if (query.CourseId.HasValue) roundQuery = roundQuery.Where(r => r.CourseId == query.CourseId.Value);
+        if (query.CourseTeeId.HasValue) roundQuery = roundQuery.Where(r => r.CourseTeeId == query.CourseTeeId.Value);
         if (query.From.HasValue)
         {
             var from = DateTime.SpecifyKind(query.From.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
@@ -41,8 +43,8 @@ public class StatisticsService : IStatisticsService
         }
         if (query.To.HasValue)
         {
-            var to = DateTime.SpecifyKind(query.To.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            roundQuery = roundQuery.Where(r => r.Date < to);
+            var to = DateTime.SpecifyKind(query.To.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+            roundQuery = roundQuery.Where(r => r.Date <= to);
         }
         if (query.HoleCount.HasValue) roundQuery = roundQuery.Where(r => r.Holes.Count == query.HoleCount.Value);
 
@@ -51,6 +53,7 @@ public class StatisticsService : IStatisticsService
             .Include(r => r.Course)
             .Include(r => r.CourseTee)
             .OrderByDescending(r => r.Date)
+            .ThenByDescending(r => r.Id)
             .ToListAsync();
 
         if (rounds.Count == 0)
@@ -58,7 +61,7 @@ public class StatisticsService : IStatisticsService
             return new OverviewStatisticsDto(0, 0, 0, 0, 0, null,
                 new List<RoundSummaryDto>(), new List<TrendPointDto>(),
                 new List<TrendPointDto>(), new List<TrendPointDto>(), null, null,
-                new List<PerformanceInsightDto>());
+                BuildInsights(new()), 0, new(), new(), new());
         }
 
         var roundStats = rounds
@@ -68,11 +71,11 @@ public class StatisticsService : IStatisticsService
         double avgScore = roundStats.Average(x => x.Stats.TotalScore);
         int bestScore = roundStats.Min(x => x.Stats.TotalScore);
         double avgPutts = roundStats.Average(x => x.Stats.TotalPutts);
-        double avgGir = roundStats.Average(x => x.Stats.GirPercentage);
-
-        var fairwayEligibleRounds = roundStats.Where(x => x.Stats.FairwayPercentage.HasValue).ToList();
-        double? avgFairway = fairwayEligibleRounds.Count > 0
-            ? fairwayEligibleRounds.Average(x => x.Stats.FairwayPercentage!.Value)
+        var allHoles = rounds.SelectMany(r => r.Holes).ToList();
+        double avgGir = 100.0 * allHoles.Count(h => h.GIR) / allHoles.Count;
+        var fairwayHoles = allHoles.Where(h => h.Par != 3 && h.FairwayHit.HasValue).ToList();
+        double? avgFairway = fairwayHoles.Count > 0
+            ? 100.0 * fairwayHoles.Count(h => h.FairwayHit == true) / fairwayHoles.Count
             : null;
 
         var recent = roundStats
@@ -80,21 +83,32 @@ public class StatisticsService : IStatisticsService
             .Select(x => new RoundSummaryDto(
                 x.Round.Id, x.Round.CourseId, x.Round.Course?.Name ?? "", DateOnly.FromDateTime(x.Round.Date),
                 x.Round.CourseTeeId, x.Round.CourseTee?.Name ?? x.Round.LegacyTee ?? "Unknown",
-                x.Stats.TotalScore, x.Stats.ScoreToPar))
+                x.Stats.TotalScore, x.Stats.ScoreToPar, "Completed", x.Round.Holes.Count, x.Round.Holes.Count))
             .ToList();
 
-        var chronological = roundStats.OrderBy(x => x.Round.Date).ToList();
+        var chronological = roundStats.OrderBy(x => x.Round.Date).ThenBy(x => x.Round.Id).ToList();
         var scoreTrend = chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date), x.Stats.TotalScore)).ToList();
         var girTrend = chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date), x.Stats.GirPercentage)).ToList();
         var puttsTrend = chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date), x.Stats.TotalPutts)).ToList();
 
-        var recentFive = roundStats.Take(5).Average(x => x.Stats.ScoreToPar);
-        var recentTen = roundStats.Take(10).Average(x => x.Stats.ScoreToPar);
+        var groups = roundStats.GroupBy(x => x.Round.Holes.Count).OrderBy(g => g.Key)
+            .Select(g => new RoundLengthStatisticsDto(g.Key, g.Count(), g.Average(x => x.Stats.TotalScore),
+                g.Min(x => x.Stats.TotalScore), g.Average(x => x.Stats.ScoreToPar),
+                g.Count() >= 5 ? g.Take(5).Average(x => x.Stats.ScoreToPar) : null,
+                g.Count() >= 10 ? g.Take(10).Average(x => x.Stats.ScoreToPar) : null)).ToList();
+        // Legacy totals stay available for older clients, but never publish mixed-length moving averages.
+        double? recentFive = groups.Count == 1 ? groups[0].RecentFiveScoreToPar : null;
+        double? recentTen = groups.Count == 1 ? groups[0].RecentTenScoreToPar : null;
         var insights = BuildInsights(roundStats);
 
         return new OverviewStatisticsDto(
             roundStats.Count, avgScore, bestScore, avgPutts, avgGir, avgFairway,
-            recent, scoreTrend, girTrend, puttsTrend, recentFive, recentTen, insights);
+            recent, scoreTrend, girTrend, puttsTrend, recentFive, recentTen, insights,
+            allHoles.Average(h => h.Putts), groups,
+            chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date),
+                (double)x.Stats.ScoreToPar / x.Round.Holes.Count)).ToList(),
+            chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date),
+                x.Stats.AveragePuttsPerHole)).ToList());
     }
 
     private static RoundStatisticsDto BuildRoundStatistics(int roundId, List<Hole> holes)
@@ -107,12 +121,12 @@ public class StatisticsService : IStatisticsService
         int holeCount = holes.Count;
         double avgPutts = holeCount > 0 ? (double)totalPutts / holeCount : 0;
 
-        // GIR% is measured against the full 18-hole round, per spec, not just holes recorded so far.
+        // Rates use recorded holes; fairways explicitly exclude historical par-3 values.
         int girHoles = holes.Count(h => h.GIR);
         double girPct = holeCount > 0 ? (double)girHoles / holeCount * 100 : 0;
 
         // Fairway% only ever considers holes where FairwayHit is applicable (i.e. not par 3s).
-        var fairwayEligible = holes.Where(h => h.FairwayHit.HasValue).ToList();
+        var fairwayEligible = holes.Where(h => h.Par != 3 && h.FairwayHit.HasValue).ToList();
         double? fairwayPct = fairwayEligible.Count > 0
             ? (double)fairwayEligible.Count(h => h.FairwayHit == true) / fairwayEligible.Count * 100
             : null;
@@ -163,14 +177,15 @@ public class StatisticsService : IStatisticsService
                 $"Your last {recent.Count} rounds average {avgPuttsPerHole:F2} putts per hole.",
                 "Spend one practice block on pace control from 6–12 metres, then finish with short putts.", "high"));
 
-        var avgGir = recent.Average(x => x.Stats.GirPercentage);
+        var recentHoles = recent.SelectMany(x => x.Round.Holes).ToList();
+        var avgGir = 100.0 * recentHoles.Count(h => h.GIR) / recentHoles.Count;
         if (avgGir < 40)
             insights.Add(new("approach", "Create more birdie chances",
                 $"Greens in regulation are {avgGir:F0}% across your last {recent.Count} rounds.",
                 "Track one stock approach distance and practise hitting the centre of the green from there.", "medium"));
 
         var penalties = recent.Sum(x => x.Stats.TotalPenalties);
-        if (penalties > recent.Count)
+        if (18.0 * penalties / recentHoles.Count > 1)
             insights.Add(new("penalties", "Protect the scorecard",
                 $"You recorded {penalties} penalty strokes in your last {recent.Count} rounds.",
                 "Choose a conservative target on trouble holes and commit to a club that keeps the ball in play.", "high"));

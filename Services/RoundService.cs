@@ -357,6 +357,15 @@ public class RoundService : IRoundService
         var validation = ValidateHole(hole.HoleNumber, hole.Par, dto.Score, dto.Putts, dto.FairwayHit, dto.Penalty);
         if (validation is not null) return (false, validation);
 
+        if (dto.CheckExpected && dto.ExpectedHole != new HoleDto(hole.Id, hole.HoleNumber, hole.Par,
+            hole.Score, hole.Putts, hole.GIR, hole.FairwayHit, hole.Penalty))
+        {
+            if (hole.Score == dto.Score && hole.Putts == dto.Putts && hole.GIR == dto.GIR &&
+                hole.FairwayHit == dto.FairwayHit && hole.Penalty == dto.Penalty)
+                return (true, null);
+            return (false, ConflictMessage);
+        }
+
         hole.Score = dto.Score;
         hole.Putts = dto.Putts;
         hole.GIR = dto.GIR;

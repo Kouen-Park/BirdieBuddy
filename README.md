@@ -14,6 +14,22 @@ Birdie Buddy is a mobile-first golf round tracker and performance notebook. It u
 
 ## Local development
 
+### Draft conflict recovery and PostgreSQL CI
+
+- A live draft that receives HTTP 409 now shows **Review save conflict**. The comparison lists device and server values. **Use server record** discards only the reviewed local hole revision; **Keep my input & retry** preserves the input and retries with the reviewed server snapshot as its precondition. A further server change can conflict again. Cancel keeps the queue untouched.
+- Account identity is checked before reviewing and applying a choice. A changed local revision or a terminal server round blocks resolution without discarding data. This comparison currently covers live drafts, not the completed-round editor or recovery of drafts already completed/abandoned elsewhere.
+- CI has a separate `postgres-integration` job with a disposable PostgreSQL 16 service. It applies the real migrations and checks lifecycle, ownership, duplicate-hole constraints, stale snapshots, transaction rollback on concurrent updates, and a statistics query. Configure this job as a required check in repository branch protection separately; this workflow does not change repository settings or Render's deployment policy.
+- To run the PostgreSQL test locally, create a disposable database whose name starts with `birdiebuddy_test_` on localhost and set `BIRDIEBUDDY_TEST_POSTGRES` to its Npgsql connection string. Then run `dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj --filter Category=PostgreSQL`. Never use a production connection. Tests apply migrations and insert test records; they do not delete or recreate databases. Without the environment variable the PostgreSQL test is explicitly skipped; other tests still run.
+
+### Record editing and comparable statistics
+
+- Completed scorecards provide an **Edit** action per hole for score, putts, GIR, fairway and penalties. Par/course snapshots remain unchanged. The web editor sends the original hole snapshot; stale edits return HTTP 409 and retain the form input. Legacy clients that omit `checkExpected` retain their existing update behavior.
+- Dashboard and Statistics compare raw scores only within the same recorded round length. The summary shows average/best scores, average score to par and last-5/last-10 score-to-par averages. Each recent window requires that many rounds of the same length; these are recent-window summaries, not a full rolling-average chart.
+- Overall GIR and fairway rates are hole-weighted; historical par-3 fairways are excluded. Putting and score trend charts use per-hole units. Empty completed rounds are excluded. Historical partial completed rounds remain visible under their actual recorded length.
+- Statistics supports course, tee, 9/18-hole and inclusive date filters. Course/tee filtering does not change the independent individual-round selector below it.
+- Existing total-based API fields remain for compatibility; new clients should use `byRoundLength`, `averagePuttsPerHole`, `scoreToParPerHoleTrend` and `puttsPerHoleTrend` for comparisons. No schema migration is required for these changes.
+- The local browser fixture also provides `/round-details.html?id=2` for manual hole-edit testing. It is an in-memory mock, not a PostgreSQL end-to-end test.
+
 Requirements: .NET 8 SDK and PostgreSQL.
 
 The default development connection is:

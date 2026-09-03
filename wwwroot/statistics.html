@@ -18,6 +18,7 @@
 
       <form class="card stats-filters" id="stats-filters">
         <div class="field"><label for="stats-course">Course</label><select id="stats-course"><option value="">All courses</option></select></div>
+        <div class="field"><label for="stats-tee">Tee</label><select id="stats-tee" disabled><option value="">All tees</option></select></div>
         <div class="field"><label for="stats-holes">Round length</label><select id="stats-holes"><option value="">All rounds</option><option value="9">9 holes</option><option value="18">18 holes</option></select></div>
         <div class="field"><label for="stats-from">From</label><input id="stats-from" type="date" /></div>
         <div class="field"><label for="stats-to">To</label><input id="stats-to" type="date" /></div>
@@ -41,6 +42,7 @@
   </div>
 
   <script src="/js/api.js"></script>
+  <script src="/js/statistics-view.js"></script>
   <script src="/js/statistics.js"></script>
 </body>
 </html>

@@ -856,6 +856,11 @@ tr.clickable:hover {
 
 /* ---------- Forms ---------- */
 
+.hole-editor { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
+.hole-editor::backdrop { background: rgb(16 37 35 / 65%); }
+.hole-editor input[type='number'] { font: inherit; min-height: 44px; padding: 10px; width: 100%; box-sizing: border-box; }
+table caption { text-align: left; padding: 16px; }
+
 .form-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

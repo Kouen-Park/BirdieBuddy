@@ -14,6 +14,46 @@ function setup(storage = new MemoryStorage(), userId = 7, roundId = 10) {
   return store;
 }
 const owner = async () => 7;
+
+test('choosing server drops only the reviewed revision and preserves other pending holes', async () => {
+  const store = setup(); store.queue(1, score(6)); store.queue(2, score(5));
+  const remote = { ...store.read().round, holes: [{ holeNumber: 1, ...score(4) }] };
+  await store.resolve(1, store.read().edits[1].revision, remote, 'server');
+  assert.equal(store.pending(), 1);
+  assert.equal(store.view().round.holes.find(h => h.holeNumber === 1).score, 4);
+  assert.equal(store.view().round.holes.find(h => h.holeNumber === 2).score, 5);
+});
+
+test('keeping local input rebases guarded retry onto reviewed server snapshot', async () => {
+  const store = setup(); store.queue(1, score(6));
+  const remote = { ...store.read().round, holes: [{ holeNumber: 1, ...score(4) }] };
+  await store.resolve(1, store.read().edits[1].revision, remote, 'local');
+  await store.flush(async (number, data) => {
+    assert.equal(data.score, 6); assert.equal(data.expectedHole.score, 4); assert.equal(data.checkExpected, true);
+    return savedHole(number, data);
+  }, owner);
+  assert.equal(store.pending(), 0);
+});
+
+test('resolution refuses newer local input, wrong round and terminal state', async () => {
+  const store = setup(); store.queue(1, score(6));
+  const revision = store.read().edits[1].revision;
+  store.queue(1, score(7));
+  await assert.rejects(store.resolve(1, revision, store.read().round, 'server'), /local input changed/);
+  await assert.rejects(store.resolve(1, store.read().edits[1].revision, { ...store.read().round, status: 'Completed' }, 'server'), /no longer editable/);
+  await assert.rejects(store.resolve(1, store.read().edits[1].revision, { ...store.read().round, id: 999 }, 'server'));
+  assert.equal(store.view().round.holes[0].score, 7);
+});
+
+test('conflict identifies the affected hole and failed resolution storage keeps local input', async () => {
+  const store = setup(); store.queue(2, score(6));
+  const failure = Object.assign(new Error('Conflict'), { status: 409 });
+  await assert.rejects(store.flush(async () => { throw failure; }, owner), error => error.holeNumber === 2);
+  const state = store.read();
+  store.storage.setItem = () => { throw new Error('Full'); };
+  await assert.rejects(store.resolve(2, state.edits[2].revision, state.round, 'server'), /storage is unavailable/);
+  assert.equal(store.pending(), 1);
+});
 const savedHole = (number, data) => ({ id: number, holeNumber: number, par: data.par, score: data.score,
   putts: data.putts, gir: data.gir, fairwayHit: data.fairwayHit, penalty: data.penalty });
 

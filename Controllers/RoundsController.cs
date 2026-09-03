@@ -106,7 +106,7 @@ public class RoundsController : ControllerBase
     {
         var (success, error) = await _roundService.UpdateHoleAsync(roundId, holeId, dto);
         if (!success)
-            return Problem(detail: error, statusCode: error == "Hole not found." ? 404 : 400, title: "Hole could not be updated.");
+            return Problem(detail: error, statusCode: error == RoundService.ConflictMessage ? 409 : error == "Hole not found." ? 404 : 400, title: "Hole could not be updated.");
 
         return NoContent();
     }

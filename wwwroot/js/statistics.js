@@ -4,10 +4,12 @@ const overviewEl = document.getElementById('overview-content');
 const roundSelect = document.getElementById('round-select');
 const breakdownEl = document.getElementById('round-breakdown');
 const statsFilters = document.getElementById('stats-filters');
+let overviewRequest = 0;
+let teeRequest = 0;
 
 function overviewPath() {
   const params = new URLSearchParams();
-  [['courseId', 'stats-course'], ['holeCount', 'stats-holes'], ['from', 'stats-from'], ['to', 'stats-to']].forEach(([key, id]) => {
+  [['courseId', 'stats-course'], ['courseTeeId', 'stats-tee'], ['holeCount', 'stats-holes'], ['from', 'stats-from'], ['to', 'stats-to']].forEach(([key, id]) => {
     const value = document.getElementById(id).value;
     if (value) params.set(key, value);
   });
@@ -15,14 +17,16 @@ function overviewPath() {
 }
 
 async function loadOverview() {
+  const request = ++overviewRequest;
   try {
     const data = await Api.get(overviewPath());
+    if (request !== overviewRequest) return;
 
     if (data.roundsPlayed === 0) {
       overviewEl.innerHTML = `
         <div class="card empty-state">
-          <h3>No rounds recorded yet.</h3>
-          <p>Play your first round and let Birdie Buddy track your game.</p>
+          <h3>No completed rounds match these filters.</h3>
+          <p>Try a different course, round length or date range.</p>
           <a href="/live-round.html" class="btn btn-flag space-top">Start your first round</a>
         </div>`;
       return;
@@ -31,14 +35,16 @@ async function loadOverview() {
     overviewEl.innerHTML = `
       <div class="stat-grid">
         <div class="card stat-card"><div class="stat-label">Rounds Played</div><div class="stat-value">${data.roundsPlayed}</div></div>
-        <div class="card stat-card"><div class="stat-label">Average Score</div><div class="stat-value">${data.averageScore.toFixed(1)}</div></div>
-        <div class="card stat-card"><div class="stat-label">Best Score</div><div class="stat-value accent">${data.bestScore}</div></div>
+        <div class="card stat-card"><div class="stat-label">Putts per hole</div><div class="stat-value">${data.averagePuttsPerHole.toFixed(2)}</div></div>
         <div class="card stat-card"><div class="stat-label">Average GIR %</div><div class="stat-value">${pct(data.averageGirPercentage)}</div></div>
         <div class="card stat-card"><div class="stat-label">Average Fairway %</div><div class="stat-value">${data.averageFairwayPercentage != null ? pct(data.averageFairwayPercentage) : '—'}</div></div>
       </div>
+      ${roundLengthSummary(data)}
+      <p class="progress-note">GIR uses all recorded holes. Fairway percentage excludes par 3s and unrecorded fairways. Rates are weighted by holes, not by rounds.</p>
     `;
   } catch (err) {
-    overviewEl.innerHTML = `<div class="alert error">Couldn't load statistics: ${err.message}</div>`;
+    if (request !== overviewRequest) return;
+    overviewEl.innerHTML = `<div class="alert error">Couldn't load statistics: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -58,7 +64,7 @@ async function loadRoundOptions() {
     roundSelect.addEventListener('change', () => loadRoundBreakdown(roundSelect.value));
     loadRoundBreakdown(roundSelect.value);
   } catch (err) {
-    breakdownEl.innerHTML = `<div class="alert error">Couldn't load rounds: ${err.message}</div>`;
+    breakdownEl.innerHTML = `<div class="alert error">Couldn't load rounds: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -84,7 +90,7 @@ async function loadRoundBreakdown(roundId) {
       </div>
     `;
   } catch (err) {
-    breakdownEl.innerHTML = `<div class="alert error">Couldn't load this round's statistics: ${err.message}</div>`;
+    breakdownEl.innerHTML = `<div class="alert error">Couldn't load this round's statistics: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -101,4 +107,20 @@ statsFilters.addEventListener('submit', event => { event.preventDefault(); loadO
 Api.get('/courses').then(courses => {
   const select = document.getElementById('stats-course');
   courses.forEach(course => { const option = document.createElement('option'); option.value = course.id; option.textContent = course.name; select.append(option); });
+}).catch(error => { overviewEl.textContent = `Could not load course filters: ${error.message}`; });
+
+document.getElementById('stats-course').addEventListener('change', async event => {
+  const request = ++teeRequest;
+  const select = document.getElementById('stats-tee');
+  select.replaceChildren(new Option('All tees', ''));
+  select.disabled = true;
+  if (!event.target.value) return;
+  try {
+    const course = await Api.get(`/courses/${event.target.value}`);
+    if (request !== teeRequest) return;
+    course.tees.forEach(tee => select.append(new Option(tee.name, tee.id)));
+    select.disabled = false;
+  } catch (error) {
+    if (request === teeRequest) overviewEl.textContent = `Could not load tees: ${error.message}`;
+  }
 });

@@ -11,6 +11,8 @@ let syncTimer = null;
 let blockedNavigation = false;
 let finalizing = false;
 let holeNumbers = [];
+let conflictHole = null;
+let reviewingConflict = false;
 
 const clean = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const setStatus = (message, state = '') => { statusEl.textContent = message; statusEl.dataset.state = state; };
@@ -134,7 +136,7 @@ function renderHole() {
       <button class="btn btn-primary" id="save-hole">${currentHole === holeNumbers.at(-1) ? 'Save hole' : 'Save & next'}</button>
       ${currentHole === holeNumbers.at(-1) ? '<button class="btn btn-flag" id="finish-round">Finish round</button>' : ''}
     </div>
-    <div class="live-secondary-actions"><button class="text-button" id="retry-sync">Retry sync</button><button class="text-button danger-text" id="abandon-round">Abandon round</button></div>`;
+    <div class="live-secondary-actions"><button class="text-button" id="retry-sync">Retry sync</button><button class="btn btn-secondary" id="review-conflict" ${conflictHole == null ? 'hidden' : ''}>Review save conflict</button><button class="text-button danger-text" id="abandon-round">Abandon round</button></div>`;
   bindControls();
 }
 
@@ -159,6 +161,7 @@ function bindControls() {
   document.getElementById('finish-round')?.addEventListener('click', finishRound);
   document.getElementById('abandon-round').addEventListener('click', abandonRound);
   document.getElementById('retry-sync').addEventListener('click', flushQueue);
+  document.getElementById('review-conflict').addEventListener('click', reviewConflict);
 }
 
 function payload() {
@@ -171,6 +174,7 @@ function payload() {
 function captureChange() {
   try {
     store.queue(currentHole, payload());
+    updateProgress();
     blockedNavigation = false;
     setStatus('Saved on this device — syncing…', 'saving');
     clearTimeout(syncTimer);
@@ -199,7 +203,7 @@ function saveHole(advance) {
 
 async function flushQueue() {
   clearTimeout(syncTimer);
-  if (!store) return false;
+  if (!store || reviewingConflict) return false;
   if (!navigator.onLine) { setStatus('Offline — changes are saved on this device', 'offline'); return false; }
   try {
     setStatus('Syncing…', 'saving');
@@ -207,16 +211,81 @@ async function flushQueue() {
       (number, data) => Api.put(`/rounds/${store.roundId}/holes/by-number/${number}`, data),
       async () => (await Api.get('/auth/me')).id);
     const pending = store.pending();
+    conflictHole = null;
+    const reviewButton = document.getElementById('review-conflict');
+    if (reviewButton) reviewButton.hidden = true;
     setStatus(pending ? `${pending} holes waiting to sync` : 'All changes saved to server', pending ? 'saving' : 'saved');
-    const progress = root.querySelector('.round-progress span');
-    if (progress) progress.textContent = `of ${holeNumbers.length} recorded · ${pending} pending`;
-    const count = root.querySelector('.round-progress strong');
-    if (count) count.textContent = store.view().round.holes.length;
+    updateProgress();
     return pending === 0;
   } catch (error) {
+    updateProgress();
+    if (error.status === 409 && error.holeNumber != null) {
+      conflictHole = error.holeNumber;
+      const reviewButton = document.getElementById('review-conflict');
+      if (reviewButton) reviewButton.hidden = false;
+    }
     setStatus(`${error.message} Your device copy is preserved.`, 'error');
     return false;
   }
+}
+
+function updateProgress() {
+  if (!store) return;
+  const progress = root.querySelector('.round-progress span');
+  if (progress) progress.textContent = `of ${holeNumbers.length} recorded · ${store.pending()} pending`;
+  const count = root.querySelector('.round-progress strong');
+  if (count) count.textContent = store.view().round.holes.length;
+}
+
+async function reviewConflict() {
+  if (reviewingConflict || conflictHole == null || finalizing || blockedNavigation) return;
+  reviewingConflict = true;
+  clearTimeout(syncTimer);
+  let dialog;
+  try {
+    await store.inFlight?.catch(() => {});
+    if (Number((await Api.get('/auth/me')).id) !== store.userId) throw new Error('Sign in to the original account before resolving this draft.');
+    const serverRound = await Api.get(`/rounds/${store.roundId}`);
+    if (serverRound.status !== 'Draft') throw new Error('This round is no longer editable. Your device copy is preserved.');
+    const number = conflictHole;
+    const edit = store.read().edits[number];
+    if (!edit) { conflictHole = null; return; }
+    const remote = serverRound.holes.find(h => h.holeNumber === number);
+    const fields = [['par', 'Par'], ['score', 'Score'], ['putts', 'Putts'], ['gir', 'GIR'], ['fairwayHit', 'Fairway'], ['penalty', 'Penalties']];
+    const value = v => v == null ? 'Not recorded / N/A' : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : clean(v);
+    dialog = document.createElement('dialog');
+    dialog.className = 'hole-editor card';
+    dialog.setAttribute('aria-labelledby', 'conflict-title');
+    dialog.innerHTML = `<h2 id="conflict-title">Resolve hole ${number}</h2>
+      <p>Compare before choosing. Other pending holes are kept. Keeping your input retries against this server snapshot; a newer server edit will conflict again.</p>
+      <table><caption>Hole ${number} save conflict</caption><thead><tr><th>Field</th><th>This device</th><th>Server</th></tr></thead><tbody>${fields.map(([key, label]) => `<tr><th scope="row">${label}</th><td>${value(edit.payload[key])}</td><td>${remote ? value(remote[key]) : 'No saved hole'}</td></tr>`).join('')}</tbody></table>
+      <p role="alert" class="alert error" hidden></p><div class="detail-actions"><button class="btn btn-secondary" data-choice="server">Use server record</button><button class="btn btn-primary" data-choice="local">Keep my input & retry</button><button class="btn btn-secondary" data-choice="cancel">Cancel</button></div>`;
+    document.body.append(dialog);
+    await new Promise(resolve => {
+      let busy = false;
+      dialog.addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+      dialog.addEventListener('close', resolve, { once: true });
+      dialog.querySelectorAll('[data-choice]').forEach(button => button.addEventListener('click', async () => {
+        if (busy) return;
+        if (button.dataset.choice === 'cancel') return dialog.close();
+        busy = true;
+        dialog.querySelectorAll('button').forEach(b => b.disabled = true);
+        try {
+          if (Number((await Api.get('/auth/me')).id) !== store.userId) throw new Error('Your signed-in account changed. Nothing was discarded.');
+          await store.resolve(number, edit.revision, serverRound, button.dataset.choice);
+          conflictHole = null;
+          renderHole();
+          dialog.close();
+        } catch (error) {
+          const alert = dialog.querySelector('[role="alert"]');
+          alert.textContent = error.message; alert.hidden = false;
+        } finally { busy = false; dialog.querySelectorAll('button').forEach(b => b.disabled = false); }
+      }));
+      dialog.showModal();
+    });
+  } catch (error) { setStatus(error.message, 'error'); }
+  finally { dialog?.remove(); reviewingConflict = false; }
+  if (conflictHole == null) await flushQueue();
 }
 
 async function finishRound() {

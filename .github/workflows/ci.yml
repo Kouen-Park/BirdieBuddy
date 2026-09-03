@@ -3,6 +3,28 @@ on:
   push:
   pull_request:
 jobs:
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: birdiebuddy_test_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: local-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d birdiebuddy_test_ci"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      BIRDIEBUDDY_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Database=birdiebuddy_test_ci;Username=postgres;Password=local-test-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj --configuration Release --filter Category=PostgreSQL
   build-and-test:
     runs-on: ubuntu-latest
     steps:
