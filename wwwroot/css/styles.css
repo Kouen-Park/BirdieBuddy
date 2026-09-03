@@ -163,17 +163,18 @@ body {
 }
 
 html {
-    overflow-x: hidden;
+    overflow-x: clip;
     scroll-behavior: smooth;
 }
 
 body {
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
-body.menu-open {
+html.menu-open, body.menu-open {
     overflow: hidden;
+    overscroll-behavior: none;
 }
 
 ::selection {
@@ -208,10 +209,15 @@ select:focus-visible {
 }
 
 .sidebar {
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    width: 258px;
     height: 100vh;
-    overflow: hidden;
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
     background:
         radial-gradient(circle at 16% 0%, rgba(71, 157, 137, 0.2), transparent 31%),
         linear-gradient(165deg, var(--night) 0%, #0a1c1b 100%);
@@ -219,12 +225,12 @@ select:focus-visible {
     padding: 30px 18px 24px;
     display: flex;
     flex-direction: column;
-    gap: 38px;
+    gap: 24px;
     z-index: 1000;
 }
 
 .sidebar::after {
-    content: '';
+    content: none;
     position: absolute;
     left: 18px;
     right: 18px;
@@ -333,7 +339,7 @@ select:focus-visible {
 }
 
 .sidebar-footer {
-    position: absolute;
+    position: static;
     right: 28px;
     bottom: 25px;
     left: 28px;
@@ -344,6 +350,7 @@ select:focus-visible {
 }
 
 .main {
+    grid-column: 2;
     width: 100%;
     min-width: 0;
     max-width: 1220px;
@@ -1073,6 +1080,7 @@ table caption { text-align: left; padding: 16px; }
 /* ---------- Responsive: Tablet ---------- */
 
 @media (max-width: 1040px) {
+    .sidebar { width: 224px; }
     .app-shell {
         grid-template-columns: 224px minmax(0, 1fr);
     }
@@ -1094,7 +1102,8 @@ table caption { text-align: left; padding: 16px; }
 @media (max-width: 900px) {
     .app-shell {
         display: block;
-        min-height: calc(100vh - 64px);
+        min-height: 100vh;
+        padding-top: 64px;
     }
 
     .main {
@@ -1104,6 +1113,12 @@ table caption { text-align: left; padding: 16px; }
 
     .mobile-header {
         display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 64px;
+        z-index: 100;
     }
 
     .sidebar {
@@ -1112,7 +1127,8 @@ table caption { text-align: left; padding: 16px; }
         left: 0;
         width: min(294px, 88vw);
         height: 100dvh;
-        min-height: 100vh;
+        min-height: 0;
+        padding-bottom: max(24px, env(safe-area-inset-bottom));
         padding: 30px 18px 24px;
         z-index: 1100;
         box-shadow: 12px 0 30px rgba(4, 27, 23, 0.24);
@@ -1499,13 +1515,6 @@ tr.clickable {
     -webkit-tap-highlight-color: transparent;
 }
 
-@media (max-width: 900px) {
-    body.menu-open .mobile-header {
-        position: relative;
-        z-index: 100;
-    }
-}
-
 @media (min-width: 601px) and (max-width: 1100px) {
     th,
     td {
@@ -1532,12 +1541,29 @@ tr.clickable {
 /* ---------- Account and authentication ---------- */
 
 .sidebar-account {
-    position: absolute;
+    position: static;
+    margin-top: auto;
+    flex-shrink: 0;
     right: 28px;
     bottom: 93px;
     left: 28px;
     padding: 14px 0;
     border-top: 1px solid rgba(220, 239, 232, 0.12);
+}
+
+.sidebar > * { flex-shrink: 0; }
+.practice-item > div { min-width: 0; overflow-wrap: anywhere; }
+.practice-drill, .practice-evidence { margin-top: 16px; }
+.practice-drill summary, .practice-evidence summary { min-height: 44px; padding: 10px 0; cursor: pointer; }
+.practice-evidence a { display: inline-block; padding: 10px 0; min-height: 44px; }
+.menu-button, .sidebar-close { min-width: 44px; min-height: 44px; }
+.hole-editor table { min-width: 0; width: 100%; table-layout: fixed; }
+.hole-editor th, .hole-editor td { padding: 10px 6px; overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+    .sidebar { visibility: hidden; }
+    .sidebar.mobile-open { visibility: visible; }
+    .sidebar .brand { padding-right: 44px; }
+    .field input, .field select, .auth-form input { font-size: 16px; min-width: 0; max-width: 100%; }
 }
 
 .account-label {

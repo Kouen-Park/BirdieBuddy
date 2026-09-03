@@ -159,41 +159,5 @@ public class StatisticsService : IStatisticsService
 
     private static List<PerformanceInsightDto> BuildInsights(
         List<(Round Round, RoundStatisticsDto Stats)> rounds)
-    {
-        if (rounds.Count < 3)
-            return new List<PerformanceInsightDto>
-            {
-                new("more-data", "Build your baseline",
-                    $"{rounds.Count} of 3 completed rounds recorded.",
-                    $"Complete {3 - rounds.Count} more round{(3 - rounds.Count == 1 ? "" : "s")} to unlock practice insights.", "info")
-            };
-
-        var recent = rounds.Take(5).ToList();
-        var insights = new List<PerformanceInsightDto>();
-        var avgPuttsPerHole = recent.Sum(x => x.Stats.TotalPutts) /
-            (double)Math.Max(1, recent.Sum(x => x.Round.Holes.Count));
-        if (avgPuttsPerHole >= 2)
-            insights.Add(new("putting", "Make putting the next focus",
-                $"Your last {recent.Count} rounds average {avgPuttsPerHole:F2} putts per hole.",
-                "Spend one practice block on pace control from 6–12 metres, then finish with short putts.", "high"));
-
-        var recentHoles = recent.SelectMany(x => x.Round.Holes).ToList();
-        var avgGir = 100.0 * recentHoles.Count(h => h.GIR) / recentHoles.Count;
-        if (avgGir < 40)
-            insights.Add(new("approach", "Create more birdie chances",
-                $"Greens in regulation are {avgGir:F0}% across your last {recent.Count} rounds.",
-                "Track one stock approach distance and practise hitting the centre of the green from there.", "medium"));
-
-        var penalties = recent.Sum(x => x.Stats.TotalPenalties);
-        if (18.0 * penalties / recentHoles.Count > 1)
-            insights.Add(new("penalties", "Protect the scorecard",
-                $"You recorded {penalties} penalty strokes in your last {recent.Count} rounds.",
-                "Choose a conservative target on trouble holes and commit to a club that keeps the ball in play.", "high"));
-
-        if (insights.Count == 0)
-            insights.Add(new("steady", "Your fundamentals are balanced",
-                $"No single tracked metric is outside the coaching thresholds over your last {recent.Count} rounds.",
-                "Keep recording rounds and work on the weakest par type shown in Statistics.", "info"));
-        return insights;
-    }
+        => PracticeInsights.Build(rounds.Select(x => x.Round));
 }

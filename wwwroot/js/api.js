@@ -259,8 +259,18 @@ function setupMobileNavigation() {
     }
 
     nav.dataset.mobileSetup = 'true';
+    const mobileQuery = window.matchMedia('(max-width: 900px)');
+    const main = document.querySelector('main');
+    let isOpen = false;
+
+    function updateNavigationState() {
+        nav.inert = mobileQuery.matches && !isOpen;
+        if (main) main.inert = mobileQuery.matches && isOpen;
+    }
 
     function openMenu() {
+        if (!mobileQuery.matches || isOpen) return;
+        isOpen = true;
         nav.classList.add('mobile-open');
         overlay.classList.add('active');
 
@@ -269,9 +279,14 @@ function setupMobileNavigation() {
         }
 
         document.body.classList.add('menu-open');
+        document.documentElement.classList.add('menu-open');
+        updateNavigationState();
+        closeButton?.focus({ preventScroll: true });
     }
 
     function closeMenu() {
+        const wasOpen = isOpen;
+        isOpen = false;
         nav.classList.remove('mobile-open');
         overlay.classList.remove('active');
 
@@ -280,6 +295,11 @@ function setupMobileNavigation() {
         }
 
         document.body.classList.remove('menu-open');
+        document.documentElement.classList.remove('menu-open');
+        if (wasOpen) {
+            menuButton?.focus({ preventScroll: true });
+        }
+        updateNavigationState();
     }
 
     if (menuButton) {
@@ -292,6 +312,20 @@ function setupMobileNavigation() {
 
     overlay.addEventListener('click', closeMenu);
 
+    nav.addEventListener('keydown', event => {
+        if (!isOpen) return;
+        if (event.key === 'Escape') { event.preventDefault(); closeMenu(); }
+        if (event.key !== 'Tab') return;
+        const focusable = [...nav.querySelectorAll('a[href], button:not([disabled])')]
+            .filter(element => element.getClientRects().length);
+        const first = focusable[0], last = focusable.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault(); last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault(); first?.focus();
+        }
+    });
+
     nav.addEventListener('click', event => {
         const link = event.target.closest('a');
 
@@ -300,11 +334,8 @@ function setupMobileNavigation() {
         }
     });
 
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 900) {
-            closeMenu();
-        }
-    });
+    mobileQuery.addEventListener('change', closeMenu);
+    updateNavigationState();
 }
 
 

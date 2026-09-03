@@ -1,5 +1,10 @@
 # Local browser smoke checks
 
+## Responsive navigation checks
+
+Verified with local fixtures at 1280×720, 375×667, 320×568 and 667×375:
+desktop sidebar stays at viewport top/bottom while the page scrolls; mobile drawer scrolls internally to the account/footer; the page retains its scroll position after opening/closing the menu; Escape returns focus to the menu button and Tab stays within the drawer. Completed-hole editing fits at 375px and live entry has no document-level horizontal overflow at 320px. These are browser viewport checks, not physical iOS/Safari certification.
+
 Run `node tests/browser/smoke-server.cjs`. This loopback-only server serves the real static frontend with **in-memory mock APIs**, not PostgreSQL or real accounts. Stop it with Ctrl+C. Restarting resets server data, but browser drafts persist; use a fresh browser profile for a clean repeat, or resolve existing test drafts explicitly. Never clear real user drafts to reset a fixture.
 
 ## Live conflict resolution

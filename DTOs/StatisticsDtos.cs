@@ -23,7 +23,9 @@ public record RoundStatisticsDto(
 
 public record TrendPointDto(int RoundId, DateOnly Date, double Value);
 
-public record PerformanceInsightDto(string Code, string Title, string Evidence, string Recommendation, string Severity);
+public record PracticeDrillDto(string Title, int Minutes, List<string> Steps, string Measure);
+public record PerformanceInsightDto(string Code, string Title, string Evidence, string Recommendation, string Severity,
+    List<int>? EvidenceRoundIds = null, PracticeDrillDto? Drill = null);
 
 public record StatisticsQueryDto(int? CourseId = null, DateOnly? From = null, DateOnly? To = null, int? HoleCount = null, int? CourseTeeId = null);
 

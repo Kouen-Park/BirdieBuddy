@@ -12,6 +12,14 @@ Birdie Buddy is a mobile-first golf round tracker and performance notebook. It u
 - CSRF protection, login rate limiting, security headers, ownership checks, and admin-protected imports
 - Liveness/readiness checks, migration locking, automated tests, and GitHub Actions CI
 
+### Practice rules
+
+Practice uses completed rounds with exactly 9 or 18 recorded holes (minimum 3 rounds); historical partial rounds do not unlock recommendations. Priorities include hole-weighted putting, GIR, penalties per 18 holes, and recorded non-par-3 fairways. Each priority links its supporting scorecards and a short drill with a measurable target. These are product heuristics, not validated coaching diagnoses; practice outcomes are not stored yet.
+
+Par-type GIR comparisons require 6 rounds: latest 3 versus previous 3, at least 12 holes of the par type in each window, and a decline of at least 15 percentage points. Dates, numerator/denominator and thresholds are shown. Different courses/tees can affect results; no causal claim is made. Insufficient data produces guidance rather than an inferred weakness.
+
+iPhone Safari certification is pending; see `tests/browser/iphone-safari-checklist.md` for prerequisites and release checks. Mobile viewport tests do not certify iOS browser behavior.
+
 ## Local development
 
 ### Draft conflict recovery and PostgreSQL CI
