@@ -203,16 +203,20 @@ select:focus-visible {
 /* ---------- App shell ---------- */
 
 .app-shell {
+    --sidebar-width: 258px;
     display: grid;
-    grid-template-columns: 258px minmax(0, 1fr);
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
     min-height: 100vh;
+    /* Paint the entire document-height rail, not just the viewport-height menu.
+       This keeps the left column dark even beyond the menu's painted bounds. */
+    background: linear-gradient(to right, #0a1c1b 0 var(--sidebar-width), var(--canvas) var(--sidebar-width) 100%);
 }
 
 .sidebar {
     position: fixed;
     top: 0;
     left: 0;
-    width: 258px;
+    width: var(--sidebar-width, 258px);
     height: 100vh;
     height: 100dvh;
     overflow-y: auto;
@@ -1080,9 +1084,8 @@ table caption { text-align: left; padding: 16px; }
 /* ---------- Responsive: Tablet ---------- */
 
 @media (max-width: 1040px) {
-    .sidebar { width: 224px; }
     .app-shell {
-        grid-template-columns: 224px minmax(0, 1fr);
+        --sidebar-width: 224px;
     }
 
     .main {
@@ -1104,6 +1107,7 @@ table caption { text-align: left; padding: 16px; }
         display: block;
         min-height: 100vh;
         padding-top: 64px;
+        background: var(--canvas);
     }
 
     .main {
