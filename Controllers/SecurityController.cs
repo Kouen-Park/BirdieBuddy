@@ -14,6 +14,8 @@ public sealed class SecurityController : ControllerBase
     public IActionResult Csrf([FromServices] IAntiforgery antiforgery)
     {
         var tokens = antiforgery.GetAndStoreTokens(HttpContext);
+        Response.Headers.CacheControl = "no-store, no-cache";
+        Response.Headers.Pragma = "no-cache";
         return Ok(new { token = tokens.RequestToken });
     }
 }

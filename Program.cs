@@ -6,10 +6,11 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using BirdieBuddy.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+builder.Services.AddBirdieBuddyControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddAntiforgery(options =>
 {

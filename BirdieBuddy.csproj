@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
+    <Content Remove="tests/**" />
     <None Remove="tests/**" />
     <None Update="scripts/golf_nz_courses.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

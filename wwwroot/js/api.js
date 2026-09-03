@@ -6,9 +6,16 @@ const Api = {
 
     async getCsrfToken() {
         if (this.csrfToken) return this.csrfToken;
-        const response = await fetch('/api/security/csrf', { credentials: 'same-origin' });
-        if (!response.ok) throw new Error('Could not initialize a secure session.');
-        this.csrfToken = (await response.json()).token;
+        const response = await fetch('/api/security/csrf', {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok || !body?.token) {
+            throw new Error(`Could not initialize a secure session (${response.status}). Refresh the page and try again.`);
+        }
+        this.csrfToken = body.token;
         return this.csrfToken;
     },
 

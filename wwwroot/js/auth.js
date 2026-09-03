@@ -32,8 +32,15 @@ authForm?.addEventListener('submit', async event => {
         };
 
     try {
-        const csrfResponse = await fetch('/api/security/csrf', { credentials: 'same-origin' });
-        const csrf = await csrfResponse.json();
+        const csrfResponse = await fetch('/api/security/csrf', {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
+        });
+        const csrf = await csrfResponse.json().catch(() => null);
+        if (!csrfResponse.ok || !csrf?.token) {
+            throw new Error(`Could not initialize a secure session (${csrfResponse.status}). Refresh the page and try again.`);
+        }
         const response = await fetch(isRegister ? '/api/auth/register' : '/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.token },
