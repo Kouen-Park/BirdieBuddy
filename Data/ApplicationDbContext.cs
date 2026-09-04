@@ -10,6 +10,8 @@ public class ApplicationDbContext : DbContext
     ) : base(options) { }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<AccountToken> AccountTokens => Set<AccountToken>();
+    public DbSet<ProductEvent> ProductEvents => Set<ProductEvent>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<CourseTee> CourseTees => Set<CourseTee>();
     public DbSet<CourseHole> CourseHoles => Set<CourseHole>();
@@ -33,6 +35,27 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>()
             .Property(u => u.DisplayName)
             .HasMaxLength(80);
+
+        modelBuilder.Entity<AccountToken>()
+            .HasOne(t => t.User)
+            .WithMany(u => u.AccountTokens)
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AccountToken>()
+            .HasIndex(t => t.TokenHash)
+            .IsUnique();
+
+        modelBuilder.Entity<AccountToken>().Property(t => t.Type).HasMaxLength(32);
+        modelBuilder.Entity<AccountToken>().Property(t => t.TokenHash).HasMaxLength(64);
+
+        modelBuilder.Entity<ProductEvent>().Property(e => e.EventType).HasMaxLength(40);
+        modelBuilder.Entity<ProductEvent>().HasIndex(e => new { e.UserId, e.ClientEventId }).IsUnique();
+        modelBuilder.Entity<ProductEvent>().HasIndex(e => new { e.EventType, e.OccurredAt });
+        modelBuilder.Entity<ProductEvent>().HasOne(e => e.User).WithMany(u => u.ProductEvents)
+            .HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ProductEvent>().HasOne(e => e.Round).WithMany(r => r.ProductEvents)
+            .HasForeignKey(e => e.RoundId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Course>()
             .HasIndex(c => c.GolfNzClubId)

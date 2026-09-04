@@ -14,7 +14,12 @@ public class User
 
     public DateTime CreatedAt { get; set; }
 
+    public DateTime? EmailVerifiedAt { get; set; }
+
     public List<Round> Rounds { get; set; } = new();
 
     public List<Course> Courses { get; set; } = new();
+
+    public List<AccountToken> AccountTokens { get; set; } = new();
+    public List<ProductEvent> ProductEvents { get; set; } = new();
 }

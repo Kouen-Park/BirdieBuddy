@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using BirdieBuddy.DTOs;
 using BirdieBuddy.Services;
 using Microsoft.AspNetCore.Authorization;
+using BirdieBuddy.Infrastructure;
 
 namespace BirdieBuddy.Controllers;
 
@@ -12,16 +13,16 @@ public class CoursesController : ControllerBase
 {
     private readonly ICourseService _courseService;
     private readonly IGolfNzImportJob _golfNzImportJob;
-    private readonly IConfiguration _configuration;
+    private readonly IAdminKeyValidator _adminKey;
 
     public CoursesController(
         ICourseService courseService,
         IGolfNzImportJob golfNzImportJob,
-        IConfiguration configuration)
+        IAdminKeyValidator adminKey)
     {
         _courseService = courseService;
         _golfNzImportJob = golfNzImportJob;
-        _configuration = configuration;
+        _adminKey = adminKey;
     }
 
     [HttpGet]
@@ -69,7 +70,7 @@ public class CoursesController : ControllerBase
     [HttpPost("import-golf-nz")]
     public ActionResult<GolfNzImportJobStatus> StartGolfNzImport()
     {
-        if (!IsImportAdministrator()) return NotFound();
+        if (!_adminKey.IsValid(Request)) return NotFound();
         var started = _golfNzImportJob.TryStart(out var status);
         return started ? Accepted(status) : Ok(status);
     }
@@ -77,18 +78,8 @@ public class CoursesController : ControllerBase
     [HttpGet("import-golf-nz/status")]
     public ActionResult<GolfNzImportJobStatus> GetGolfNzImportStatus()
     {
-        if (!IsImportAdministrator()) return NotFound();
+        if (!_adminKey.IsValid(Request)) return NotFound();
         return Ok(_golfNzImportJob.GetStatus());
-    }
-
-    private bool IsImportAdministrator()
-    {
-        var configured = _configuration["Administration:ImportKey"];
-        var supplied = Request.Headers["X-Admin-Key"].ToString();
-        if (string.IsNullOrWhiteSpace(configured) || string.IsNullOrWhiteSpace(supplied)) return false;
-        var configuredHash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(configured));
-        var suppliedHash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(supplied));
-        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(configuredHash, suppliedHash);
     }
 
 }

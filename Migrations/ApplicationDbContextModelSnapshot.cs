@@ -22,6 +22,22 @@ namespace BirdieBuddy.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BirdieBuddy.Models.AccountToken", b =>
+            {
+                b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("integer");
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                b.Property<DateTime>("CreatedAt").HasColumnType("timestamp with time zone");
+                b.Property<DateTime>("ExpiresAt").HasColumnType("timestamp with time zone");
+                b.Property<string>("TokenHash").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+                b.Property<string>("Type").IsRequired().HasMaxLength(32).HasColumnType("character varying(32)");
+                b.Property<DateTime?>("UsedAt").HasColumnType("timestamp with time zone");
+                b.Property<int>("UserId").HasColumnType("integer");
+                b.HasKey("Id");
+                b.HasIndex("TokenHash").IsUnique();
+                b.HasIndex("UserId");
+                b.ToTable("AccountTokens");
+            });
+
             modelBuilder.Entity("BirdieBuddy.Models.User", b =>
             {
                 b.Property<int>("Id")
@@ -33,9 +49,27 @@ namespace BirdieBuddy.Migrations
                 b.Property<string>("PasswordHash").IsRequired().HasColumnType("text");
                 b.Property<string>("PasswordSalt").IsRequired().HasColumnType("text");
                 b.Property<DateTime>("CreatedAt").HasColumnType("timestamp with time zone");
+                b.Property<DateTime?>("EmailVerifiedAt").HasColumnType("timestamp with time zone");
                 b.HasKey("Id");
                 b.HasIndex("Email").IsUnique();
                 b.ToTable("Users");
+            });
+
+            modelBuilder.Entity("BirdieBuddy.Models.ProductEvent", b =>
+            {
+                b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("integer");
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                b.Property<Guid>("ClientEventId").HasColumnType("uuid");
+                b.Property<int?>("DurationMs").HasColumnType("integer");
+                b.Property<string>("EventType").IsRequired().HasMaxLength(40).HasColumnType("character varying(40)");
+                b.Property<DateTime>("OccurredAt").HasColumnType("timestamp with time zone");
+                b.Property<int?>("RoundId").HasColumnType("integer");
+                b.Property<int>("UserId").HasColumnType("integer");
+                b.HasKey("Id");
+                b.HasIndex("EventType", "OccurredAt");
+                b.HasIndex("RoundId");
+                b.HasIndex("UserId", "ClientEventId").IsUnique();
+                b.ToTable("ProductEvents");
             });
 
             modelBuilder.Entity("BirdieBuddy.Models.Course", b =>
@@ -76,6 +110,24 @@ namespace BirdieBuddy.Migrations
                 b.HasKey("Id");
                 b.HasIndex("CourseId", "CourseType", "Gender", "NineHoles", "Name").IsUnique();
                 b.ToTable("CourseTees");
+            });
+
+            modelBuilder.Entity("BirdieBuddy.Models.AccountToken", b =>
+            {
+                b.HasOne("BirdieBuddy.Models.User", "User")
+                    .WithMany("AccountTokens").HasForeignKey("UserId")
+                    .OnDelete(DeleteBehavior.Cascade).IsRequired();
+                b.Navigation("User");
+            });
+
+            modelBuilder.Entity("BirdieBuddy.Models.ProductEvent", b =>
+            {
+                b.HasOne("BirdieBuddy.Models.Round", "Round").WithMany("ProductEvents")
+                    .HasForeignKey("RoundId").OnDelete(DeleteBehavior.Cascade);
+                b.HasOne("BirdieBuddy.Models.User", "User").WithMany("ProductEvents")
+                    .HasForeignKey("UserId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                b.Navigation("Round");
+                b.Navigation("User");
             });
 
             modelBuilder.Entity("BirdieBuddy.Models.CourseHole", b =>
@@ -206,7 +258,9 @@ namespace BirdieBuddy.Migrations
 
             modelBuilder.Entity("BirdieBuddy.Models.User", b =>
             {
+                b.Navigation("AccountTokens");
                 b.Navigation("Courses");
+                b.Navigation("ProductEvents");
                 b.Navigation("Rounds");
             });
 
@@ -225,6 +279,7 @@ namespace BirdieBuddy.Migrations
             modelBuilder.Entity("BirdieBuddy.Models.Round", b =>
             {
                 b.Navigation("Holes");
+                b.Navigation("ProductEvents");
             });
 #pragma warning restore 612, 618
         }

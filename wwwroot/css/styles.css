@@ -134,6 +134,15 @@ table caption { padding: 12px 18px; color: var(--ink-500); text-align: left; fon
 .account-form { padding: clamp(22px,4vw,34px); display: grid; align-content: start; gap: 18px; }
 .account-form h2 { margin: 0 0 6px; font: 600 24px var(--font-display); }
 .account-form small { color: var(--ink-500); }
+.data-card, .danger-zone { grid-column: 1 / -1; }
+.account-form > p { margin: 0; color: var(--ink-500); }
+.danger-zone { border-color: rgba(201, 78, 69, 0.35); }
+.danger-zone h2 { color: var(--bad); }
+.btn-danger { background: var(--bad); color: white; }
+.btn-danger:hover { background: #a93e37; }
+.forgot-password-link { justify-self: end; color: var(--fairway-dark); font-weight: 600; }
+.verification-prompt { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 600px) { .verification-prompt { align-items: stretch; flex-direction: column; } }
 
 @media (max-width: 600px) {
   .resume-round { align-items: flex-end; }

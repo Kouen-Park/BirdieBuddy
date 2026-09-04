@@ -81,6 +81,10 @@ builder.Services.AddScoped<IRoundService, RoundService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
+builder.Services.AddSingleton<IAdminKeyValidator, AdminKeyValidator>();
+builder.Services.AddSingleton<IOperationalMetrics, OperationalMetrics>();
+builder.Services.AddScoped<IProductTelemetryService, ProductTelemetryService>();
 
 var app = builder.Build();
 
@@ -127,6 +131,7 @@ app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseApiObservability();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

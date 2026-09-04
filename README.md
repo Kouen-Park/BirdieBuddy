@@ -4,7 +4,7 @@ Birdie Buddy is a mobile-first golf round tracker and performance notebook. It u
 
 ## Features
 
-- Private member accounts with secure password hashing and profile/password management
+- Private member accounts with secure password hashing, profile/password management, data export, and account deletion
 - Shared Golf New Zealand courses plus member-owned custom courses
 - On-course live scorecard with draft, auto-save, offline queue, resume, complete, and abandon flows
 - Completed-scorecard entry, round history, edit/delete, and per-hole breakdowns
@@ -19,6 +19,12 @@ Practice uses completed rounds with exactly 9 or 18 recorded holes (minimum 3 ro
 Par-type GIR comparisons require 6 rounds: latest 3 versus previous 3, at least 12 holes of the par type in each window, and a decline of at least 15 percentage points. Dates, numerator/denominator and thresholds are shown. Different courses/tees can affect results; no causal claim is made. Insufficient data produces guidance rather than an inferred weakness.
 
 iPhone Safari certification is pending; see `tests/browser/iphone-safari-checklist.md` for prerequisites and release checks. Mobile viewport tests do not certify iOS browser behavior.
+
+### Account data and deletion
+
+- **Download my data** exports the signed-in member's profile, custom courses, scorecards, and hole records as JSON. Password hashes and salts are never included.
+- Account deletion requires the current password and the exact confirmation phrase `DELETE MY ACCOUNT`. The server signs out the session and permanently removes hole records, rounds, member-owned courses, and the account in one PostgreSQL transaction.
+- After successful deletion, the browser removes only live-round drafts scoped to that member. The unscoped legacy queue remains untouched because its owner cannot be established safely.
 
 ## Local development
 
@@ -56,6 +62,10 @@ dotnet run
 
 Pending migrations run at startup under a PostgreSQL advisory lock. Swagger is available at `/swagger` in Development. Health endpoints are `/health/live` and `/health/ready`.
 
+Every API response includes `X-Trace-Id`. Structured completion logs record the HTTP method, route template, status code, duration, and trace ID without query strings or member identifiers. Authenticated administrators can inspect process-local request counts, HTTP 5xx failure rates, and average/maximum latency with `GET /api/admin/operations` and the existing `X-Admin-Key`. These counters reset whenever the Render instance restarts and complement, rather than replace, durable external monitoring.
+
+The live scorecard records two minimal beta events: a draft being reopened and the elapsed time from rendering a hole to pressing its save action. Events contain a random idempotency ID, event type, owned round ID, optional duration, and server timestamp; they contain no score values, email, device fingerprint, or free text. `GET /api/admin/operations/beta` (authenticated plus `X-Admin-Key`) reports the last 30 days by default and accepts an optional UTC `from` value up to one year ago. Completion rate uses terminal rounds (`Completed / (Completed + Abandoned)`); resume completion rate is the percentage of distinct resumed rounds that are currently completed. Product events are included in member data exports and permanently removed with the account.
+
 Run the tests with:
 
 ```bash
@@ -70,8 +80,10 @@ The included Dockerfile listens on port `10000`. Configure these Render environm
 - `ASPNETCORE_ENVIRONMENT=Production`
 - `ConnectionStrings__DefaultConnection=<Render PostgreSQL internal connection string>`
 - `Administration__ImportKey=<long random secret>` when the Golf NZ admin import endpoint is required
+- `Application__PublicBaseUrl=https://your-service.onrender.com`
+- `Email__From`, `Email__Smtp__Host`, `Email__Smtp__Port`, `Email__Smtp__Username`, and `Email__Smtp__Password` for verification and password-reset delivery
 
-Do not put production credentials in an appsettings file. Confirm `/health/ready` after each deploy and retain automated PostgreSQL backups. Before a schema deployment, test the migration against a recent database copy and document the restore point.
+Do not put production credentials in an appsettings file. SMTP defaults to TLS on port 587; without host/from configuration, account creation still succeeds but the server logs a warning and no email is sent. Confirm `/health/ready` after each deploy and retain automated PostgreSQL backups. Before a schema deployment, test the migration against a recent database copy and document the restore point.
 
 ## Live-round API
 

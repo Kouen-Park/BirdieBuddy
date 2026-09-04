@@ -13,6 +13,7 @@ let finalizing = false;
 let holeNumbers = [];
 let conflictHole = null;
 let reviewingConflict = false;
+let holeRenderStartedAt = performance.now();
 
 const clean = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const setStatus = (message, state = '') => { statusEl.textContent = message; statusEl.dataset.state = state; };
@@ -49,6 +50,7 @@ async function init() {
     holeNumbers = round.holeNumbers || Array.from({ length: round.expectedHoles }, (_, i) => i + 1);
     currentHole = holeNumbers.includes(cached.currentHole) ? cached.currentHole : holeNumbers[0];
     renderHole();
+    if (verified && params.get('new') !== '1') recordTelemetry('draft_resumed');
     await flushQueue();
   } catch (error) {
     root.innerHTML = `<div class="alert error">${clean(error.message)}</div>`;
@@ -97,7 +99,7 @@ async function startRound(event) {
       tee: null,
       date: document.getElementById('live-date').value
     });
-    location.replace(`/live-round.html?id=${created.id}`);
+    location.replace(`/live-round.html?id=${created.id}&new=1`);
   } catch (error) {
     setStatus(error.message, 'error');
     button.disabled = false;
@@ -110,6 +112,7 @@ function holeDefinition(number) {
 }
 
 function renderHole() {
+  holeRenderStartedAt = performance.now();
   const cached = store.view();
   if (cached) round = cached.round;
   const definition = holeDefinition(currentHole);
@@ -197,8 +200,16 @@ function navigate(delta) {
 
 function saveHole(advance) {
   if (finalizing || !captureChange()) return;
+  recordTelemetry('hole_input_completed', Math.min(600000, Math.max(0, Math.round(performance.now() - holeRenderStartedAt))));
   if (advance) navigate(1);
   flushQueue();
+}
+
+function recordTelemetry(eventType, durationMs = null) {
+  if (!navigator.onLine || !round?.id) return;
+  const clientEventId = globalThis.crypto?.randomUUID?.();
+  if (!clientEventId) return;
+  Api.post('/telemetry/events', { clientEventId, eventType, roundId: round.id, durationMs }).catch(() => {});
 }
 
 async function flushQueue() {

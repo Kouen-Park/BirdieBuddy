@@ -36,4 +36,5 @@ public class Round
     public int CurrentHole { get; set; } = 1;
 
     public List<Hole> Holes { get; set; } = new();
+    public List<ProductEvent> ProductEvents { get; set; } = new();
 }

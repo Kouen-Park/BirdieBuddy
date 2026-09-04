@@ -16,6 +16,12 @@ public static class BrowserSecurity
                     "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
                 if (context.Request.Path.StartsWithSegments("/api"))
                     context.Response.Headers["Cache-Control"] = "no-store";
+                else if (context.Request.Path == "/" ||
+                         new[] { ".html", ".css", ".js" }.Contains(
+                             Path.GetExtension(context.Request.Path.Value ?? ""), StringComparer.OrdinalIgnoreCase))
+                    // Stable asset URLs must be revalidated after a deployment.
+                    // Conditional requests can still return 304; this does not clear offline drafts.
+                    context.Response.Headers["Cache-Control"] = "no-cache, must-revalidate";
                 return Task.CompletedTask;
             });
             await next();

@@ -26,6 +26,7 @@ public sealed class AuthFlowTests
     public async Task CsrfAndLoginFlow_RejectsMissingTokenAndAcceptsValidCredentials()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
+        builder.Configuration["Administration:ImportKey"] = "integration-admin-key";
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Services.AddBirdieBuddyControllers().AddApplicationPart(typeof(AuthController).Assembly);
         builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
@@ -39,6 +40,11 @@ public sealed class AuthFlowTests
         var databaseName = Guid.NewGuid().ToString();
         builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(databaseName));
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddSingleton<TestAccountEmailSender>();
+        builder.Services.AddSingleton<IAccountEmailSender>(services => services.GetRequiredService<TestAccountEmailSender>());
+        builder.Services.AddSingleton<IAdminKeyValidator, AdminKeyValidator>();
+        builder.Services.AddSingleton<IOperationalMetrics, OperationalMetrics>();
+        builder.Services.AddScoped<IProductTelemetryService, ProductTelemetryService>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, CurrentUser>();
         builder.Services.AddScoped<IRoundService, RoundService>();
@@ -54,6 +60,7 @@ public sealed class AuthFlowTests
             FileProvider = new PhysicalFileProvider(Path.Combine(projectDirectory.FullName, "wwwroot"))
         });
         app.UseRouting();
+        app.UseApiObservability();
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
@@ -67,6 +74,19 @@ public sealed class AuthFlowTests
             Assert.Equal(HttpStatusCode.OK, page.StatusCode);
             Assert.Contains("frame-ancestors 'none'", page.Headers.GetValues("Content-Security-Policy").Single());
             Assert.Equal("nosniff", page.Headers.GetValues("X-Content-Type-Options").Single());
+            Assert.True(page.Headers.CacheControl?.NoCache);
+            Assert.True(page.Headers.CacheControl?.MustRevalidate);
+            foreach (var asset in new[] { "/css/styles.css?v=20260903-rail3", "/js/api.js?v=20260903-rail3" })
+            {
+                var response = await client.GetAsync(asset);
+                response.EnsureSuccessStatusCode();
+                Assert.True(response.Headers.CacheControl?.NoCache);
+                var conditional = new HttpRequestMessage(HttpMethod.Get, asset);
+                conditional.Headers.IfNoneMatch.Add(response.Headers.ETag!);
+                var unchanged = await client.SendAsync(conditional);
+                Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
+                Assert.True(unchanged.Headers.CacheControl?.NoCache);
+            }
             var csrf = await client.GetAsync("/api/security/csrf");
             Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
             Assert.Equal("application/json", csrf.Content.Headers.ContentType?.MediaType);
@@ -86,6 +106,12 @@ public sealed class AuthFlowTests
             client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", token);
             var registered = await client.PostAsJsonAsync("/api/auth/register", credentials);
             Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
+            var emailSender = app.Services.GetRequiredService<TestAccountEmailSender>();
+            Assert.NotNull(emailSender.VerificationUrl);
+            await RefreshToken(client);
+            var verificationToken = TokenFrom(emailSender.VerificationUrl!);
+            Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/verify-email",
+                new VerifyEmailDto(verificationToken))).StatusCode);
 
             // Tokens are bound to the current identity; refresh after sign-in and sign-out.
             await RefreshToken(client);
@@ -95,8 +121,29 @@ public sealed class AuthFlowTests
             Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
             var login = await client.PostAsJsonAsync("/api/auth/login", credentials);
             Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+            await RefreshToken(client);
             var me = await client.GetFromJsonAsync<JsonElement>("/api/auth/me");
             Assert.Equal(credentials.email, me.GetProperty("email").GetString());
+            Assert.True(me.GetProperty("emailVerified").GetBoolean());
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/admin/operations")).StatusCode);
+            client.DefaultRequestHeaders.Add("X-Admin-Key", "integration-admin-key");
+            var operations = await client.GetFromJsonAsync<JsonElement>("/api/admin/operations");
+            Assert.True(operations.GetProperty("requests").GetInt64() > 0);
+            Assert.True(operations.GetProperty("routes").GetArrayLength() > 0);
+            client.DefaultRequestHeaders.Remove("X-Admin-Key");
+
+            var unknownReset = await client.PostAsJsonAsync("/api/auth/forgot-password",
+                new RequestPasswordResetDto("missing@example.test"));
+            Assert.Equal(HttpStatusCode.Accepted, unknownReset.StatusCode);
+            var requestedReset = await client.PostAsJsonAsync("/api/auth/forgot-password",
+                new RequestPasswordResetDto(credentials.email));
+            Assert.Equal(HttpStatusCode.Accepted, requestedReset.StatusCode);
+            var resetToken = TokenFrom(emailSender.ResetUrl!);
+            const string newPassword = "ChangedPass456";
+            Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/reset-password",
+                new ResetPasswordDto(resetToken, newPassword))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/reset-password",
+                new ResetPasswordDto(resetToken, "AnotherPass789"))).StatusCode);
 
             int courseId;
             int teeId;
@@ -121,6 +168,54 @@ public sealed class AuthFlowTests
             var stale = await client.PutAsJsonAsync(route, new HoleUpsertDto(4, 5, 2, false, false, 0, true));
             Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
             Assert.Equal("application/problem+json", stale.Content.Headers.ContentType?.MediaType);
+
+            var resumeEventId = Guid.NewGuid();
+            Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsJsonAsync("/api/telemetry/events",
+                new ProductEventDto(resumeEventId, "draft_resumed", draft.Id, null))).StatusCode);
+            Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsJsonAsync("/api/telemetry/events",
+                new ProductEventDto(resumeEventId, "draft_resumed", draft.Id, null))).StatusCode);
+            Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsJsonAsync("/api/telemetry/events",
+                new ProductEventDto(Guid.NewGuid(), "hole_input_completed", draft.Id, 8000))).StatusCode);
+            Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsJsonAsync("/api/telemetry/events",
+                new ProductEventDto(Guid.NewGuid(), "hole_input_completed", draft.Id, 12000))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/telemetry/events",
+                new ProductEventDto(Guid.NewGuid(), "email", draft.Id, null))).StatusCode);
+            client.DefaultRequestHeaders.Add("X-Admin-Key", "integration-admin-key");
+            var beta = await client.GetFromJsonAsync<JsonElement>("/api/admin/operations/beta");
+            Assert.Equal(1, beta.GetProperty("startedRounds").GetInt32());
+            Assert.Equal(1, beta.GetProperty("resumedRounds").GetInt32());
+            Assert.Equal(2, beta.GetProperty("holeTimings").GetInt32());
+            Assert.Equal(10, beta.GetProperty("medianHoleInputSeconds").GetDouble());
+            client.DefaultRequestHeaders.Remove("X-Admin-Key");
+
+            var export = await client.GetAsync("/api/auth/export");
+            Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+            Assert.Equal("application/json", export.Content.Headers.ContentType?.MediaType);
+            Assert.Equal("attachment", export.Content.Headers.ContentDisposition?.DispositionType);
+            var exportText = await export.Content.ReadAsStringAsync();
+            Assert.Contains("golfer@example.test", exportText);
+            Assert.Contains("HTTP test course", exportText);
+            Assert.DoesNotContain("passwordHash", exportText, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("passwordSalt", exportText, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("hole_input_completed", exportText);
+
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/delete-account",
+                new DeleteAccountDto(credentials.password, "delete"))).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/delete-account",
+                new DeleteAccountDto("Incorrect123", "DELETE MY ACCOUNT"))).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/delete-account",
+                new DeleteAccountDto(newPassword, "DELETE MY ACCOUNT"))).StatusCode);
+            var signedOut = await client.GetAsync("/api/auth/me");
+            Assert.Equal(HttpStatusCode.Found, signedOut.StatusCode);
+            Assert.Contains("login", signedOut.Headers.Location?.ToString(), StringComparison.OrdinalIgnoreCase);
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                Assert.Empty(await db.Users.ToListAsync());
+                Assert.Empty(await db.Rounds.ToListAsync());
+                Assert.Empty(await db.Holes.ToListAsync());
+                Assert.Empty(await db.ProductEvents.ToListAsync());
+            }
         }
         finally { await app.StopAsync(); }
     }
@@ -130,5 +225,16 @@ public sealed class AuthFlowTests
         var response = await client.GetFromJsonAsync<JsonElement>("/api/security/csrf");
         client.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
         client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", response.GetProperty("token").GetString());
+    }
+
+    private static string TokenFrom(string url) => Uri.UnescapeDataString(
+        new Uri(url).Query.TrimStart('?').Split('&').Single(x => x.StartsWith("token=")).Split('=', 2)[1]);
+
+    private sealed class TestAccountEmailSender : IAccountEmailSender
+    {
+        public string? ResetUrl { get; private set; }
+        public string? VerificationUrl { get; private set; }
+        public Task SendPasswordResetAsync(string email, string resetUrl) { ResetUrl = resetUrl; return Task.CompletedTask; }
+        public Task SendEmailVerificationAsync(string email, string verificationUrl) { VerificationUrl = verificationUrl; return Task.CompletedTask; }
     }
 }
