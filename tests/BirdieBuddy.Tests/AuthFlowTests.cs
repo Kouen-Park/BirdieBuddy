@@ -72,11 +72,23 @@ public sealed class AuthFlowTests
             using var client = new HttpClient(handler) { BaseAddress = new Uri(app.Urls.Single()) };
             var page = await client.GetAsync("/login.html");
             Assert.Equal(HttpStatusCode.OK, page.StatusCode);
-            Assert.Contains("frame-ancestors 'none'", page.Headers.GetValues("Content-Security-Policy").Single());
+            var contentSecurityPolicy = page.Headers.GetValues("Content-Security-Policy").Single();
+            Assert.Contains("frame-ancestors 'none'", contentSecurityPolicy);
+            Assert.Contains("script-src 'self'", contentSecurityPolicy);
+            Assert.Contains("font-src 'self'", contentSecurityPolicy);
+            Assert.DoesNotContain("cdn.jsdelivr.net", contentSecurityPolicy);
+            Assert.DoesNotContain("fonts.googleapis.com", contentSecurityPolicy);
+            Assert.DoesNotContain("fonts.gstatic.com", contentSecurityPolicy);
             Assert.Equal("nosniff", page.Headers.GetValues("X-Content-Type-Options").Single());
             Assert.True(page.Headers.CacheControl?.NoCache);
             Assert.True(page.Headers.CacheControl?.MustRevalidate);
-            foreach (var asset in new[] { "/css/styles.css?v=20260903-rail3", "/js/api.js?v=20260903-rail3" })
+            foreach (var asset in new[]
+                     {
+                         "/css/styles.css?v=20260908-local-assets",
+                         "/js/api.js?v=20260903-rail3",
+                         "/vendor/chart.js/chart.umd.min.js?v=4.4.4",
+                         "/vendor/fonts/outfit-400.ttf"
+                     })
             {
                 var response = await client.GetAsync(asset);
                 response.EnsureSuccessStatusCode();
@@ -119,6 +131,7 @@ public sealed class AuthFlowTests
             await RefreshToken(client);
             var denied = await client.PostAsJsonAsync("/api/auth/login", new { email = credentials.email, password = "Incorrect123" });
             Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
+            Assert.Equal("auth.invalid_credentials", (await denied.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
             var login = await client.PostAsJsonAsync("/api/auth/login", credentials);
             Assert.Equal(HttpStatusCode.OK, login.StatusCode);
             await RefreshToken(client);
@@ -168,6 +181,7 @@ public sealed class AuthFlowTests
             var stale = await client.PutAsJsonAsync(route, new HoleUpsertDto(4, 5, 2, false, false, 0, true));
             Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
             Assert.Equal("application/problem+json", stale.Content.Headers.ContentType?.MediaType);
+            Assert.Equal("round.save_conflict", (await stale.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
 
             var resumeEventId = Guid.NewGuid();
             Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsJsonAsync("/api/telemetry/events",

@@ -13,11 +13,11 @@ public static class BrowserSecurity
                 context.Response.Headers["X-Frame-Options"] = "DENY";
                 context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
                 context.Response.Headers["Content-Security-Policy"] =
-                    "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+                    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
                 if (context.Request.Path.StartsWithSegments("/api"))
                     context.Response.Headers["Cache-Control"] = "no-store";
                 else if (context.Request.Path == "/" ||
-                         new[] { ".html", ".css", ".js" }.Contains(
+                         new[] { ".html", ".css", ".js", ".ttf", ".woff", ".woff2" }.Contains(
                              Path.GetExtension(context.Request.Path.Value ?? ""), StringComparer.OrdinalIgnoreCase))
                     // Stable asset URLs must be revalidated after a deployment.
                     // Conditional requests can still return 304; this does not clear offline drafts.

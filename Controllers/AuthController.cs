@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Text.Json;
+using BirdieBuddy.Infrastructure;
 
 namespace BirdieBuddy.Controllers;
 
@@ -36,10 +37,14 @@ public class AuthController : ControllerBase
     {
         var (user, error) = await _authService.RegisterAsync(dto);
         if (error is not null)
-            return Problem(detail: error, statusCode: error.Contains("already exists") ? 409 : 400, title: "Account could not be created.");
+            return this.ApiProblem(error.Contains("already exists") ? 409 : 400,
+                error.Contains("already exists") ? "auth.email_exists" : "auth.registration_invalid",
+                "Account could not be created.", error);
 
-        await SignInAsync(user!);
         await SendVerificationAsync(user!.Id);
+        if (_configuration.GetValue("Authentication:RequireVerifiedEmail", false))
+            return Accepted(new { requiresEmailVerification = true, email = user.Email });
+        await SignInAsync(user);
         return Ok(user);
     }
 
@@ -49,7 +54,13 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<CurrentUserDto>> Login(LoginDto dto)
     {
         var user = await _authService.ValidateLoginAsync(dto);
-        if (user is null) return Problem(detail: "Email or password is incorrect.", statusCode: 401, title: "Sign in failed.");
+        if (user is null) return this.ApiProblem(401, "auth.invalid_credentials", "Sign in failed.", "Email or password is incorrect.");
+        if (_configuration.GetValue("Authentication:RequireVerifiedEmail", false) && !user.EmailVerified)
+        {
+            await SendVerificationAsync(user.Id);
+            return this.ApiProblem(403, "auth.email_unverified", "Email verification required.",
+                "Check your inbox for a verification link before signing in.");
+        }
 
         await SignInAsync(user);
         return Ok(user);
@@ -59,10 +70,10 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<CurrentUserDto>> Me()
     {
         var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!int.TryParse(claim, out var userId)) return Unauthorized();
+        if (!int.TryParse(claim, out var userId)) return this.ApiProblem(401, "auth.required", "Authentication required.");
 
         var user = await _authService.GetByIdAsync(userId);
-        return user is null ? Unauthorized() : Ok(user);
+        return user is null ? this.ApiProblem(401, "auth.required", "Authentication required.") : Ok(user);
     }
 
     [HttpPost("logout")]
@@ -76,7 +87,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<CurrentUserDto>> UpdateProfile(UpdateProfileDto dto)
     {
         var (user, error) = await _authService.UpdateProfileAsync(CurrentUserId(), dto);
-        return error is null ? Ok(user) : Problem(detail: error, statusCode: 400, title: "Profile could not be updated.");
+        return error is null ? Ok(user) : this.ApiProblem(400, "auth.profile_invalid", "Profile could not be updated.", error);
     }
 
     [HttpPost("change-password")]
@@ -84,7 +95,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
     {
         var error = await _authService.ChangePasswordAsync(CurrentUserId(), dto);
-        return error is null ? NoContent() : Problem(detail: error, statusCode: 400, title: "Password could not be changed.");
+        return error is null ? NoContent() : this.ApiProblem(400, "auth.password_change_invalid", "Password could not be changed.", error);
     }
 
     [AllowAnonymous]
@@ -104,7 +115,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
     {
         var error = await _authService.ResetPasswordAsync(dto);
-        return error is null ? NoContent() : Problem(detail: error, statusCode: 400, title: "Password could not be reset.");
+        return error is null ? NoContent() : this.ApiProblem(400, "auth.reset_token_invalid", "Password could not be reset.", error);
     }
 
     [HttpPost("send-verification")]
@@ -121,14 +132,14 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> VerifyEmail(VerifyEmailDto dto)
     {
         var error = await _authService.VerifyEmailAsync(dto);
-        return error is null ? NoContent() : Problem(detail: error, statusCode: 400, title: "Email could not be verified.");
+        return error is null ? NoContent() : this.ApiProblem(400, "auth.verification_token_invalid", "Email could not be verified.", error);
     }
 
     [HttpGet("export")]
     public async Task<IActionResult> Export()
     {
         var export = await _authService.ExportAsync(CurrentUserId());
-        if (export is null) return Unauthorized();
+        if (export is null) return this.ApiProblem(401, "auth.required", "Authentication required.");
         var bytes = JsonSerializer.SerializeToUtf8Bytes(export, new JsonSerializerOptions { WriteIndented = true });
         return File(bytes, "application/json", $"birdie-buddy-export-{DateTime.UtcNow:yyyyMMdd}.json");
     }
@@ -139,7 +150,7 @@ public class AuthController : ControllerBase
     {
         var error = await _authService.DeleteAccountAsync(CurrentUserId(), dto);
         if (error is not null)
-            return Problem(detail: error, statusCode: 400, title: "Account could not be deleted.");
+            return this.ApiProblem(400, "auth.account_deletion_invalid", "Account could not be deleted.", error);
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return NoContent();
     }

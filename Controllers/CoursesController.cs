@@ -33,7 +33,7 @@ public class CoursesController : ControllerBase
     public async Task<ActionResult<CourseDto>> GetById(int id)
     {
         var course = await _courseService.GetByIdAsync(id);
-        return course is null ? NotFound() : Ok(course);
+        return course is null ? this.ApiProblem(404, "course.not_found", "Course not found.") : Ok(course);
     }
 
     [HttpPost]
@@ -46,7 +46,7 @@ public class CoursesController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return Problem(detail: ex.Message, statusCode: 400, title: "Course could not be created.");
+            return this.ApiProblem(400, "course.invalid", "Course could not be created.", ex.Message);
         }
     }
 
@@ -54,7 +54,7 @@ public class CoursesController : ControllerBase
     public async Task<IActionResult> Update(int id, CourseUpdateDto dto)
     {
         var success = await _courseService.UpdateAsync(id, dto);
-        return success ? NoContent() : NotFound();
+        return success ? NoContent() : this.ApiProblem(404, "course.not_found", "Course not found.");
     }
 
     [HttpDelete("{id:int}")]
@@ -62,7 +62,9 @@ public class CoursesController : ControllerBase
     {
         var (success, error) = await _courseService.DeleteAsync(id);
         if (!success)
-            return Problem(detail: error, statusCode: error == "Course not found." ? 404 : 409, title: "Course could not be deleted.");
+            return this.ApiProblem(error == "Course not found." ? 404 : 409,
+                error == "Course not found." ? "course.not_found" : "course.in_use",
+                "Course could not be deleted.", error);
 
         return NoContent();
     }
@@ -70,7 +72,7 @@ public class CoursesController : ControllerBase
     [HttpPost("import-golf-nz")]
     public ActionResult<GolfNzImportJobStatus> StartGolfNzImport()
     {
-        if (!_adminKey.IsValid(Request)) return NotFound();
+        if (!_adminKey.IsValid(Request)) return this.ApiProblem(404, "admin.not_found", "Resource not found.");
         var started = _golfNzImportJob.TryStart(out var status);
         return started ? Accepted(status) : Ok(status);
     }
@@ -78,7 +80,7 @@ public class CoursesController : ControllerBase
     [HttpGet("import-golf-nz/status")]
     public ActionResult<GolfNzImportJobStatus> GetGolfNzImportStatus()
     {
-        if (!_adminKey.IsValid(Request)) return NotFound();
+        if (!_adminKey.IsValid(Request)) return this.ApiProblem(404, "admin.not_found", "Resource not found.");
         return Ok(_golfNzImportJob.GetStatus());
     }
 

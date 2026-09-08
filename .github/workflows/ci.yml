@@ -35,6 +35,13 @@ jobs:
       - run: dotnet restore BirdieBuddy.csproj
       - run: dotnet build BirdieBuddy.csproj --configuration Release --no-restore
       - run: dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj --configuration Release
+      - run: dotnet tool restore
+      - name: Generate reviewable migration SQL
+        run: dotnet ef migrations script --idempotent --configuration Release --no-build --output ./artifacts/migrations.sql
+      - uses: actions/upload-artifact@v4
+        with:
+          name: postgres-migration-sql
+          path: ./artifacts/migrations.sql
       - run: dotnet publish BirdieBuddy.csproj --configuration Release --no-restore --output ./artifacts/publish
       - uses: actions/setup-node@v4
         with:

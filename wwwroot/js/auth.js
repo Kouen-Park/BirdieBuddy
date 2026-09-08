@@ -49,6 +49,13 @@ authForm?.addEventListener('submit', async event => {
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) throw new Error(body?.detail || body?.title || 'Something went wrong. Please try again.');
+        if (isRegister && body?.requiresEmailVerification) {
+            authForm.hidden = true;
+            authError.className = 'alert success auth-error';
+            authError.textContent = `Account created. Check ${body.email} for a verification link, then sign in.`;
+            authError.hidden = false;
+            return;
+        }
         window.location.replace(getReturnUrl());
     } catch (error) {
         showAuthError(error.message);

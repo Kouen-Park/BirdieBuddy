@@ -21,6 +21,11 @@ public sealed class DeploymentConfigurationTests
         partialEmail.Configuration["ConnectionStrings:DefaultConnection"] = "Host=db;Database=birdie;Username=app;Password=strong";
         partialEmail.Configuration["Email:Smtp:Host"] = "smtp.example";
         Assert.Throws<InvalidOperationException>(() => partialEmail.ValidateDeploymentConfiguration());
+
+        var verificationWithoutEmail = ProductionBuilder();
+        verificationWithoutEmail.Configuration["ConnectionStrings:DefaultConnection"] = "Host=db;Database=birdie;Username=app;Password=strong";
+        verificationWithoutEmail.Configuration["Authentication:RequireVerifiedEmail"] = "true";
+        Assert.Throws<InvalidOperationException>(() => verificationWithoutEmail.ValidateDeploymentConfiguration());
     }
 
     [Fact]
@@ -33,6 +38,7 @@ public sealed class DeploymentConfigurationTests
         builder.Configuration["Email:Smtp:Host"] = "smtp.example";
         builder.Configuration["Email:From"] = "support@birdie.example";
         builder.Configuration["Email:Smtp:Port"] = "587";
+        builder.Configuration["Authentication:RequireVerifiedEmail"] = "true";
         builder.ValidateDeploymentConfiguration();
     }
 

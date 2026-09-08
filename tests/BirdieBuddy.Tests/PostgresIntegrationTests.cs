@@ -3,6 +3,8 @@ using BirdieBuddy.DTOs;
 using BirdieBuddy.Models;
 using BirdieBuddy.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
 using Xunit;
 
@@ -29,13 +31,41 @@ public class PostgresIntegrationTests
         Assert.StartsWith("birdiebuddy_test_", connection.Database);
         var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseNpgsql(connection.ConnectionString).Options;
         await using var db = new ApplicationDbContext(options);
-        await db.Database.MigrateAsync();
-        Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync("20260905150000_AddProductTelemetry");
+
+        // Simulate the existing Render data that must survive the next deployment.
         var user = new User { Email = $"{Guid.NewGuid():N}@example.test", DisplayName = "Integration", CreatedAt = DateTime.UtcNow };
         var tee = new CourseTee { Name = "White", NineHoles = true, CourseHoles = Enumerable.Range(1, 9)
             .Select(n => new CourseHole { HoleNumber = n, Par = 4, Distance = 300 }).ToList() };
         var course = new Course { Name = "Integration course", Location = "NZ", CourseTees = new() { tee } };
-        db.Users.Add(user); db.Courses.Add(course); await db.SaveChangesAsync();
+        var historicalRound = new Round
+        {
+            User = user,
+            Course = course,
+            CourseTee = tee,
+            Date = new DateTime(2026, 8, 31, 0, 0, 0, DateTimeKind.Utc),
+            Status = RoundStatus.Completed,
+            StartedAt = DateTime.UtcNow.AddHours(-4),
+            CompletedAt = DateTime.UtcNow.AddHours(-1),
+            UpdatedAt = DateTime.UtcNow.AddHours(-1),
+            Holes = new() { new Hole { HoleNumber = 1, Par = 4, Score = 5, Putts = 2, GIR = false, FairwayHit = true } }
+        };
+        db.Rounds.Add(historicalRound);
+        await db.SaveChangesAsync();
+        Assert.Null(user.EmailVerifiedAt);
+
+        await migrator.MigrateAsync();
+        db.ChangeTracker.Clear();
+        Assert.Empty(await db.Database.GetPendingMigrationsAsync());
+        var preservedUser = await db.Users.SingleAsync(candidate => candidate.Id == user.Id);
+        Assert.Equal(preservedUser.CreatedAt, preservedUser.EmailVerifiedAt);
+        var preservedRound = await db.Rounds.Include(round => round.Holes)
+            .SingleAsync(round => round.Id == historicalRound.Id);
+        Assert.Equal(course.Id, preservedRound.CourseId);
+        Assert.Equal(tee.Id, preservedRound.CourseTeeId);
+        Assert.Single(preservedRound.Holes);
+
         var service = new RoundService(db, new TestUser(user.Id));
         var (draft, error) = await service.StartAsync(new(course.Id, new(2026, 9, 3), tee.Id, null));
         Assert.Null(error);

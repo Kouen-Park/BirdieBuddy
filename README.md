@@ -33,6 +33,7 @@ iPhone Safari certification is pending; see `tests/browser/iphone-safari-checkli
 - A live draft that receives HTTP 409 now shows **Review save conflict**. The comparison lists device and server values. **Use server record** discards only the reviewed local hole revision; **Keep my input & retry** preserves the input and retries with the reviewed server snapshot as its precondition. A further server change can conflict again. Cancel keeps the queue untouched.
 - Account identity is checked before reviewing and applying a choice. A changed local revision or a terminal server round blocks resolution without discarding data. This comparison currently covers live drafts, not the completed-round editor or recovery of drafts already completed/abandoned elsewhere.
 - CI has a separate `postgres-integration` job with a disposable PostgreSQL 16 service. It applies the real migrations and checks lifecycle, ownership, duplicate-hole constraints, stale snapshots, transaction rollback on concurrent updates, and a statistics query. Configure this job as a required check in repository branch protection separately; this workflow does not change repository settings or Render's deployment policy.
+- The PostgreSQL job first stops at the pre-release migration, inserts an existing member, tee and historical scorecard, then applies the latest migration and verifies that the records and relationships survive. The build job also publishes an idempotent `postgres-migration-sql` artifact so schema changes can be reviewed before a Render deployment.
 - To run the PostgreSQL test locally, create a disposable database whose name starts with `birdiebuddy_test_` on localhost and set `BIRDIEBUDDY_TEST_POSTGRES` to its Npgsql connection string. Then run `dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj --filter Category=PostgreSQL`. Never use a production connection. Tests apply migrations and insert test records; they do not delete or recreate databases. Without the environment variable the PostgreSQL test is explicitly skipped; other tests still run.
 
 ### Record editing and comparable statistics
@@ -62,6 +63,8 @@ dotnet run
 
 Pending migrations run at startup under a PostgreSQL advisory lock. Swagger is available at `/swagger` in Development. Health endpoints are `/health/live` and `/health/ready`.
 
+Chart.js 4.4.4 and the DM Mono, Outfit, and Space Grotesk fonts are served from `wwwroot/vendor`; production pages do not depend on a third-party CDN. Upstream license texts are kept beside those assets. The Content Security Policy permits scripts and fonts only from this application. Inline styles remain allowed because Chart.js applies responsive canvas dimensions at runtime.
+
 Every API response includes `X-Trace-Id`. Structured completion logs record the HTTP method, route template, status code, duration, and trace ID without query strings or member identifiers. Authenticated administrators can inspect process-local request counts, HTTP 5xx failure rates, and average/maximum latency with `GET /api/admin/operations` and the existing `X-Admin-Key`. These counters reset whenever the Render instance restarts and complement, rather than replace, durable external monitoring.
 
 The live scorecard records two minimal beta events: a draft being reopened and the elapsed time from rendering a hole to pressing its save action. Events contain a random idempotency ID, event type, owned round ID, optional duration, and server timestamp; they contain no score values, email, device fingerprint, or free text. `GET /api/admin/operations/beta` (authenticated plus `X-Admin-Key`) reports the last 30 days by default and accepts an optional UTC `from` value up to one year ago. Completion rate uses terminal rounds (`Completed / (Completed + Abandoned)`); resume completion rate is the percentage of distinct resumed rounds that are currently completed. Product events are included in member data exports and permanently removed with the account.
@@ -73,6 +76,15 @@ dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj
 node --test tests/browser/*.test.cjs
 ```
 
+Generate the same reviewable migration script locally with:
+
+```bash
+dotnet tool restore
+dotnet ef migrations script --idempotent --configuration Release --output artifacts/migrations.sql
+```
+
+Review the SQL and test it only against a recent disposable copy before enabling a schema deployment. The command generates SQL; it does not connect to or modify a database.
+
 ## Render deployment
 
 The included Dockerfile listens on port `10000`. Configure these Render environment variables:
@@ -81,11 +93,12 @@ The included Dockerfile listens on port `10000`. Configure these Render environm
 - `ConnectionStrings__DefaultConnection=<Render PostgreSQL internal connection string>`
 - `Administration__ImportKey=<long random secret>` when the Golf NZ admin import endpoint is required
 - `Application__PublicBaseUrl=https://your-service.onrender.com`
+- `Authentication__RequireVerifiedEmail=true` after SMTP delivery has been configured and tested
 - `Email__From`, `Email__Smtp__Host`, `Email__Smtp__Port`, `Email__Smtp__Username`, and `Email__Smtp__Password` for verification and password-reset delivery
 - `OTEL_EXPORTER_OTLP_ENDPOINT` to enable vendor-neutral external traces, metrics, and logs
 - `OTEL_EXPORTER_OTLP_HEADERS` when the selected OTLP provider requires an API key or authorization header
 
-Do not put production credentials in an appsettings file. SMTP defaults to TLS on port 587; without host/from configuration, account creation still succeeds but the server logs a warning and no email is sent. Confirm `/health/ready` after each deploy and retain automated PostgreSQL backups. Before a schema deployment, test the migration against a recent database copy and document the restore point.
+Do not put production credentials in an appsettings file. SMTP defaults to TLS on port 587. Email verification enforcement defaults to off; production startup refuses to enable it unless SMTP host/from are both configured. When enabled, new accounts receive a verification link and remain signed out until verified; correct-password login requests for an unverified account send a fresh link and return `auth.email_unverified`. Existing accounts are marked verified by the rollout migration so they are not locked out. Confirm `/health/ready` after each deploy and retain automated PostgreSQL backups. Before a schema deployment, test the migration against a recent database copy and document the restore point.
 
 OpenTelemetry export is disabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is absent. It uses the standard OTLP environment variables, so the same build can send to Grafana Cloud, Honeycomb, an OpenTelemetry Collector, or another compatible provider. Only `/api` requests are traced; static reset and verification URLs are excluded so their query-string tokens are not exported. Keep `OTEL_EXPORTER_OTLP_HEADERS` in Render secrets rather than source control.
 
@@ -94,6 +107,8 @@ Production startup validates the database connection, HTTPS public/OTLP URLs, an
 ## Live-round API
 
 All endpoints except registration, login, CSRF initialization, and health checks require authentication. Browser mutation requests must first obtain `/api/security/csrf` and send its token in `X-CSRF-TOKEN`.
+
+API failures use `application/problem+json` with `type`, `title`, `status`, stable `code`, `detail`, `instance`, and `traceId`; automatic model-validation failures additionally include field-level `errors`. Clients should branch on `code`, not English error text.
 
 ```text
 POST /api/rounds/drafts
@@ -138,4 +153,4 @@ The job state remains process-local; run only one import at a time and consult s
 
 ## Current product boundary
 
-This release targets a small English-language beta and validates mobile web scoring before an iOS client is started. Shot-by-shot tracking, social features, coach sharing, payments, token-based iOS authentication, email verification, and password-reset delivery remain future work.
+This release targets a small English-language beta and validates mobile web scoring before an iOS client is started. Email verification and password-reset delivery are implemented but require production SMTP configuration; verification enforcement is opt-in until delivery is confirmed. Shot-by-shot tracking, social features, coach sharing, payments, and token-based iOS authentication remain future work.

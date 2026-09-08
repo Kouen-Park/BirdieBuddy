@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@font-face { font-family: 'DM Mono'; src: url('/vendor/fonts/dm-mono-400.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DM Mono'; src: url('/vendor/fonts/dm-mono-500.ttf') format('truetype'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/vendor/fonts/outfit-400.ttf') format('truetype'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/vendor/fonts/outfit-500.ttf') format('truetype'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/vendor/fonts/outfit-600.ttf') format('truetype'); font-style: normal; font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Outfit'; src: url('/vendor/fonts/outfit-700.ttf') format('truetype'); font-style: normal; font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('/vendor/fonts/space-grotesk-500.ttf') format('truetype'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('/vendor/fonts/space-grotesk-600.ttf') format('truetype'); font-style: normal; font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('/vendor/fonts/space-grotesk-700.ttf') format('truetype'); font-style: normal; font-weight: 700; font-display: swap; }
 
 :root {
     --ink-950: #0b1818;

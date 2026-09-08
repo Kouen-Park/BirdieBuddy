@@ -18,6 +18,9 @@ public static class DeploymentConfiguration
         var emailFrom = builder.Configuration["Email:From"];
         if (string.IsNullOrWhiteSpace(smtpHost) != string.IsNullOrWhiteSpace(emailFrom))
             throw new InvalidOperationException("Email:Smtp:Host and Email:From must be configured together.");
+        if (builder.Configuration.GetValue("Authentication:RequireVerifiedEmail", false) &&
+            (string.IsNullOrWhiteSpace(smtpHost) || string.IsNullOrWhiteSpace(emailFrom)))
+            throw new InvalidOperationException("Email SMTP settings are required when verified email login is enabled.");
         var smtpPort = builder.Configuration.GetValue<int?>("Email:Smtp:Port");
         if (smtpPort is <= 0 or > 65535)
             throw new InvalidOperationException("Email:Smtp:Port must be between 1 and 65535.");
