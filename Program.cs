@@ -87,6 +87,7 @@ builder.Services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
 builder.Services.AddSingleton<IAdminKeyValidator, AdminKeyValidator>();
 builder.Services.AddSingleton<IOperationalMetrics, OperationalMetrics>();
 builder.Services.AddScoped<IProductTelemetryService, ProductTelemetryService>();
+builder.Services.AddScoped<IPracticeSessionService, PracticeSessionService>();
 
 var app = builder.Build();
 

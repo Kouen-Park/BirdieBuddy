@@ -61,7 +61,7 @@ public class StatisticsService : IStatisticsService
             return new OverviewStatisticsDto(0, 0, 0, 0, 0, null,
                 new List<RoundSummaryDto>(), new List<TrendPointDto>(),
                 new List<TrendPointDto>(), new List<TrendPointDto>(), null, null,
-                BuildInsights(new()), 0, new(), new(), new());
+                BuildInsights(new()), 0, new(), new(), new(), new(), new());
         }
 
         var roundStats = rounds
@@ -108,7 +108,11 @@ public class StatisticsService : IStatisticsService
             chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date),
                 (double)x.Stats.ScoreToPar / x.Round.Holes.Count)).ToList(),
             chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date),
-                x.Stats.AveragePuttsPerHole)).ToList());
+                x.Stats.AveragePuttsPerHole)).ToList(),
+            BuildMovingAverages(chronological),
+            chronological.SelectMany(x => x.Round.Holes.GroupBy(h => h.Par).Select(g => new ParTypeTrendPointDto(
+                DateOnly.FromDateTime(x.Round.Date), g.Key, g.Average(h => h.Score - h.Par),
+                100.0 * g.Count(h => h.GIR) / g.Count()))).ToList());
     }
 
     private static RoundStatisticsDto BuildRoundStatistics(int roundId, List<Hole> holes)
@@ -160,4 +164,20 @@ public class StatisticsService : IStatisticsService
     private static List<PerformanceInsightDto> BuildInsights(
         List<(Round Round, RoundStatisticsDto Stats)> rounds)
         => PracticeInsights.Build(rounds.Select(x => x.Round));
+
+    private static List<MovingAveragePointDto> BuildMovingAverages(
+        List<(Round Round, RoundStatisticsDto Stats)> chronological)
+    {
+        var result = new List<MovingAveragePointDto>();
+        for (var i = 0; i < chronological.Count; i++)
+        {
+            double? Average(int window, Func<(Round Round, RoundStatisticsDto Stats), double> value) => i + 1 < window
+                ? null : chronological.Skip(i + 1 - window).Take(window).Average(value);
+            result.Add(new MovingAveragePointDto(DateOnly.FromDateTime(chronological[i].Round.Date),
+                Average(5, x => (double)x.Stats.ScoreToPar / Math.Max(1, x.Round.Holes.Count)),
+                Average(10, x => (double)x.Stats.ScoreToPar / Math.Max(1, x.Round.Holes.Count)),
+                Average(5, x => x.Stats.AveragePuttsPerHole), Average(10, x => x.Stats.AveragePuttsPerHole)));
+        }
+        return result;
+    }
 }

@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Rounds · Birdie Buddy</title>
-<link rel="stylesheet" href="css/styles.css?v=20260908-local-assets" />
+<link rel="stylesheet" href="css/styles.css?v=20260909-records" />
 </head>
 <body>
   <div class="app-shell">
@@ -20,6 +20,7 @@
       </div>
 
       <form class="card round-filters" id="round-filters">
+        <div class="field filter-search"><label for="filter-search">Search</label><input id="filter-search" type="search" placeholder="Course or tee" autocomplete="off" /></div>
         <div class="field"><label for="filter-course">Course</label><select id="filter-course"><option value="">All courses</option></select></div>
         <div class="field"><label for="filter-status">Status</label><select id="filter-status"><option value="">All statuses</option><option>Completed</option><option value="Draft">In progress</option><option>Abandoned</option></select></div>
         <div class="field"><label for="filter-holes">Round length</label><select id="filter-holes"><option value="">Any length</option><option value="9">9 holes</option><option value="18">18 holes</option></select></div>
@@ -35,6 +36,6 @@
   </div>
 
   <script src="js/api.js?v=20260903-rail3"></script>
-  <script src="js/rounds.js?v=20260903-rail3"></script>
+  <script src="js/rounds.js?v=20260909-round-filters"></script>
 </body>
 </html>

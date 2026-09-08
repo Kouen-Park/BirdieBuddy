@@ -9,6 +9,7 @@ function queryString() {
   const values = {
     limit: 20,
     cursor,
+    search: document.getElementById('filter-search').value.trim(),
     courseId: document.getElementById('filter-course').value,
     status: document.getElementById('filter-status').value,
     holeCount: document.getElementById('filter-holes').value,

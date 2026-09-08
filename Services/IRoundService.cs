@@ -9,6 +9,7 @@ public interface IRoundService
     Task<RoundDetailDto?> GetByIdAsync(int id);
     Task<(RoundDetailDto? Round, string? Error)> CreateAsync(RoundCreateDto dto);
     Task<bool> UpdateAsync(int id, RoundUpdateDto dto);
+    Task<(bool Success, string? Error)> UpdateWithErrorAsync(int id, RoundUpdateDto dto);
     Task<bool> DeleteAsync(int id);
 
     Task<List<HoleDto>?> GetHolesAsync(int roundId);

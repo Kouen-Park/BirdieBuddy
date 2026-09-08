@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<CourseHole> CourseHoles => Set<CourseHole>();
     public DbSet<Round> Rounds => Set<Round>();
     public DbSet<Hole> Holes => Set<Hole>();
+    public DbSet<PracticeSession> PracticeSessions => Set<PracticeSession>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder
@@ -56,6 +57,14 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<ProductEvent>().HasOne(e => e.Round).WithMany(r => r.ProductEvents)
             .HasForeignKey(e => e.RoundId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PracticeSession>().Property(s => s.FocusCode).HasMaxLength(80);
+        modelBuilder.Entity<PracticeSession>().Property(s => s.DrillTitle).HasMaxLength(160);
+        modelBuilder.Entity<PracticeSession>().Property(s => s.Result).HasMaxLength(500);
+        modelBuilder.Entity<PracticeSession>().Property(s => s.Notes).HasMaxLength(2000);
+        modelBuilder.Entity<PracticeSession>().HasIndex(s => new { s.UserId, s.StartedAt });
+        modelBuilder.Entity<PracticeSession>().HasOne(s => s.User).WithMany()
+            .HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Course>()
             .HasIndex(c => c.GolfNzClubId)

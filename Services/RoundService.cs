@@ -41,9 +41,17 @@ public class RoundService : IRoundService
 
         if (query.Cursor.HasValue) rounds = rounds.Where(r => r.Id < query.Cursor.Value);
         if (query.CourseId.HasValue) rounds = rounds.Where(r => r.CourseId == query.CourseId.Value);
+        if (query.CourseTeeId.HasValue) rounds = rounds.Where(r => r.CourseTeeId == query.CourseTeeId.Value);
         if (query.From.HasValue) rounds = rounds.Where(r => r.Date >= ToUtc(query.From.Value));
         if (query.To.HasValue) rounds = rounds.Where(r => r.Date < ToUtc(query.To.Value).AddDays(1));
         if (query.HoleCount.HasValue) rounds = rounds.Where(r => r.Holes.Count == query.HoleCount.Value);
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            rounds = rounds.Where(r => (r.Course != null && r.Course.Name.Contains(search)) ||
+                (r.LegacyTee != null && r.LegacyTee.Contains(search)) ||
+                (r.CourseTee != null && r.CourseTee.Name.Contains(search)));
+        }
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             Enum.TryParse<RoundStatus>(query.Status, true, out var status))
             rounds = rounds.Where(r => r.Status == status);
@@ -254,6 +262,9 @@ public class RoundService : IRoundService
     }
 
     public async Task<bool> UpdateAsync(int id, RoundUpdateDto dto)
+        => (await UpdateWithErrorAsync(id, dto)).Success;
+
+    public async Task<(bool Success, string? Error)> UpdateWithErrorAsync(int id, RoundUpdateDto dto)
     {
         var round = await _context.Rounds
             .Where(r => r.Id == id && r.UserId == CurrentUserId)
@@ -262,22 +273,32 @@ public class RoundService : IRoundService
             .FirstOrDefaultAsync();
 
         if (round is null || round.Course is null || round.Status == RoundStatus.Abandoned || dto.Date == default)
-            return false;
+            return (false, "Round not found.");
+
+        if (dto.ExpectedUpdatedAt.HasValue && round.UpdatedAt != dto.ExpectedUpdatedAt.Value)
+            return (false, ConflictMessage);
 
         var (tee, teeError) = ResolveTee(round.Course, dto.CourseTeeId, dto.Tee, true);
         if (teeError is not null)
-            return false;
+            return (false, teeError);
 
         // Reassigning a tee without migrating the score snapshots would corrupt history.
         if (round.CourseTeeId != tee!.Id && await _context.Holes.AnyAsync(h => h.RoundId == id))
-            return false;
+            return (false, "A round with recorded holes cannot change tees.");
 
         round.CourseTee = tee;
         round.LegacyTee = IsCustomTee(tee!) ? tee!.Name : null;
         round.Date = ToUtc(dto.Date);
         round.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-        return true;
+        try
+        {
+            await _context.SaveChangesAsync();
+            return (true, null);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return (false, ConflictMessage);
+        }
     }
 
     public async Task<bool> DeleteAsync(int id)

@@ -36,7 +36,7 @@ public record RoundCreateDto(
     string? Tee,
     List<HoleCreateDto> Holes);
 
-public record RoundUpdateDto(DateOnly Date, int? CourseTeeId, string? Tee);
+public record RoundUpdateDto(DateOnly Date, int? CourseTeeId, string? Tee, DateTime? ExpectedUpdatedAt = null);
 
 public record RoundStartDto(int CourseId, DateOnly Date, int? CourseTeeId, string? Tee);
 
@@ -50,6 +50,8 @@ public record RoundQueryDto(
     DateOnly? From = null,
     DateOnly? To = null,
     string? Status = null,
-    int? HoleCount = null);
+    int? HoleCount = null,
+    string? Search = null,
+    int? CourseTeeId = null);
 
 public record RoundPageDto(List<RoundSummaryDto> Items, int? NextCursor);

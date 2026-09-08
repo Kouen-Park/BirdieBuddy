@@ -40,12 +40,30 @@ async function loadOverview() {
         <div class="card stat-card"><div class="stat-label">Average Fairway %</div><div class="stat-value">${data.averageFairwayPercentage != null ? pct(data.averageFairwayPercentage) : '—'}</div></div>
       </div>
       ${roundLengthSummary(data)}
+      ${movingAverageSummary(data)}
+      ${parTypeTrendSummary(data)}
       <p class="progress-note">GIR uses all recorded holes. Fairway percentage excludes par 3s and unrecorded fairways. Rates are weighted by holes, not by rounds.</p>
     `;
   } catch (err) {
     if (request !== overviewRequest) return;
     overviewEl.innerHTML = `<div class="alert error">Couldn't load statistics: ${escapeHtml(err.message)}</div>`;
   }
+}
+
+function movingAverageSummary(data) {
+  const points = (data.movingAverageTrend || []).filter(p => p.fiveRoundScoreToPar != null || p.tenRoundScoreToPar != null);
+  if (!points.length) return '<div class="card empty-state trend-card"><h3>Moving averages unlock after five rounds</h3><p>Record complete rounds to compare recent 5- and 10-round score-to-par and putting averages.</p></div>';
+  const latest = points[points.length - 1];
+  const metric = (label, value, suffix = '') => `<div><span class="stat-label">${label}</span><strong class="trend-value">${value == null ? '—' : Number(value).toFixed(2)}${suffix}</strong></div>`;
+  return `<section class="card trend-card" aria-labelledby="moving-average-title"><div class="section-title" id="moving-average-title">Recent moving averages</div><p class="progress-note">Rolling windows ending ${fmtDate(latest.date)} · score to par is normalized per hole.</p><div class="trend-grid">${metric('Last 5 · score to par / hole', latest.fiveRoundScoreToPar)}${metric('Last 10 · score to par / hole', latest.tenRoundScoreToPar)}${metric('Last 5 · putts / hole', latest.fiveRoundPuttsPerHole)}${metric('Last 10 · putts / hole', latest.tenRoundPuttsPerHole)}</div><div class="trend-bars" role="img" aria-label="Recent moving average history">${points.slice(-10).map(p => `<div class="trend-bar-group"><span class="trend-bar five" style="--bar:${Math.min(100, Math.max(8, ((p.fiveRoundPuttsPerHole || 0) / 3) * 100))}%"></span><span class="trend-bar ten" style="--bar:${Math.min(100, Math.max(8, ((p.tenRoundPuttsPerHole || 0) / 3) * 100))}%"></span><small>${fmtDate(p.date)}</small></div>`).join('')}</div></section>`;
+}
+
+function parTypeTrendSummary(data) {
+  const points = data.parTypeTrend || [];
+  if (!points.length) return '';
+  const latestDate = points.map(p => p.date).sort().pop();
+  const latest = points.filter(p => p.date === latestDate).sort((a, b) => a.par - b.par);
+  return `<section class="card trend-card" aria-labelledby="par-trend-title"><div class="section-title" id="par-trend-title">Latest par-type trend</div><p class="progress-note">${fmtDate(latestDate)} · score to par and GIR by par type.</p><div class="chart-grid">${latest.map(p => `<div class="chart-card"><h3>Par ${p.par}</h3><div class="stat-value">${toPar(Math.round(p.averageScoreToPar * 100) / 100)}</div><p class="progress-note">GIR ${pct(p.girPercentage)}</p></div>`).join('')}</div></section>`;
 }
 
 async function loadRoundOptions() {

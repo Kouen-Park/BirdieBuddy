@@ -78,8 +78,11 @@ public class RoundsController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, RoundUpdateDto dto)
     {
-        var success = await _roundService.UpdateAsync(id, dto);
-        return success ? NoContent() : this.ApiProblem(404, "round.not_found", "Round not found.");
+        var (success, error) = await _roundService.UpdateWithErrorAsync(id, dto);
+        if (success) return NoContent();
+        return this.ApiProblem(error == RoundService.ConflictMessage ? 409 : 404,
+            error == RoundService.ConflictMessage ? "round.save_conflict" : "round.not_found",
+            error == RoundService.ConflictMessage ? "Round could not be updated." : "Round not found.", error);
     }
 
     [HttpDelete("{id:int}")]

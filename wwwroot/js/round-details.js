@@ -147,9 +147,14 @@ async function editRound(round) {
   const date = prompt('Round date (YYYY-MM-DD)', round.date.slice(0, 10));
   if (!date) return;
   try {
-    await Api.put(`/rounds/${round.id}`, { date, courseTeeId: round.courseTeeId, tee: round.tee });
+    await Api.put(`/rounds/${round.id}`, { date, courseTeeId: round.courseTeeId, tee: round.tee, expectedUpdatedAt: round.updatedAt });
     location.reload();
-  } catch (error) { content.insertAdjacentHTML('afterbegin', `<div class="alert error">${escapeHtml(error.message)}</div>`); }
+  } catch (error) {
+    const message = error.status === 409
+      ? 'This round was updated in another session. Reload the round before editing it again.'
+      : error.message;
+    content.insertAdjacentHTML('afterbegin', `<div class="alert error" role="alert">${escapeHtml(message)} <button class="text-button" onclick="loadRoundDetails()">Reload</button></div>`);
+  }
 }
 
 async function deleteRound() {

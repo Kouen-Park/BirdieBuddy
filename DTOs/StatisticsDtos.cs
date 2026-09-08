@@ -22,6 +22,9 @@ public record RoundStatisticsDto(
 );
 
 public record TrendPointDto(int RoundId, DateOnly Date, double Value);
+public record MovingAveragePointDto(DateOnly Date, double? FiveRoundScoreToPar, double? TenRoundScoreToPar,
+    double? FiveRoundPuttsPerHole, double? TenRoundPuttsPerHole);
+public record ParTypeTrendPointDto(DateOnly Date, int Par, double AverageScoreToPar, double GirPercentage);
 
 public record PracticeDrillDto(string Title, int Minutes, List<string> Steps, string Measure);
 public record PerformanceInsightDto(string Code, string Title, string Evidence, string Recommendation, string Severity,
@@ -49,5 +52,7 @@ public record OverviewStatisticsDto(
     double AveragePuttsPerHole = 0,
     List<RoundLengthStatisticsDto>? ByRoundLength = null,
     List<TrendPointDto>? ScoreToParPerHoleTrend = null,
-    List<TrendPointDto>? PuttsPerHoleTrend = null
+    List<TrendPointDto>? PuttsPerHoleTrend = null,
+    List<MovingAveragePointDto>? MovingAverageTrend = null,
+    List<ParTypeTrendPointDto>? ParTypeTrend = null
 );
