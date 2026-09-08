@@ -1,0 +1,19 @@
+name: Deployment smoke check
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: HTTPS URL of the deployed Birdie Buddy service
+        required: true
+        default: https://birdiebuddy.onrender.com
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check deployed health, CSP and local assets
+        env:
+          BASE_URL: ${{ inputs.base_url }}
+        run: ./scripts/check-deployment.sh "$BASE_URL"

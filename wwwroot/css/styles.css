@@ -89,7 +89,7 @@
 .live-actions { position: sticky; z-index: 10; bottom: 0; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; margin: 18px -6px 0; padding: 12px 6px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--canvas) 20%); }
 .live-actions .btn { min-height: 50px; }
 .live-secondary-actions { text-align: center; margin-top: 12px; }
-.text-button { padding: 10px; border: 0; background: transparent; color: var(--ink-500); cursor: pointer; text-decoration: underline; }
+.text-button { display: inline-flex; min-height: 44px; align-items: center; padding: 10px; border: 0; background: transparent; color: var(--ink-500); cursor: pointer; text-decoration: underline; }
 .danger-text { color: var(--bad); }
 
 @media (max-width: 600px) {
@@ -1606,7 +1606,11 @@ tr.clickable {
 }
 
 .logout-button {
-    padding: 0;
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    padding: 8px 0;
     border: 0;
     background: transparent;
     color: var(--sun);

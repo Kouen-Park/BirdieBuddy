@@ -85,6 +85,16 @@ dotnet ef migrations script --idempotent --configuration Release --output artifa
 
 Review the SQL and test it only against a recent disposable copy before enabling a schema deployment. The command generates SQL; it does not connect to or modify a database.
 
+After a Render deploy, run the public smoke checks against the service URL. The script verifies both health endpoints, the application-only CSP, and the self-hosted Chart.js asset:
+
+```bash
+./scripts/check-deployment.sh https://your-service.onrender.com
+```
+
+It performs read-only requests and does not require an authenticated account.
+
+The complete release, SMTP rollout, backup rehearsal, monitoring, private-beta, and physical iPhone Safari procedure is documented in [`docs/beta-operations.md`](docs/beta-operations.md). Operational scripts deliberately refuse unsafe restore targets and never store credentials in the repository.
+
 ## Render deployment
 
 The included Dockerfile listens on port `10000`. Configure these Render environment variables:

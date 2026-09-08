@@ -23,6 +23,7 @@ const server = http.createServer(async (req, res) => {
   const json = (value, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(value)); };
   if (url.pathname === '/api/auth/me') return json({ id: 99991, displayName: 'Local smoke test', email: 'smoke@example.test' });
   if (url.pathname === '/api/security/csrf') return json({ token: 'local-fixture-token' });
+  if (url.pathname === '/api/telemetry/events' && req.method === 'POST') return json({}, 202);
   if (url.pathname === '/api/rounds/1' && req.method === 'GET') return json(round);
   if (url.pathname === '/api/rounds/3' && req.method === 'GET') return json(conflictRound);
   if (url.pathname === '/api/rounds/2' && req.method === 'GET') return json(completed);
@@ -65,6 +66,7 @@ const server = http.createServer(async (req, res) => {
     return json(hole);
   }
   if (url.pathname.startsWith('/api/')) return json({ detail: 'Not available in this UI fixture.' }, 404);
+  if (url.pathname === '/favicon.ico') { res.writeHead(204); return res.end(); }
   const file = path.resolve(webroot, `.${url.pathname}`);
   if (!file.startsWith(webroot + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return json({}, 404);
   const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(file)] || 'application/octet-stream';

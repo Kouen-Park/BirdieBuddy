@@ -3,3 +3,4 @@ obj/
 .vs/
 *.user
 appsettings.Development.json
+output/
