@@ -35,7 +35,9 @@ jobs:
       - run: dotnet restore BirdieBuddy.csproj
       - run: dotnet build BirdieBuddy.csproj --configuration Release --no-restore
       - run: dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj --configuration Release
+      - run: dotnet publish BirdieBuddy.csproj --configuration Release --no-restore --output ./artifacts/publish
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: node --test tests/browser/*.test.cjs
+      - run: docker build --tag birdie-buddy-ci:${{ github.sha }} .

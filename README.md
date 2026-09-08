@@ -46,13 +46,13 @@ iPhone Safari certification is pending; see `tests/browser/iphone-safari-checkli
 
 Requirements: .NET 8 SDK and PostgreSQL.
 
-The default development connection is:
+An example local development connection is:
 
 ```text
 Host=localhost;Port=5432;Database=birdiebuddy;Username=postgres;Password=postgres
 ```
 
-Override it without committing credentials:
+No connection string is committed in the shared settings. Configure it without committing credentials:
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=birdiebuddy;Username=YOUR_USER;Password=YOUR_PASSWORD"
@@ -82,8 +82,14 @@ The included Dockerfile listens on port `10000`. Configure these Render environm
 - `Administration__ImportKey=<long random secret>` when the Golf NZ admin import endpoint is required
 - `Application__PublicBaseUrl=https://your-service.onrender.com`
 - `Email__From`, `Email__Smtp__Host`, `Email__Smtp__Port`, `Email__Smtp__Username`, and `Email__Smtp__Password` for verification and password-reset delivery
+- `OTEL_EXPORTER_OTLP_ENDPOINT` to enable vendor-neutral external traces, metrics, and logs
+- `OTEL_EXPORTER_OTLP_HEADERS` when the selected OTLP provider requires an API key or authorization header
 
 Do not put production credentials in an appsettings file. SMTP defaults to TLS on port 587; without host/from configuration, account creation still succeeds but the server logs a warning and no email is sent. Confirm `/health/ready` after each deploy and retain automated PostgreSQL backups. Before a schema deployment, test the migration against a recent database copy and document the restore point.
+
+OpenTelemetry export is disabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is absent. It uses the standard OTLP environment variables, so the same build can send to Grafana Cloud, Honeycomb, an OpenTelemetry Collector, or another compatible provider. Only `/api` requests are traced; static reset and verification URLs are excluded so their query-string tokens are not exported. Keep `OTEL_EXPORTER_OTLP_HEADERS` in Render secrets rather than source control.
+
+Production startup validates the database connection, HTTPS public/OTLP URLs, and complete SMTP host/from pairs before applying migrations. CI now publishes the Release artifact and builds the actual Docker image in addition to running server, PostgreSQL, and browser tests.
 
 ## Live-round API
 

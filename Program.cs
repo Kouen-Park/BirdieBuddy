@@ -9,6 +9,8 @@ using System.Threading.RateLimiting;
 using BirdieBuddy.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.ValidateDeploymentConfiguration();
+builder.AddBirdieBuddyTelemetry();
 
 builder.Services.AddBirdieBuddyControllers();
 builder.Services.AddProblemDetails();
