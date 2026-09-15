@@ -50,8 +50,8 @@ public static class ServiceErrors
         new(409, "auth.email_exists", "Account could not be created.",
             "An account with this email already exists.");
 
-    public static ServiceError AuthenticationRequired() =>
-        new(401, "auth.required", "Authentication required.", "Sign in to access this resource.");
+    public static ServiceError AuthenticationRequired(string? detail = null) =>
+        new(401, "auth.required", "Authentication required.", detail ?? "Sign in to access this resource.");
 
     public static ServiceError ProfileInvalid(string detail) =>
         new(400, "auth.profile_invalid", "Profile could not be updated.", detail);

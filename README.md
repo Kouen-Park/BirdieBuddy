@@ -192,6 +192,9 @@ Production validates database, HTTPS URL, SMTP pairing, and migration policy bef
 - [Beta operations](docs/beta-operations.md) — deployment gates, SMTP rollout, backups, monitoring, and physical iPhone checks
 - [Browser fixture guide](tests/browser/README.md) — deterministic local UI states and conflict scenarios
 - [Physical iPhone Safari checklist](tests/browser/iphone-safari-checklist.md) — WebKit and VoiceOver release checks
+- [Native mobile API](docs/mobile-api.md) — token lifecycle, API routes, error contract, and synchronization rules for the SwiftUI client
+- [iOS client scaffold](ios/README.md) — SwiftUI setup, Keychain, and local draft-storage boundaries
+- [iOS release checklist](docs/ios-release.md) — signing, simulator, physical-device, App Store Connect, and operational gates
 
 ## Current scope
 

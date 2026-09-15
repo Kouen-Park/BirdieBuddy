@@ -12,6 +12,20 @@ public record LoginDto(
     [param: Required, EmailAddress, StringLength(320)] string? Email,
     [param: Required, StringLength(128, MinimumLength = 1)] string? Password);
 
+public record MobileSessionRequest(
+    [param: Required, EmailAddress, StringLength(320)] string? Email,
+    [param: Required, StringLength(128, MinimumLength = 1)] string? Password);
+
+public record MobileRefreshRequest(
+    [param: Required, StringLength(128, MinimumLength = 32)] string? RefreshToken);
+
+public record MobileSessionDto(
+    string AccessToken,
+    string RefreshToken,
+    DateTime AccessTokenExpiresAt,
+    DateTime RefreshTokenExpiresAt,
+    CurrentUserDto User);
+
 public record CurrentUserDto(int Id, string Email, string DisplayName, bool EmailVerified = false,
     [property: JsonIgnore] int SessionVersion = 0);
 

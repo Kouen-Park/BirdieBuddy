@@ -113,6 +113,7 @@ builder.Services.AddScoped<IRoundService>(services => new RoundService(
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IMobileTokenService, MobileTokenService>();
 builder.Services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
 builder.Services.AddSingleton<IAdminKeyValidator, AdminKeyValidator>();
 builder.Services.AddSingleton<IOperationalMetrics, OperationalMetrics>();
@@ -166,6 +167,7 @@ app.UseHttpsRedirection();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseMiddleware<MobileBearerMiddleware>();
 app.UseApiObservability();
 app.UseRateLimiter();
 app.UseAuthentication();

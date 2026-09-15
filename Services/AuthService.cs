@@ -148,6 +148,7 @@ public sealed class AuthService : IAuthService
         user.PasswordSalt = Convert.ToBase64String(newSalt);
         user.PasswordHash = Convert.ToBase64String(HashPassword(password, newSalt));
         user.SessionVersion++;
+        await RevokeMobileTokensAsync(user.Id);
         await _context.SaveChangesAsync();
         return ServiceResult<bool>.Success(true);
     }
@@ -172,6 +173,7 @@ public sealed class AuthService : IAuthService
                 "This reset link is invalid or has expired."));
         SetPassword(token.User, dto.NewPassword ?? string.Empty);
         token.User.SessionVersion++;
+        await RevokeMobileTokensAsync(token.UserId);
         token.UsedAt = DateTime.UtcNow;
         foreach (var other in await _context.AccountTokens.Where(t => t.UserId == token.UserId &&
                      t.Type == PasswordResetToken && t.UsedAt == null).ToListAsync())
@@ -310,6 +312,15 @@ public sealed class AuthService : IAuthService
         var salt = RandomNumberGenerator.GetBytes(SaltSize);
         user.PasswordSalt = Convert.ToBase64String(salt);
         user.PasswordHash = Convert.ToBase64String(HashPassword(password, salt));
+    }
+
+    private async Task RevokeMobileTokensAsync(int userId)
+    {
+        var now = DateTime.UtcNow;
+        var tokens = await _context.AccountTokens
+            .Where(t => t.UserId == userId && t.Type.StartsWith("mobile-") && t.UsedAt == null)
+            .ToListAsync();
+        foreach (var token in tokens) token.UsedAt = now;
     }
 
     private static bool PasswordMatches(User user, string password)
