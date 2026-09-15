@@ -119,6 +119,12 @@ public class PostgresIntegrationTests
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.Entity<User>().Ignore(user => user.SessionVersion);
+            modelBuilder.Entity<CourseTee>().Ignore(tee => tee.IsActive);
+            modelBuilder.Entity<CourseTee>().Ignore(tee => tee.LastSeenImportRunId);
+            modelBuilder.Entity<CourseTee>().Ignore(tee => tee.SourceKey);
+            modelBuilder.Entity<CourseHole>().Ignore(hole => hole.IsActive);
+            modelBuilder.Entity<CourseHole>().Ignore(hole => hole.LastSeenImportRunId);
+            modelBuilder.Entity<CourseHole>().Ignore(hole => hole.SourceKey);
         }
     }
 
