@@ -513,6 +513,7 @@ select:focus-visible {
     position: absolute;
     top: 22px;
     right: 18px;
+    z-index: 2;
     align-items: center;
     justify-content: center;
     width: 34px;

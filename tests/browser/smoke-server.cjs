@@ -51,6 +51,9 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/courses') return json([course]);
   const match = url.pathname.match(/^\/api\/rounds\/(1|3)\/holes\/by-number\/(\d+)$/);
   if (match && req.method === 'PUT') {
+    // Simulate a slow on-course connection so the fixture can verify the
+    // scorecard's intermediate "syncing" status instead of only the outcome.
+    if (match[1] === '1' && Number(match[2]) === 10) await new Promise(resolve => setTimeout(resolve, 1500));
     let body = '';
     for await (const chunk of req) body += chunk;
     const data = JSON.parse(body);

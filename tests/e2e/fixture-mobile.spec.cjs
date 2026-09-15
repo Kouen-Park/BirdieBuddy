@@ -17,10 +17,6 @@ test.describe('mobile live round fixture', () => {
 
   test('announces the device, syncing, and server-saved states', async ({ page }) => {
     await page.goto('/live-round.html?id=1');
-    await page.route('**/api/rounds/1/holes/by-number/10', async route => {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await route.continue();
-    });
 
     await page.getByRole('button', { name: 'Increase Score' }).click();
     await expect(page.locator('#live-status')).toContainText(/saved on this device/i);
