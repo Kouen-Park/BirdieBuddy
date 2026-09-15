@@ -6,6 +6,20 @@ async function loadDashboard() {
   const el = document.getElementById('dashboard-content');
 
   try {
+    const session = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    if (session.status === 401) {
+      el.innerHTML = `
+        <section class="guest-hero">
+          <div class="eyebrow">A calmer way to play</div>
+          <h2>Keep every round<br><em>in view.</em></h2>
+          <p>Browse the course catalogue, then sign in when you’re ready to save rounds and see your progress.</p>
+          <div class="guest-actions"><a class="btn btn-flag" href="/courses.html">Explore courses</a><a class="btn btn-secondary" href="/login.html?returnUrl=%2Findex.html">Sign in</a></div>
+        </section>
+        <div class="guest-preview-grid"><a class="card guest-preview" href="/courses.html"><span class="eyebrow">Course catalogue</span><strong>Find your next tee</strong><span>Search by course or location.</span></a><div class="card guest-preview"><span class="eyebrow">Your game</span><strong>Track what matters</strong><span>Rounds, trends and practice plans after you sign in.</span></div></div>`;
+      return;
+    }
+    if (!session.ok) throw new Error('Account connection unavailable.');
+
     const [data, draftPage] = await Promise.all([
       Api.get('/statistics/overview'),
       Api.get('/rounds/page?status=Draft&limit=1')

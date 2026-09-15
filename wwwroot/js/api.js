@@ -29,7 +29,7 @@ const Api = {
             headers
         });
 
-        if (res.status === 401 && !['/login.html', '/signup.html'].includes(window.location.pathname)) {
+        if (res.status === 401 && !['/login.html', '/signup.html', '/courses.html', '/index.html'].includes(window.location.pathname)) {
             const returnUrl = `${window.location.pathname}${window.location.search}`;
             window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
             throw new Error('Authentication required.');
@@ -173,15 +173,16 @@ function renderNav(active) {
 
 
 async function hydrateCurrentUser() {
-    const publicPages = ['/login.html', '/signup.html', '/courses.html'];
+    const publicPages = ['/login.html', '/signup.html', '/courses.html', '/index.html'];
     if (publicPages.includes(window.location.pathname)) return;
 
     try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
         if (response.status === 401) {
-            if (window.location.pathname === '/courses.html') {
+            if (['/courses.html', '/index.html'].includes(window.location.pathname)) {
                 const account = document.getElementById('sidebar-account');
-                if (account) account.innerHTML = '<a class="btn btn-secondary" href="/login.html?returnUrl=%2Fcourses.html">Sign in to track rounds</a>';
+                const returnUrl = encodeURIComponent(window.location.pathname);
+                if (account) account.innerHTML = `<a class="btn btn-secondary" href="/login.html?returnUrl=${returnUrl}">Sign in to track rounds</a>`;
                 return;
             }
             const returnUrl = `${window.location.pathname}${window.location.search}`;
