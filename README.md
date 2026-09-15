@@ -1,18 +1,57 @@
-# Birdie Buddy
+# BirdieBuddy
 
 <p align="center">
-  <img src="wwwroot/icons/birdie-buddy.svg" alt="Birdie Buddy flag logo" width="88" />
+  <img src="ios/BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png" alt="BirdieBuddy app icon" width="132" />
 </p>
 
 <p align="center">
-  <strong>A mobile-first golf scorecard that keeps working when the course connection does not.</strong>
+  <strong>Reliable golf scoring, from the first tee to the final sync.</strong>
 </p>
 
 <p align="center">
-  Track 9- and 18-hole rounds, review performance trends, and turn recent results into focused practice.
+  Record 9- and 18-hole rounds, recover safely from poor connectivity, understand your game, and turn results into focused practice.
 </p>
 
-Birdie Buddy is an English-language mobile web app built for a small beta. Its core design goal is reliable round completion and recovery in poor-connectivity conditions: input is saved to a user-and-round-scoped browser outbox before it is synchronized with PostgreSQL.
+<p align="center">
+  <a href="https://github.com/Kouen-Park/BirdieBuddy/actions/workflows/ci.yml"><img src="https://github.com/Kouen-Park/BirdieBuddy/actions/workflows/ci.yml/badge.svg" alt="CI status" /></a>
+  <img src="https://img.shields.io/badge/iOS-17%2B-0B2723" alt="iOS 17 or later" />
+  <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-336791" alt="PostgreSQL 16" />
+</p>
+
+BirdieBuddy is a golf scorecard platform with a native SwiftUI client, a mobile-first web experience, and an ASP.NET Core API. Its defining principle is simple: a golfer's input must not disappear just because the connection does.
+
+## Current status
+
+The product is ready for active iOS development and internal testing, but it is not yet App Store ready.
+
+| Surface | Status | Current coverage |
+|---|---|---|
+| iOS app | Active development | Token authentication, courses, round drafts, live scoring, local outbox, conflict review, history, statistics, practice, and account tools |
+| Mobile web | Beta-capable | Full round lifecycle, offline recovery, detailed statistics, practice guidance, course management, and account flows |
+| Backend API | Operational foundation | ASP.NET Core 10, PostgreSQL, ownership checks, mobile and browser authentication, rate limits, health checks, and telemetry |
+| Release operations | In progress | Physical-device verification, TestFlight, production SMTP, backup rehearsal, monitoring, privacy, and store metadata remain |
+
+## Product experience
+
+### Play the round
+
+- Start a 9- or 18-hole draft from a course and tee.
+- Record score, putts, GIR, fairway, and penalties with fast per-hole controls.
+- Resume, complete, abandon, edit, or review a round without losing its lifecycle state.
+
+### Keep every change safe
+
+- Persist input locally before reporting it as device-saved.
+- Isolate pending writes by user and round.
+- Synchronize queued hole revisions in order when connectivity returns.
+- Stop on a `409` and let the golfer compare device and server values instead of silently overwriting either one.
+
+### Learn and improve
+
+- Compare score-to-par across 9- and 18-hole rounds.
+- Review GIR, fairway, putting, par-type, and trend data.
+- Turn recent completed rounds into evidence-linked practice recommendations and sessions.
 
 ## Screenshots
 
@@ -23,108 +62,89 @@ Birdie Buddy is an English-language mobile web app built for a small beta. Its c
     <td align="center"><strong>Conflict recovery</strong></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/live-round.png" alt="Birdie Buddy live scorecard on mobile" /></td>
-    <td><img src="docs/screenshots/round-details.png" alt="Completed round summary and hole breakdown" /></td>
-    <td><img src="docs/screenshots/conflict-recovery.png" alt="Device and server score conflict comparison" /></td>
-  </tr>
-  <tr>
-    <td>Fast per-hole score, putt, GIR, fairway, and penalty entry.</td>
-    <td>Score-to-par summary, key rates, and editable hole history.</td>
-    <td>Explicit device-versus-server comparison without silently discarding input.</td>
+    <td><img src="docs/screenshots/live-round.png" alt="BirdieBuddy live scorecard" /></td>
+    <td><img src="docs/screenshots/round-details.png" alt="BirdieBuddy completed round details" /></td>
+    <td><img src="docs/screenshots/conflict-recovery.png" alt="BirdieBuddy conflict comparison" /></td>
   </tr>
 </table>
 
-> Screenshots use the repository's deterministic local fixture and sample data.
-
-## Key features
-
-- **Resilient live rounds** — draft, autosave, offline queue, resume, complete, and abandon flows for 9 or 18 holes.
-- **Safe conflict handling** — per-hole optimistic concurrency with a review screen for choosing the device or server value.
-- **Round history** — completed scorecards, pagination, per-hole breakdowns, and guarded edit/delete operations.
-- **Useful statistics** — comparable 9/18-hole scoring, score-to-par, GIR, fairway, putting, and recent trend views.
-- **Practice guidance** — evidence-linked priorities and measurable drills derived from valid completed rounds.
-- **Guest browsing** — the home page and shared course catalogue are available without creating an account.
-- **Course catalogue** — shared Golf New Zealand course data alongside member-owned custom courses and tees.
-- **Private accounts** — cookie sessions, profile and password management, email verification/recovery, data export, and account deletion.
-- **Production foundations** — CSRF protection, rate limiting, security headers, health checks, structured telemetry, migration locking, and CI.
-
-## Tech stack
-
-| Layer | Technology | Role |
-|---|---|---|
-| Backend | ASP.NET Core 10, C# | Static hosting, controller API, authentication, middleware, health checks |
-| Data | EF Core 10, Npgsql, PostgreSQL 16 | Relational persistence, migrations, constraints, ownership-aware queries |
-| Frontend | HTML, CSS, vanilla JavaScript | Mobile-first UI served directly from `wwwroot`; no frontend build step |
-| Offline | Service Worker, `localStorage`, Web Locks | App-shell caching, scoped outbox, and multi-tab synchronization |
-| Charts | Chart.js 4.4.4 | Self-hosted score, GIR, and putting visualizations |
-| Observability | OpenTelemetry, ASP.NET Core health checks | Traces, metrics, logs, liveness, and database readiness |
-| Testing | xUnit, WebApplicationFactory, Node test runner, Playwright | Unit, HTTP pipeline, PostgreSQL integration, browser-module, and mobile E2E coverage |
-| Delivery | Docker, GitHub Actions, Render | Release build, container validation, migration artifact, and deployment smoke checks |
+> These web screenshots use deterministic local fixtures. Native iPhone screenshots will replace or complement them after the first TestFlight design pass.
 
 ## Architecture
 
-Birdie Buddy is a modular monolith: one ASP.NET Core process serves both the static client and the authenticated API. PostgreSQL is the durable source of truth; browser storage improves live-round resilience but is not treated as a backup.
+The backend remains a modular monolith. Both clients share the same PostgreSQL source of truth while using authentication and local persistence appropriate to their platform.
 
 ```mermaid
-flowchart TB
-    subgraph Browser["Mobile browser"]
-        UI["HTML / CSS / JavaScript"]
-        SW["Service worker<br/>app shell"]
-        Outbox["User + round scoped<br/>local outbox"]
-        UI --> Outbox
-        SW --> UI
+flowchart LR
+    subgraph IOS["SwiftUI app"]
+        IUI["Native features"]
+        Keychain["Keychain session"]
+        IOutbox["User + round outbox"]
+        IUI --> Keychain
+        IUI --> IOutbox
     end
 
-    subgraph App["ASP.NET Core 10"]
-        Pipeline["Security headers · rate limits<br/>cookie auth · CSRF · ProblemDetails"]
+    subgraph WEB["Mobile web"]
+        WUI["HTML · CSS · JavaScript"]
+        SW["Service worker"]
+        WOutbox["Scoped browser outbox"]
+        SW --> WUI
+        WUI --> WOutbox
+    end
+
+    subgraph API["ASP.NET Core 10"]
+        Auth["Bearer tokens · cookies · CSRF"]
         Controllers["Controller API"]
-        Services["Scoped feature services"]
-        EF["EF Core / Npgsql"]
-        Pipeline --> Controllers --> Services --> EF
+        Services["Feature services"]
+        EF["EF Core · Npgsql"]
+        Auth --> Controllers --> Services --> EF
     end
 
-    UI -->|HTTPS + cookie + CSRF token| Pipeline
-    Outbox -->|ordered per-hole sync| Controllers
+    IUI -->|HTTPS + access token| Auth
+    IOutbox -->|ordered revision sync| Controllers
+    WUI -->|HTTPS + cookie| Auth
+    WOutbox -->|ordered revision sync| Controllers
     EF --> DB[(PostgreSQL 16)]
-    Pipeline -.-> Ops["Health checks · logs<br/>metrics · traces"]
+    API -.-> Ops["Health · logs · metrics · traces"]
 ```
 
-The controller-facing `IRoundService` remains stable while round behavior is separated by responsibility:
+### Mobile session lifecycle
 
-| Component | Responsibility |
-|---|---|
-| `RoundService` | Thin compatibility facade used by controllers |
-| `RoundQueryService` | Lists, selectors, pagination, and detail reads |
-| `LiveRoundService` | Draft creation and live per-hole writes |
-| `RoundLifecycleService` | Completed-scorecard creation, completion, and abandonment |
-| `CompletedRoundEditor` | Completed-round metadata/hole edits and deletion |
-| `RoundRules` | Shared validation, tee resolution, expected-hole rules, and DTO mapping |
-
-Every feature service is scoped to the request's `ApplicationDbContext` and current user. Ownership is enforced in service queries rather than inferred from browser-submitted IDs. See [the architecture guide](docs/architecture.md) for request ordering, data boundaries, concurrency, offline behavior, and scaling limits.
+The iOS app receives a short-lived access token and a rotating refresh token. Tokens are stored in Keychain, refresh is single-use, and logout or account security changes revoke the mobile session. Browser cookie authentication remains available without breaking existing web clients.
 
 ### Live-save lifecycle
 
 ```text
 input changes
-  -> persist a local outbox revision
-  -> show device-saved state
-  -> verify the signed-in account
-  -> send the expected server snapshot + new value
-  -> acknowledge and remove only that revision
-     or preserve it and show an explicit 409 conflict review
+  -> persist a user-and-round-scoped local revision
+  -> show the device-saved state
+  -> send the expected server snapshot and new value
+  -> acknowledge only the matching local revision
+     or preserve it and open explicit conflict review
 ```
 
-New input remains queued while a request is in flight. Completion is blocked until every expected hole is valid and the local outbox has synchronized.
+## Technology
 
-## Run locally
+| Layer | Technology |
+|---|---|
+| Native client | SwiftUI, Swift concurrency, URLSession, Keychain, file-backed actor outbox |
+| Web client | Semantic HTML, CSS, vanilla JavaScript, Service Worker, Web Locks, Chart.js |
+| Backend | ASP.NET Core 10, C# controllers and scoped services |
+| Data | EF Core 10, Npgsql, PostgreSQL 16 |
+| Security | Cookie + CSRF browser sessions, rotating bearer-token mobile sessions, ownership-aware queries, rate limiting |
+| Observability | OpenTelemetry, structured logs, liveness and readiness checks |
+| Tests | XCTest, xUnit, PostgreSQL integration tests, Node test runner, Playwright |
+| Delivery | GitHub Actions, Docker, Render |
+
+## Run the backend and web app
 
 ### Prerequisites
 
 - .NET 10 SDK
 - PostgreSQL 16
-- Node.js 22+ and npm for browser and Playwright tests
+- Node.js 22+ and npm for browser tests
 
-Configure a development database with .NET Secret Manager, then start the app:
+Configure a local database with .NET Secret Manager:
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
@@ -133,69 +153,97 @@ dotnet restore
 dotnet run
 ```
 
-Open the HTTPS URL printed by ASP.NET Core. Swagger is available at `/swagger` in Development. Pending migrations run at startup under a PostgreSQL advisory lock.
+Open the HTTPS URL printed by ASP.NET Core. Swagger is available at `/swagger` in Development. Never commit working credentials to `appsettings*.json`.
 
-Never commit a working connection string or deployment credential to `appsettings*.json`.
+## Run the iOS app
 
-## Tests
+### Prerequisites
+
+- Xcode 16 or later
+- An iOS 17+ simulator or device
+- A running BirdieBuddy API
+
+Open `ios/BirdieBuddyApp.xcodeproj`, then set `API_BASE_URL` in the scheme environment to the API origin. The native client intentionally has no third-party dependencies.
+
+Run its test suite from Xcode or the command line:
 
 ```bash
-# .NET unit and HTTP pipeline tests
+./scripts/test-ios.sh
+```
+
+The script selects an iPhone from the newest installed simulator runtime. Set `BIRDIEBUDDY_IOS_SIMULATOR_ID` to use a specific simulator UDID.
+
+## Test the platform
+
+```bash
+# .NET unit, API, and service tests
 dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj
 
 # Browser-module tests
 npm ci
 npm run test:browser
 
-# Deterministic mobile Chromium fixture
+# Deterministic mobile-browser journey
 npx playwright install chromium
 npm run test:e2e:fixture
+
+# Native iOS tests
+./scripts/test-ios.sh
 ```
 
-PostgreSQL integration and full application E2E tests require explicitly named disposable databases. The exact safeguards, environment variables, CI jobs, and artifact locations are documented in [docs/testing.md](docs/testing.md).
+CI additionally runs PostgreSQL integration tests, full browser E2E, migration SQL generation, publish and Docker validation, and the SwiftUI test target.
 
-## Repository layout
+## Repository map
 
 | Path | Purpose |
 |---|---|
+| `ios/BirdieBuddyApp/` | SwiftUI application, networking, authentication, local persistence, and features |
+| `ios/BirdieBuddyAppTests/` | Native model and outbox tests |
 | `Controllers/` | HTTP endpoints and status-code mapping |
-| `DTOs/` | Validated browser-facing request and response contracts |
-| `Services/` | Authentication, courses, round workflows, statistics, practice, and imports |
-| `Infrastructure/` | Error handling, security, observability, and deployment validation |
-| `Data/`, `Models/`, `Migrations/` | EF Core context, entities, and PostgreSQL schema history |
-| `wwwroot/` | Static mobile UI, service worker, local outbox, and self-hosted assets |
-| `tests/BirdieBuddy.Tests/` | Unit, HTTP pipeline, and PostgreSQL integration tests |
-| `tests/browser/`, `tests/e2e/` | JavaScript regression tests, fixtures, and Playwright journeys |
-| `scripts/` | Deployment checks, SMTP probe, backup rehearsal, and Golf NZ source data |
+| `Services/` | Authentication, courses, rounds, statistics, practice, and imports |
+| `DTOs/` | Validated public request and response contracts |
+| `Infrastructure/` | Errors, security, observability, and deployment validation |
+| `Data/`, `Models/`, `Migrations/` | EF Core persistence and PostgreSQL schema history |
+| `wwwroot/` | Mobile web UI, service worker, local outbox, and static assets |
+| `tests/` | .NET, browser-module, fixture, and Playwright coverage |
+| `scripts/` | iOS test selection, deployment checks, SMTP probe, backup rehearsal, and source data tools |
 
-## Configuration
+## Roadmap
 
-ASP.NET Core environment variables use double underscores for nested keys. The essential production settings are:
+### 1. Harden the native core — next
 
-| Variable | Required | Purpose |
-|---|---:|---|
-| `ConnectionStrings__DefaultConnection` | Yes | Npgsql connection string |
-| `ASPNETCORE_ENVIRONMENT` | Hosted | Set to `Production` when deployed |
-| `Application__PublicBaseUrl` | Email flows | HTTPS origin for verification and reset links |
-| `Authentication__RequireVerifiedEmail` | No | Enforce verified-email login; defaults to `false` |
-| `Email__From`, `Email__Smtp__Host` | Email flows | Sender and SMTP host; they must be configured together |
-| `Administration__ImportKey` | Admin operations | Secret accepted through `X-Admin-Key` |
-| `DataProtection__KeyRingPath` | Multi-instance | Persistent shared cookie-encryption key directory |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Observability | Optional OTLP destination |
+- Move the file-backed round outbox to a fully modelled SwiftData or SQLite persistence layer.
+- Restore active drafts and pending conflicts after app termination.
+- Make token expiry during offline entry preserve data and resume sync after reauthentication.
+- Expand XCTest coverage for refresh rotation, ordered sync, conflict resolution, and account isolation.
 
-Production validates database, HTTPS URL, SMTP pairing, and migration policy before serving traffic. See [beta operations](docs/beta-operations.md) for the complete Render configuration, backup rehearsal, monitoring, and release checklist.
+### 2. Reach deliberate web parity
+
+- Add round pagination, filters, editing, and richer statistics to iOS.
+- Complete password change, email verification/reset, custom course, and tee workflows.
+- Compare web and native results against shared API contract fixtures.
+
+### 3. Validate on real iPhones
+
+- Test an entire round through airplane mode, relaunch, backgrounding, and Wi-Fi/cellular transitions.
+- Verify iPhone SE-sized layouts, keyboard avoidance, safe areas, Dynamic Type, VoiceOver, and low-power mode.
+- Run internal TestFlight with instrumentation for starts, completions, sync failures, and conflict rates.
+
+### 4. Prepare production and App Store release
+
+- Separate development, staging, and production API configuration.
+- Finish SMTP verification, backup restore rehearsal, monitoring, crash reporting, and migration rollout procedures.
+- Prepare privacy policy, terms, App Privacy answers, screenshots, reviewer credentials, and store metadata.
+- Complete external TestFlight before App Store submission.
+
+Shot-by-shot tracking, social features, coach sharing, and payments remain outside the first native release.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md) — request pipeline, authentication, ownership, round boundaries, offline state, and scaling limits
-- [Testing and CI](docs/testing.md) — test layers, local PostgreSQL safeguards, Playwright artifacts, and CI responsibilities
-- [Beta operations](docs/beta-operations.md) — deployment gates, SMTP rollout, backups, monitoring, and physical iPhone checks
-- [Browser fixture guide](tests/browser/README.md) — deterministic local UI states and conflict scenarios
-- [Physical iPhone Safari checklist](tests/browser/iphone-safari-checklist.md) — WebKit and VoiceOver release checks
-- [Native mobile API](docs/mobile-api.md) — token lifecycle, API routes, error contract, and synchronization rules for the SwiftUI client
-- [iOS client scaffold](ios/README.md) — SwiftUI setup, Keychain, and local draft-storage boundaries
-- [iOS release checklist](docs/ios-release.md) — signing, simulator, physical-device, App Store Connect, and operational gates
-
-## Current scope
-
-The beta focuses on dependable score entry, review, statistics, and practice planning. Native iOS authentication, social features, payments, shot-by-shot tracking, and automatic multi-device merging are intentionally outside the current product boundary.
+- [Architecture](docs/architecture.md)
+- [Native mobile API contract](docs/mobile-api.md)
+- [iOS client guide](ios/README.md)
+- [Testing and CI](docs/testing.md)
+- [iOS release checklist](docs/ios-release.md)
+- [Beta operations](docs/beta-operations.md)
+- [Physical iPhone Safari checklist](tests/browser/iphone-safari-checklist.md)
