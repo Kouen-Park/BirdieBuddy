@@ -1,3 +1,14 @@
+const PUBLIC_BROWSE_PATHS = new Set(['/', '/index.html', '/courses.html']);
+const AUTH_ENTRY_PATHS = new Set(['/login.html', '/signup.html']);
+
+function isPublicBrowsePath(pathname = window.location.pathname) {
+    return PUBLIC_BROWSE_PATHS.has(pathname);
+}
+
+function isPublicPagePath(pathname = window.location.pathname) {
+    return isPublicBrowsePath(pathname) || AUTH_ENTRY_PATHS.has(pathname);
+}
+
 // Thin fetch wrapper around the Birdie Buddy API. Every page script uses this
 // instead of calling fetch() directly so error handling stays in one place.
 const Api = {
@@ -29,7 +40,7 @@ const Api = {
             headers
         });
 
-        if (res.status === 401 && !['/login.html', '/signup.html', '/courses.html', '/index.html'].includes(window.location.pathname)) {
+        if (res.status === 401 && !isPublicPagePath()) {
             const returnUrl = `${window.location.pathname}${window.location.search}`;
             window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
             throw new Error('Authentication required.');
@@ -173,16 +184,13 @@ function renderNav(active) {
 
 
 async function hydrateCurrentUser() {
-    const publicPages = ['/login.html', '/signup.html', '/courses.html', '/index.html'];
-    if (publicPages.includes(window.location.pathname)) return;
+    if (AUTH_ENTRY_PATHS.has(window.location.pathname)) return;
 
     try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
         if (response.status === 401) {
-            if (['/courses.html', '/index.html'].includes(window.location.pathname)) {
-                const account = document.getElementById('sidebar-account');
-                const returnUrl = encodeURIComponent(window.location.pathname);
-                if (account) account.innerHTML = `<a class="btn btn-secondary" href="/login.html?returnUrl=${returnUrl}">Sign in to track rounds</a>`;
+            if (isPublicBrowsePath()) {
+                renderGuestAccount();
                 return;
             }
             const returnUrl = `${window.location.pathname}${window.location.search}`;
@@ -208,6 +216,20 @@ async function hydrateCurrentUser() {
         const name = document.getElementById('current-user-name');
         if (name) name.textContent = 'Connection unavailable';
     }
+}
+
+function renderGuestAccount() {
+    const account = document.getElementById('sidebar-account');
+    if (!account) return;
+
+    const returnPath = window.location.pathname === '/' ? '/index.html' : window.location.pathname;
+    account.innerHTML = `
+      <div class="account-label">Exploring as guest</div>
+      <div class="account-name">Browse without an account</div>
+      <div class="sidebar-auth-actions">
+        <a class="btn btn-flag" href="/signup.html?returnUrl=${encodeURIComponent(returnPath)}">Create account</a>
+        <a class="btn btn-secondary" href="/login.html?returnUrl=${encodeURIComponent(returnPath)}">Sign in</a>
+      </div>`;
 }
 
 

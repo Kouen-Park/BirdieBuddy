@@ -56,3 +56,31 @@ test('Tab stays inside the open drawer and desktop resizing releases all locks',
   assert.equal(x.menu.attrs['aria-expanded'], 'false');
   assert.equal(x.document.body.classList.contains('menu-open'), false);
 });
+
+test('the root path stays public and renders guest account actions', async () => {
+  const account = { innerHTML: '' };
+  let redirectedTo = null;
+  const document = {
+    getElementById: id => id === 'sidebar-account' ? account : null
+  };
+  const window = {
+    location: {
+      pathname: '/',
+      search: '',
+      replace(value) { redirectedTo = value; }
+    }
+  };
+  const context = vm.createContext({
+    document,
+    window,
+    fetch: async () => ({ status: 401, ok: false })
+  });
+
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../wwwroot/js/api.js'), 'utf8'), context);
+  await context.hydrateCurrentUser();
+
+  assert.equal(redirectedTo, null);
+  assert.match(account.innerHTML, /Browse without an account/);
+  assert.match(account.innerHTML, /Create account/);
+  assert.match(account.innerHTML, /Sign in/);
+});

@@ -41,6 +41,8 @@ There is no separate frontend build pipeline. The browser modules are committed 
 
 The API uses controller classes with `[ApiController]`, attribute routing and authorization at the HTTP boundary. Invalid DTOs and domain failures use one `application/problem+json` contract. Clients should branch on the stable `code` field and treat the English `detail` as display text.
 
+The landing page, authentication pages, and shared course catalogue are public. Round recording, statistics, practice history, account data, member-owned courses, and all mutation endpoints remain authenticated. The browser treats both `/` and `/index.html` as the same public landing surface so default-file rewriting cannot accidentally trigger a sign-in redirect.
+
 ## Authentication and session security
 
 - Authentication uses an HTTP-only `birdiebuddy.auth` cookie with `SameSite=Lax`.

@@ -33,6 +33,11 @@ public sealed class ProgramPipelineTests : IClassFixture<BirdieBuddyApplicationF
         Assert.Equal(HttpStatusCode.OK, page.StatusCode);
         Assert.Contains("script-src 'self'", page.Headers.GetValues("Content-Security-Policy").Single());
 
+        var publicHome = await client.GetAsync("/");
+        Assert.Equal(HttpStatusCode.OK, publicHome.StatusCode);
+        Assert.Equal("text/html", publicHome.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("dashboard-content", await publicHome.Content.ReadAsStringAsync());
+
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready")).StatusCode);
 

@@ -1697,6 +1697,19 @@ tr.clickable {
     text-underline-offset: 3px;
 }
 
+.sidebar-auth-actions {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.sidebar-auth-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    text-align: center;
+}
+
 .auth-page {
     display: grid;
     place-items: center;
@@ -1784,6 +1797,25 @@ tr.clickable {
 .auth-switch a:hover {
     text-decoration: underline;
     text-underline-offset: 3px;
+}
+
+.auth-card > .auth-browse {
+    margin: 12px 0 0;
+    font-size: 13px;
+    text-align: center;
+}
+
+.auth-browse a {
+    color: var(--ink-700);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 4px;
+}
+
+.auth-browse a:hover {
+    color: var(--fairway-dark);
+    text-decoration-color: currentColor;
 }
 
 .auth-error {

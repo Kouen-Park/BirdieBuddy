@@ -43,6 +43,7 @@ Birdie Buddy is an English-language mobile web app built for a small beta. Its c
 - **Round history** — completed scorecards, pagination, per-hole breakdowns, and guarded edit/delete operations.
 - **Useful statistics** — comparable 9/18-hole scoring, score-to-par, GIR, fairway, putting, and recent trend views.
 - **Practice guidance** — evidence-linked priorities and measurable drills derived from valid completed rounds.
+- **Guest browsing** — the home page and shared course catalogue are available without creating an account.
 - **Course catalogue** — shared Golf New Zealand course data alongside member-owned custom courses and tees.
 - **Private accounts** — cookie sessions, profile and password management, email verification/recovery, data export, and account deletion.
 - **Production foundations** — CSRF protection, rate limiting, security headers, health checks, structured telemetry, migration locking, and CI.

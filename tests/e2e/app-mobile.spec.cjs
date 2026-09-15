@@ -2,6 +2,23 @@ const { test, expect } = require('@playwright/test');
 
 test.skip(!process.env.BIRDIEBUDDY_E2E_POSTGRES, 'Requires the PostgreSQL-backed ASP.NET Core app.');
 
+test('lets a guest browse the home page and course catalogue', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: 'Keep every round in view.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await expect(page.getByText('Browse without an account')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Create account' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close navigation' }).click();
+  await expect(page.getByRole('link', { name: 'Explore courses' })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Explore courses' }).click();
+  await expect(page).toHaveURL(/\/courses\.html$/);
+  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(page.getByLabel('Find a course')).toBeVisible();
+});
+
 test('registers, starts, resumes, and completes a full round', async ({ page }) => {
   const unique = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const email = `e2e-${unique}@example.test`;
