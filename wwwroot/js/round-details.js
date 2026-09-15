@@ -20,6 +20,7 @@ async function loadRoundDetails() {
     document.getElementById('round-subtitle').textContent = `${fmtDate(round.date)} · Tee: ${round.tee}`;
 
     content.innerHTML = `
+      <div class="status-chip" aria-label="Round status">${escapeHtml(round.status)}</div>
       <div class="stat-grid">
         ${statCard('Total Score', stats.totalScore)}
         ${statCard('To Par', toPar(stats.scoreToPar), 'accent')}
