@@ -11,6 +11,7 @@
 ## Automated gates
 
 - GitHub Actions `ios-tests` succeeds on an iOS Simulator.
+- The iOS test script dynamically selects the newest installed iPhone Simulator; do not pin CI to a model that may disappear from future Xcode images.
 - ASP.NET Core build, .NET tests, browser tests, PostgreSQL integration tests, and browser E2E remain green.
 - Release configuration archives with no signing, privacy-manifest, or asset-catalog warnings.
 

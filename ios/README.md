@@ -9,12 +9,10 @@ Open `BirdieBuddyApp.xcodeproj` in Xcode 16 or later. It contains the iOS 17 app
 Run the tests from Xcode or with:
 
 ```bash
-xcodebuild test \
-  -project ios/BirdieBuddyApp.xcodeproj \
-  -scheme BirdieBuddyApp \
-  -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16' \
-  CODE_SIGNING_ALLOWED=NO
+./scripts/test-ios.sh
 ```
+
+The script selects an available simulator from the newest installed iOS runtime instead of depending on one hard-coded iPhone model. Set `BIRDIEBUDDY_IOS_SIMULATOR_ID` to a simulator UDID to override the selection.
 
 ## Data rules
 

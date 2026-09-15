@@ -89,9 +89,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build and test SwiftUI client
-        run: >-
-          xcodebuild test
-          -project ios/BirdieBuddyApp.xcodeproj
-          -scheme BirdieBuddyApp
-          -destination 'platform=iOS Simulator,OS=latest,name=iPhone 16'
-          CODE_SIGNING_ALLOWED=NO
+        run: ./scripts/test-ios.sh
