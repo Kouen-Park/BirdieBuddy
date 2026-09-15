@@ -35,6 +35,9 @@ public class PostgresIntegrationTests
         await migrator.MigrateAsync("20260905150000_AddProductTelemetry");
 
         // Simulate the existing Render data that must survive the next deployment.
+        // The database is intentionally at the pre-SessionVersion schema here, so
+        // insert through a model that matches that legacy shape.
+        await using var legacyDb = new LegacyApplicationDbContext(options);
         var user = new User { Email = $"{Guid.NewGuid():N}@example.test", DisplayName = "Integration", CreatedAt = DateTime.UtcNow };
         var tee = new CourseTee { Name = "White", NineHoles = true, CourseHoles = Enumerable.Range(1, 9)
             .Select(n => new CourseHole { HoleNumber = n, Par = 4, Distance = 300 }).ToList() };
@@ -51,8 +54,8 @@ public class PostgresIntegrationTests
             UpdatedAt = DateTime.UtcNow.AddHours(-1),
             Holes = new() { new Hole { HoleNumber = 1, Par = 4, Score = 5, Putts = 2, GIR = false, FairwayHit = true } }
         };
-        db.Rounds.Add(historicalRound);
-        await db.SaveChangesAsync();
+        legacyDb.Rounds.Add(historicalRound);
+        await legacyDb.SaveChangesAsync();
         Assert.Null(user.EmailVerifiedAt);
 
         await migrator.MigrateAsync();
@@ -107,6 +110,16 @@ public class PostgresIntegrationTests
             .AbandonAsync(abandonDraft.Id)).IsSuccess);
         Assert.True((await new RoundService(secondAbandonDb, new TestUser(user.Id))
             .AbandonAsync(abandonDraft.Id)).IsSuccess);
+    }
+
+    private sealed class LegacyApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : ApplicationDbContext(options)
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<User>().Ignore(user => user.SessionVersion);
+        }
     }
 
     private sealed record TestUser(int? Id) : ICurrentUser { public bool IsAuthenticated => true; }
