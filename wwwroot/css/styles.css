@@ -31,6 +31,7 @@
     --bad-soft: #f7dfdb;
     --line: #d6e1dc;
     --line-strong: #c3d3cd;
+    --chart-putts: #5a7a92;
     --font-display: 'Space Grotesk', system-ui, sans-serif;
     --font-body: 'Outfit', system-ui, sans-serif;
     --font-mono: 'DM Mono', ui-monospace, monospace;
@@ -46,8 +47,13 @@
 .live-main { position: relative; max-width: 980px; }
 .save-status { position: fixed; z-index: 20; top: 18px; right: 24px; min-height: 32px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: rgba(252,253,251,.94); color: var(--ink-500); font: 500 11px var(--font-mono); box-shadow: var(--shadow-card); }
 .save-status[data-state="saved"] { color: var(--good); border-color: var(--good-soft); }
+.save-status[data-state="device"] { color: var(--ink-900); border-color: var(--sun); }
+.save-status[data-state="syncing"] { color: var(--fairway-dark); border-color: var(--mint); }
+.save-status[data-state="conflict"] { color: var(--bad); border-color: var(--flag); background: var(--flag-soft); }
 .save-status[data-state="error"] { color: var(--bad); border-color: var(--bad-soft); }
 .save-status[data-state="offline"] { color: var(--ink-900); border-color: var(--sun); }
+.page-retry { display: grid; justify-items: start; gap: 14px; max-width: 620px; margin: 10vh auto; }
+.page-retry p { margin: 0; }
 .live-intro { max-width: 590px; margin: 10vh auto 28px; }
 .live-intro h1, .live-round-header h1 { margin: 5px 0; font: 700 clamp(34px, 6vw, 62px)/.95 var(--font-display); letter-spacing: -.06em; }
 .live-intro p { color: var(--ink-500); font-size: 17px; }
@@ -630,6 +636,12 @@ select:focus-visible {
     max-height: 180px;
 }
 
+.chart-summary {
+    margin: 10px 0 0;
+    color: var(--ink-500);
+    font-size: 12px;
+}
+
 /* ---------- Buttons ---------- */
 
 .btn {
@@ -751,6 +763,17 @@ tr.clickable {
 
 tr.clickable:hover {
     background: var(--mist);
+}
+
+.table-row-link {
+    color: var(--fairway-dark);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+}
+
+.table-row-link:hover {
+    text-decoration-color: currentColor;
 }
 
 .pill {
@@ -1102,6 +1125,28 @@ table caption { text-align: left; padding: 16px; }
     background: var(--mist);
     border-color: var(--line);
     color: var(--ink-700);
+}
+
+.app-dialog {
+    width: min(92vw, 520px);
+    max-width: 100%;
+    padding: clamp(22px, 4vw, 34px);
+    color: var(--ink-900);
+}
+
+.app-dialog::backdrop {
+    background: rgba(11, 24, 24, .52);
+    backdrop-filter: blur(3px);
+}
+
+.app-dialog h2 {
+    margin: 0 0 8px;
+    font: 600 25px var(--font-display);
+}
+
+.app-dialog p {
+    margin: 0 0 18px;
+    color: var(--ink-500);
 }
 
 .progress-note {
