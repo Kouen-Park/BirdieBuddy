@@ -32,7 +32,7 @@ struct ApiProblem: Decodable, Error {
     let traceId: String?
 }
 
-struct CourseSummary: Codable, Identifiable, Equatable {
+struct CourseSummary: Codable, Identifiable, Equatable, Hashable {
     let id: Int
     let name: String
     let location: String
