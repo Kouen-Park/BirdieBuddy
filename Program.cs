@@ -94,7 +94,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHealthChecks().AddCheck<BirdieBuddy.Services.DatabaseHealthCheck>("database");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? "Host=localhost;Database=birdiebuddy_dev;Username=postgres"));
 
 builder.Services.AddScoped<IGolfNzCourseImporter, GolfNzCourseImporter>();
 builder.Services.AddSingleton<IGolfNzImportJob, GolfNzImportJob>();

@@ -6,7 +6,12 @@ public static class DeploymentConfiguration
     {
         var connection = builder.Configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connection))
-            throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
+        {
+            if (!builder.Environment.IsDevelopment())
+                throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
+
+            connection = "Host=localhost;Database=birdiebuddy_dev;Username=postgres";
+        }
         if (!builder.Environment.IsDevelopment() &&
             connection.Contains("Password=postgres", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("The local development database password cannot be used in production.");
