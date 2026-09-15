@@ -51,8 +51,8 @@ Birdie Buddy is an English-language mobile web app built for a small beta. Its c
 
 | Layer | Technology | Role |
 |---|---|---|
-| Backend | ASP.NET Core 8, C# | Static hosting, controller API, authentication, middleware, health checks |
-| Data | EF Core 8, Npgsql, PostgreSQL 16 | Relational persistence, migrations, constraints, ownership-aware queries |
+| Backend | ASP.NET Core 10, C# | Static hosting, controller API, authentication, middleware, health checks |
+| Data | EF Core 10, Npgsql, PostgreSQL 16 | Relational persistence, migrations, constraints, ownership-aware queries |
 | Frontend | HTML, CSS, vanilla JavaScript | Mobile-first UI served directly from `wwwroot`; no frontend build step |
 | Offline | Service Worker, `localStorage`, Web Locks | App-shell caching, scoped outbox, and multi-tab synchronization |
 | Charts | Chart.js 4.4.4 | Self-hosted score, GIR, and putting visualizations |
@@ -74,7 +74,7 @@ flowchart TB
         SW --> UI
     end
 
-    subgraph App["ASP.NET Core 8"]
+    subgraph App["ASP.NET Core 10"]
         Pipeline["Security headers · rate limits<br/>cookie auth · CSRF · ProblemDetails"]
         Controllers["Controller API"]
         Services["Scoped feature services"]
@@ -119,7 +119,7 @@ New input remains queued while a request is in flight. Completion is blocked unt
 
 ### Prerequisites
 
-- .NET 8 SDK
+- .NET 10 SDK
 - PostgreSQL 16
 - Node.js 22+ and npm for browser and Playwright tests
 

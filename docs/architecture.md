@@ -4,7 +4,7 @@ This document describes the current beta architecture and the boundaries that co
 
 ## System shape
 
-Birdie Buddy is one ASP.NET Core 8 application. Kestrel serves both the controller API and the static mobile web client from `wwwroot`. PostgreSQL is the durable source of truth. Browser storage and the service-worker cache improve live-round resilience but are not backups.
+Birdie Buddy is one ASP.NET Core 10 application. Kestrel serves both the controller API and the static mobile web client from `wwwroot`. PostgreSQL is the durable source of truth. Browser storage and the service-worker cache improve live-round resilience but are not backups.
 
 ```text
 Mobile browser
@@ -18,7 +18,7 @@ ASP.NET Core application
   ├─ controller API and ProblemDetails error contract
   ├─ scoped domain/application services
   ├─ health checks, logs, metrics and traces
-  └─ EF Core 8 / Npgsql
+  └─ EF Core 10 / Npgsql
              │
              ▼
         PostgreSQL 16
