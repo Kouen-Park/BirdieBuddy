@@ -12,4 +12,8 @@ public class CourseHole
     public int Par { get; set; }        // normally 3, 4, or 5
     public int Distance { get; set; }   // metres
     public int? StrokeIndex { get; set; }
+
+    public bool IsActive { get; set; } = true;
+    public long? LastSeenImportRunId { get; set; }
+    public string? SourceKey { get; set; }
 }

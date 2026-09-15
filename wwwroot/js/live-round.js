@@ -19,17 +19,31 @@ const clean = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('
 const setStatus = (message, state = '') => { statusEl.textContent = message; statusEl.dataset.state = state; };
 
 function renderPageError(message, retry) {
-  const alert = document.createElement('div');
+  const isOfflineRecovery = /offline|No offline copy|Reconnect to open/i.test(message);
+  const alert = document.createElement('section');
   alert.className = 'alert error page-retry';
-  alert.setAttribute('role', 'alert');
+  alert.setAttribute('aria-labelledby', 'page-retry-title');
+  const title = document.createElement('h2');
+  title.id = 'page-retry-title';
+  title.textContent = isOfflineRecovery ? 'This round is not available offline yet' : 'We could not open this round';
   const copy = document.createElement('p');
+  copy.setAttribute('role', 'alert');
   copy.textContent = message;
+  const guidance = document.createElement('p');
+  guidance.className = 'page-retry-guidance';
+  guidance.textContent = isOfflineRecovery
+    ? 'Reconnect to the internet, open the round once, and keep this page open until the scorecard is ready for offline use. Your existing browser data has not been cleared.'
+    : 'Check your connection and try again. If the problem continues, return to your rounds and open the saved record from there.';
   const button = document.createElement('button');
   button.className = 'btn btn-secondary';
   button.type = 'button';
-  button.textContent = 'Try again';
+  button.textContent = isOfflineRecovery ? 'Try again after reconnecting' : 'Try again';
   button.addEventListener('click', retry);
-  alert.append(copy, button);
+  const roundsLink = document.createElement('a');
+  roundsLink.className = 'quiet-link page-retry-link';
+  roundsLink.href = '/rounds.html';
+  roundsLink.textContent = 'Back to rounds';
+  alert.append(title, copy, guidance, button, roundsLink);
   root.replaceChildren(alert);
 }
 

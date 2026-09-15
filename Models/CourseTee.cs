@@ -16,6 +16,10 @@ public class CourseTee
 
     public bool NineHoles { get; set; }
 
+    public bool IsActive { get; set; } = true;
+    public long? LastSeenImportRunId { get; set; }
+    public string? SourceKey { get; set; }
+
     public decimal? Rating { get; set; }
 
     public int? Slope { get; set; }

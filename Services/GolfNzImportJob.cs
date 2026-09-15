@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using BirdieBuddy.Data;
+using BirdieBuddy.Models;
 
 namespace BirdieBuddy.Services;
 
@@ -47,11 +49,17 @@ public sealed class GolfNzImportJob : IGolfNzImportJob
 
     private async Task RunAsync()
     {
+        long? runId = null;
         try
         {
             using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var run = new GolfNzImportRun { StartedAt = DateTime.UtcNow };
+            db.GolfNzImportRuns.Add(run);
+            await db.SaveChangesAsync();
+            runId = run.Id;
             var importer = scope.ServiceProvider.GetRequiredService<IGolfNzCourseImporter>();
-            var result = await importer.ImportAsync();
+            var result = await importer.ImportAsync(run.Id);
 
             lock (_gate)
             {
@@ -61,6 +69,26 @@ public sealed class GolfNzImportJob : IGolfNzImportJob
         catch (Exception ex)
         {
             _logger.LogError(ex, "Golf NZ course import failed.");
+            if (runId.HasValue)
+            {
+                try
+                {
+                    using var failureScope = _scopeFactory.CreateScope();
+                    var db = failureScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var run = await db.GolfNzImportRuns.FindAsync(runId.Value);
+                    if (run is not null)
+                    {
+                        run.Status = GolfNzImportStatus.Failed;
+                        run.CompletedAt = DateTime.UtcNow;
+                        run.ErrorMessage = "Golf NZ import failed. Check the server logs.";
+                        await db.SaveChangesAsync();
+                    }
+                }
+                catch (Exception failureEx)
+                {
+                    _logger.LogError(failureEx, "Could not persist Golf NZ import failure state.");
+                }
+            }
 
             lock (_gate)
             {

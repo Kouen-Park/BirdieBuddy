@@ -32,3 +32,12 @@ test('live scoring exposes distinct durable, syncing, offline and conflict state
   assert.match(live, /Saved to server/);
   assert.match(live, /review required/i);
 });
+
+test('statistics keeps dynamic bar sizing in CSS classes and exposes chart tables', () => {
+  const statistics = fs.readFileSync(path.join(root, 'wwwroot/js/statistics.js'), 'utf8');
+  const dashboard = fs.readFileSync(path.join(root, 'wwwroot/js/dashboard.js'), 'utf8');
+  assert.doesNotMatch(statistics, /<span class="trend-bar[^>]+style=/);
+  assert.match(statistics, /barHeightClass/);
+  assert.match(dashboard, /chartDataTable/);
+  assert.match(dashboard, /<details class="chart-data">/);
+});

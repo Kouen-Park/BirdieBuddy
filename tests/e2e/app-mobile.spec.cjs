@@ -49,11 +49,15 @@ test('registers, starts, resumes, and completes a full round', async ({ page }) 
 
   for (let hole = 1; hole <= 18; hole += 1) {
     await expect(page.locator('#hole-heading')).toHaveText(String(hole));
-    await page.getByRole('button', { name: hole === 18 ? 'Save hole' : 'Save & next' }).click();
+    const save = page.getByRole('button', { name: hole === 18 ? 'Save hole' : 'Save & next' });
+    await save.focus();
+    await page.keyboard.press('Enter');
     await expect(page.locator('#live-status')).toHaveText('Saved to server');
   }
 
-  await page.getByRole('button', { name: 'Finish round' }).click();
+  const finish = page.getByRole('button', { name: 'Finish round' });
+  await finish.focus();
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/round-details\.html\?id=\d+$/);
   await expect(page.getByText('Completed', { exact: true })).toBeVisible();
 });

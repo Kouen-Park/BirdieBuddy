@@ -115,14 +115,16 @@ Clearing site data can remove unsynchronized input. Multi-device offline merging
 
 ## Background work and process-local state
 
-The Golf NZ import job and operational request counters are process-local singletons. The import reads the bundled JSON catalogue and is started through an authenticated admin endpoint protected by `X-Admin-Key`. A process restart loses job status and operational counters, though committed database records remain.
+The Golf NZ import coordinator and operational request counters are process-local singletons. The import reads the bundled JSON catalogue and is started through an authenticated admin endpoint protected by `X-Admin-Key`. Each run is also persisted in `GolfNzImportRuns` with a source SHA-256 version, counters, status and a safe failure message. Imported tees and holes are soft-retired with `IsActive=false` when they are absent from the full source snapshot; historical round snapshots are not deleted. A process restart still loses only the in-flight coordinator state and operational counters, not committed import history.
 
 Before scaling horizontally:
 
 - persist Data Protection keys on a shared volume or external store;
 - replace process-local import coordination with durable job state and a distributed lock;
 - use an external metrics backend for durable alerting;
-- define how stale imported tees and holes are versioned or deactivated.
+- move import coordination to a distributed lock when more than one application instance is deployed;
+- retain an external durable metrics backend for operational counters and alerting;
+- add an operator UI over the admin import-history endpoints if imports need to be managed without API tooling.
 
 ## Startup, migrations and health
 
@@ -135,8 +137,8 @@ Production secrets belong in Render environment variables or another secret stor
 
 ## Known scaling and product limits
 
-- Statistics still load more round/hole data into memory than a mature multi-tenant product should; keep measuring query cost and move larger aggregations to SQL projections.
-- The Golf NZ import does not yet maintain durable source versions or stale-record retirement.
+- Statistics overview aggregates round metrics and par-type trends in SQL, applies a one-year default lookback and a five-year maximum, and only loads holes for the recent evidence rounds used by practice insights. Query plans and latency should be measured as beta data grows; indexes or result caching are the next optimization levers.
+- Golf NZ source versions and import outcomes are durable. Stale imported tees and holes are deactivated rather than deleted, while import coordination remains process-local until horizontal scaling is required.
 - Operational counters and import job state do not survive process restarts.
 - Physical iPhone Safari and VoiceOver certification remains a manual release gate.
 - The product intentionally excludes shot-by-shot tracking, social features, payments and native iOS token authentication until the mobile-web beta meets its completion and resume targets.

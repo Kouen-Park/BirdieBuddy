@@ -50,8 +50,8 @@ public class CourseService : ICourseService
     {
         var course = await _context.Courses
             .Where(c => c.UserId == null || c.UserId == CurrentUserId)
-            .Include(c => c.CourseTees)
-                .ThenInclude(t => t.CourseHoles)
+            .Include(c => c.CourseTees.Where(t => t.IsActive))
+                .ThenInclude(t => t.CourseHoles.Where(h => h.IsActive))
             .FirstOrDefaultAsync(c => c.Id == id);
 
         return course is null ? null : MapToDto(course);

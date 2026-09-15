@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Security.Cryptography;
 using BirdieBuddy.Data;
 using BirdieBuddy.Models;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
         _environment = environment;
     }
 
-    public async Task<GolfNzImportResult> ImportAsync(CancellationToken cancellationToken = default)
+    public async Task<GolfNzImportResult> ImportAsync(long importRunId, CancellationToken cancellationToken = default)
     {
         var path = Path.Combine(_environment.ContentRootPath, "scripts", "golf_nz_courses.json");
         if (!File.Exists(path))
@@ -34,12 +35,21 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
         if (!File.Exists(path))
             throw new FileNotFoundException("Golf NZ data file was not found.", path);
 
-        await using var stream = File.OpenRead(path);
+        var run = await _context.GolfNzImportRuns.FindAsync(new object[] { importRunId }, cancellationToken)
+            ?? throw new InvalidOperationException("The Golf NZ import run was not found.");
+        var sourceBytes = await File.ReadAllBytesAsync(path, cancellationToken);
+        run.SourceVersion = $"sha256:{Convert.ToHexString(SHA256.HashData(sourceBytes)).ToLowerInvariant()}";
+        await _context.SaveChangesAsync(cancellationToken);
+        await using var stream = new MemoryStream(sourceBytes, writable: false);
         var clubs = await JsonSerializer.DeserializeAsync<List<GolfNzClub>>(stream, JsonOptions, cancellationToken)
             ?? new List<GolfNzClub>();
+        if (clubs.Count == 0)
+            throw new InvalidDataException("Golf NZ source contains no clubs; existing data was not changed.");
 
         await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         var result = new MutableResult();
+        var seenTeeKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenHoleKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var existingCourses = await _context.Courses
             .Include(c => c.CourseTees)
                 .ThenInclude(t => t.CourseHoles)
@@ -92,6 +102,8 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
                     var teeKey = $"{courseType}|{gender}|{courseRecord.NineHoles}|{Normalize(marker.Name)}";
                     if (!importedTeeKeys.Add(teeKey))
                         continue;
+                    var sourceKey = $"{club.ClubId}|{teeKey}";
+                    seenTeeKeys.Add(sourceKey);
 
                     var tee = course.CourseTees.FirstOrDefault(t =>
                         string.Equals(t.Name, marker.Name.Trim(), StringComparison.OrdinalIgnoreCase)
@@ -118,6 +130,9 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
                     }
 
                     tee.Rating = marker.Rating;
+                    tee.SourceKey = sourceKey;
+                    tee.IsActive = true;
+                    tee.LastSeenImportRunId = run.Id;
                     tee.Slope = marker.Slope;
                     tee.Colour = marker.Colour;
                     tee.TotalPar = marker.TotalPar;
@@ -135,6 +150,8 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
                             .ThenByDescending(h => h.StrokeIndex.HasValue)
                             .First();
                         var hole = tee.CourseHoles.FirstOrDefault(h => h.HoleNumber == source.Number);
+                        var holeSourceKey = $"{sourceKey}|{source.Number}";
+                        seenHoleKeys.Add(holeSourceKey);
                         if (hole is null)
                         {
                             hole = new CourseHole
@@ -153,11 +170,41 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
                         hole.Par = source.Par;
                         hole.Distance = source.DistanceMetres ?? 0;
                         hole.StrokeIndex = source.StrokeIndex;
+                        hole.SourceKey = holeSourceKey;
+                        hole.IsActive = true;
+                        hole.LastSeenImportRunId = run.Id;
                     }
                 }
             }
         }
 
+        var staleTees = await _context.CourseTees
+            .Where(t => t.SourceKey != null && !seenTeeKeys.Contains(t.SourceKey))
+            .ToListAsync(cancellationToken);
+        foreach (var tee in staleTees)
+        {
+            if (tee.IsActive) { tee.IsActive = false; result.RecordsDeactivated++; }
+            tee.LastSeenImportRunId = run.Id;
+        }
+        var staleHoles = await _context.CourseHoles
+            .Where(h => h.SourceKey != null && !seenHoleKeys.Contains(h.SourceKey))
+            .ToListAsync(cancellationToken);
+        foreach (var hole in staleHoles)
+        {
+            if (hole.IsActive) { hole.IsActive = false; result.RecordsDeactivated++; }
+            hole.LastSeenImportRunId = run.Id;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        run.Status = GolfNzImportStatus.Completed;
+        run.CompletedAt = DateTime.UtcNow;
+        run.CoursesCreated = result.CoursesCreated;
+        run.CoursesUpdated = result.CoursesUpdated;
+        run.TeesCreated = result.TeesCreated;
+        run.TeesUpdated = result.TeesUpdated;
+        run.HolesCreated = result.HolesCreated;
+        run.HolesUpdated = result.HolesUpdated;
+        run.RecordsDeactivated = result.RecordsDeactivated;
         await _context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return result.ToImmutable();
@@ -174,9 +221,10 @@ public sealed class GolfNzCourseImporter : IGolfNzCourseImporter
         public int TeesUpdated { get; set; }
         public int HolesCreated { get; set; }
         public int HolesUpdated { get; set; }
+        public int RecordsDeactivated { get; set; }
 
         public GolfNzImportResult ToImmutable() => new(
-            CoursesCreated, CoursesUpdated, TeesCreated, TeesUpdated, HolesCreated, HolesUpdated);
+            CoursesCreated, CoursesUpdated, TeesCreated, TeesUpdated, HolesCreated, HolesUpdated, RecordsDeactivated);
     }
 }
 

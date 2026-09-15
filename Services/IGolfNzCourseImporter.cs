@@ -2,7 +2,7 @@ namespace BirdieBuddy.Services;
 
 public interface IGolfNzCourseImporter
 {
-    Task<GolfNzImportResult> ImportAsync(CancellationToken cancellationToken = default);
+    Task<GolfNzImportResult> ImportAsync(long importRunId, CancellationToken cancellationToken = default);
 }
 
 public record GolfNzImportResult(
@@ -11,4 +11,5 @@ public record GolfNzImportResult(
     int TeesCreated,
     int TeesUpdated,
     int HolesCreated,
-    int HolesUpdated);
+    int HolesUpdated,
+    int RecordsDeactivated = 0);

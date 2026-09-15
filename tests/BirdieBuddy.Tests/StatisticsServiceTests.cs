@@ -98,6 +98,23 @@ public class StatisticsServiceTests
         Assert.Equal("more-data", Assert.Single(result.Insights!).Code);
     }
 
+    [Fact]
+    public async Task OverviewUsesOneYearDefaultLookbackButAllowsExplicitHistoricalRange()
+    {
+        await using var db = Database();
+        var oldRound = AddRound(db, 9);
+        oldRound.Date = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var recentRound = AddRound(db, 9);
+        recentRound.Date = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        await db.SaveChangesAsync();
+
+        var service = new StatisticsService(db, new TestUser(7));
+        Assert.Equal(1, (await service.GetOverviewStatisticsAsync()).RoundsPlayed);
+
+        var historical = await service.GetOverviewStatisticsAsync(new(From: new DateOnly(2024, 1, 1), To: new DateOnly(2024, 1, 2)));
+        Assert.Equal(1, historical.RoundsPlayed);
+    }
+
     private static ApplicationDbContext Database() => new(new DbContextOptionsBuilder<ApplicationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 

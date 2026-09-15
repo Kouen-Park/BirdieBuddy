@@ -7,177 +7,150 @@ namespace BirdieBuddy.Services;
 
 public class StatisticsService : IStatisticsService
 {
+    private const int DefaultLookbackDays = 365;
+    private const int MaximumLookbackDays = 365 * 5;
+    private const int MaximumOverviewRounds = 2000;
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUser _currentUser;
 
     public StatisticsService(ApplicationDbContext context, ICurrentUser currentUser)
-    {
-        _context = context;
-        _currentUser = currentUser;
-    }
+    { _context = context; _currentUser = currentUser; }
 
     private int CurrentUserId => _currentUser.Id ?? 0;
 
     public async Task<RoundStatisticsDto?> GetRoundStatisticsAsync(int roundId)
     {
-        var round = await _context.Rounds
-            .Where(r => r.Id == roundId && r.UserId == CurrentUserId)
-            .Include(r => r.Holes)
-            .FirstOrDefaultAsync();
-
+        var round = await _context.Rounds.Where(r => r.Id == roundId && r.UserId == CurrentUserId)
+            .Include(r => r.Holes).FirstOrDefaultAsync();
         return round is null ? null : BuildRoundStatistics(roundId, round.Holes);
     }
 
     public async Task<OverviewStatisticsDto> GetOverviewStatisticsAsync(StatisticsQueryDto? query = null)
     {
         query ??= new StatisticsQueryDto();
-        var roundQuery = _context.Rounds
-            .AsNoTracking()
-            .Where(r => r.UserId == CurrentUserId && r.Status == RoundStatus.Completed && r.Holes.Any());
-        if (query.CourseId.HasValue) roundQuery = roundQuery.Where(r => r.CourseId == query.CourseId.Value);
-        if (query.CourseTeeId.HasValue) roundQuery = roundQuery.Where(r => r.CourseTeeId == query.CourseTeeId.Value);
-        if (query.From.HasValue)
-        {
-            var from = DateTime.SpecifyKind(query.From.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            roundQuery = roundQuery.Where(r => r.Date >= from);
-        }
-        if (query.To.HasValue)
-        {
-            var to = DateTime.SpecifyKind(query.To.Value.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
-            roundQuery = roundQuery.Where(r => r.Date <= to);
-        }
-        if (query.HoleCount.HasValue) roundQuery = roundQuery.Where(r => r.Holes.Count == query.HoleCount.Value);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var to = query.To ?? today;
+        var from = query.From ?? to.AddDays(-DefaultLookbackDays + 1);
+        if (to < from) (from, to) = (to, from);
+        if (to.DayNumber - from.DayNumber + 1 > MaximumLookbackDays)
+            from = to.AddDays(-MaximumLookbackDays + 1);
 
-        var rounds = await roundQuery
-            .Include(r => r.Holes)
-            .Include(r => r.Course)
-            .Include(r => r.CourseTee)
-            .OrderByDescending(r => r.Date)
-            .ThenByDescending(r => r.Id)
-            .ToListAsync();
+        var filtered = _context.Rounds.AsNoTracking()
+            .Where(r => r.UserId == CurrentUserId && r.Status == RoundStatus.Completed && r.Holes.Any())
+            .Where(r => r.Date >= RoundRules.ToUtc(from) && r.Date < RoundRules.ToUtc(to).AddDays(1));
+        if (query.CourseId.HasValue) filtered = filtered.Where(r => r.CourseId == query.CourseId.Value);
+        if (query.CourseTeeId.HasValue) filtered = filtered.Where(r => r.CourseTeeId == query.CourseTeeId.Value);
+        if (query.HoleCount.HasValue) filtered = filtered.Where(r => r.Holes.Count == query.HoleCount.Value);
 
-        if (rounds.Count == 0)
-        {
-            return new OverviewStatisticsDto(0, 0, 0, 0, 0, null,
-                new List<RoundSummaryDto>(), new List<TrendPointDto>(),
-                new List<TrendPointDto>(), new List<TrendPointDto>(), null, null,
-                BuildInsights(new()), 0, new(), new(), new(), new(), new());
-        }
+        // Overview data is one SQL-projected row per round. Hole entities are
+        // intentionally limited to the recent evidence window below.
+        var rows = await filtered.OrderByDescending(r => r.Date).ThenByDescending(r => r.Id)
+            .Take(MaximumOverviewRounds).Select(r => new RoundMetricRow
+            {
+                Id = r.Id, CourseId = r.CourseId,
+                CourseName = r.Course == null ? string.Empty : r.Course.Name,
+                CourseTeeId = r.CourseTeeId,
+                Tee = r.LegacyTee ?? (r.CourseTee == null ? "Unknown" : r.CourseTee.Name),
+                Date = r.Date, HoleCount = r.Holes.Count,
+                TotalScore = r.Holes.Sum(h => h.Score), TotalPar = r.Holes.Sum(h => h.Par),
+                TotalPutts = r.Holes.Sum(h => h.Putts), GirCount = r.Holes.Count(h => h.GIR),
+                FairwayEligible = r.Holes.Count(h => h.Par != 3 && h.FairwayHit.HasValue),
+                FairwayHits = r.Holes.Count(h => h.Par != 3 && h.FairwayHit == true)
+            }).ToListAsync();
 
-        var roundStats = rounds
-            .Select(r => (Round: r, Stats: BuildRoundStatistics(r.Id, r.Holes)))
-            .ToList();
+        if (rows.Count == 0) return EmptyOverview();
+        var roundIds = rows.Select(r => r.Id).ToList();
+        var parRows = await _context.Holes.AsNoTracking().Where(h => roundIds.Contains(h.RoundId))
+            .GroupBy(h => new { h.RoundId, h.Par }).Select(g => new ParMetricRow
+            {
+                RoundId = g.Key.RoundId, Par = g.Key.Par, Holes = g.Count(),
+                ScoreToPar = g.Sum(h => h.Score - h.Par), GirCount = g.Count(h => h.GIR)
+            }).ToListAsync();
 
-        double avgScore = roundStats.Average(x => x.Stats.TotalScore);
-        int bestScore = roundStats.Min(x => x.Stats.TotalScore);
-        double avgPutts = roundStats.Average(x => x.Stats.TotalPutts);
-        var allHoles = rounds.SelectMany(r => r.Holes).ToList();
-        double avgGir = 100.0 * allHoles.Count(h => h.GIR) / allHoles.Count;
-        var fairwayHoles = allHoles.Where(h => h.Par != 3 && h.FairwayHit.HasValue).ToList();
-        double? avgFairway = fairwayHoles.Count > 0
-            ? 100.0 * fairwayHoles.Count(h => h.FairwayHit == true) / fairwayHoles.Count
-            : null;
+        var evidenceIds = rows.Take(5).Select(r => r.Id).ToList();
+        var evidenceRounds = await _context.Rounds.AsNoTracking().Where(r => evidenceIds.Contains(r.Id))
+            .Include(r => r.Holes).ToListAsync();
+        var evidenceById = evidenceRounds.ToDictionary(r => r.Id);
+        var insights = PracticeInsights.Build(rows.Take(5).Where(r => evidenceById.ContainsKey(r.Id))
+            .Select(r => evidenceById[r.Id]));
 
-        var recent = roundStats
-            .Take(5)
-            .Select(x => new RoundSummaryDto(
-                x.Round.Id, x.Round.CourseId, x.Round.Course?.Name ?? "", DateOnly.FromDateTime(x.Round.Date),
-                x.Round.CourseTeeId, x.Round.CourseTee?.Name ?? x.Round.LegacyTee ?? "Unknown",
-                x.Stats.TotalScore, x.Stats.ScoreToPar, "Completed", x.Round.Holes.Count, x.Round.Holes.Count))
-            .ToList();
+        var recent = rows.Take(5).Select(ToSummary).ToList();
+        var chronological = rows.OrderBy(r => r.Date).ThenBy(r => r.Id).ToList();
+        var totalHoles = rows.Sum(r => r.HoleCount);
+        var fairwayTotal = rows.Sum(r => r.FairwayEligible);
+        double? avgFairway = fairwayTotal == 0 ? null : 100.0 * rows.Sum(r => r.FairwayHits) / fairwayTotal;
+        var groups = rows.GroupBy(r => r.HoleCount).OrderBy(g => g.Key).Select(g =>
+            new RoundLengthStatisticsDto(g.Key, g.Count(), g.Average(r => r.TotalScore), g.Min(r => r.TotalScore),
+                g.Average(r => r.ScoreToPar), g.Count() >= 5 ? g.Take(5).Average(r => r.ScoreToPar) : null,
+                g.Count() >= 10 ? g.Take(10).Average(r => r.ScoreToPar) : null)).ToList();
+        var parLookup = parRows.ToLookup(r => r.RoundId);
+        var parTrend = chronological.SelectMany(r => parLookup[r.Id].Select(p =>
+            new ParTypeTrendPointDto(DateOnly.FromDateTime(r.Date), p.Par,
+                (double)p.ScoreToPar / p.Holes, 100.0 * p.GirCount / p.Holes))).ToList();
+        var legacyFive = groups.Count == 1 ? groups[0].RecentFiveScoreToPar : null;
+        var legacyTen = groups.Count == 1 ? groups[0].RecentTenScoreToPar : null;
 
-        var chronological = roundStats.OrderBy(x => x.Round.Date).ThenBy(x => x.Round.Id).ToList();
-        var scoreTrend = chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date), x.Stats.TotalScore)).ToList();
-        var girTrend = chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date), x.Stats.GirPercentage)).ToList();
-        var puttsTrend = chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date), x.Stats.TotalPutts)).ToList();
-
-        var groups = roundStats.GroupBy(x => x.Round.Holes.Count).OrderBy(g => g.Key)
-            .Select(g => new RoundLengthStatisticsDto(g.Key, g.Count(), g.Average(x => x.Stats.TotalScore),
-                g.Min(x => x.Stats.TotalScore), g.Average(x => x.Stats.ScoreToPar),
-                g.Count() >= 5 ? g.Take(5).Average(x => x.Stats.ScoreToPar) : null,
-                g.Count() >= 10 ? g.Take(10).Average(x => x.Stats.ScoreToPar) : null)).ToList();
-        // Legacy totals stay available for older clients, but never publish mixed-length moving averages.
-        double? recentFive = groups.Count == 1 ? groups[0].RecentFiveScoreToPar : null;
-        double? recentTen = groups.Count == 1 ? groups[0].RecentTenScoreToPar : null;
-        var insights = BuildInsights(roundStats);
-
-        return new OverviewStatisticsDto(
-            roundStats.Count, avgScore, bestScore, avgPutts, avgGir, avgFairway,
-            recent, scoreTrend, girTrend, puttsTrend, recentFive, recentTen, insights,
-            allHoles.Average(h => h.Putts), groups,
-            chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date),
-                (double)x.Stats.ScoreToPar / x.Round.Holes.Count)).ToList(),
-            chronological.Select(x => new TrendPointDto(x.Round.Id, DateOnly.FromDateTime(x.Round.Date),
-                x.Stats.AveragePuttsPerHole)).ToList(),
-            BuildMovingAverages(chronological),
-            chronological.SelectMany(x => x.Round.Holes.GroupBy(h => h.Par).Select(g => new ParTypeTrendPointDto(
-                DateOnly.FromDateTime(x.Round.Date), g.Key, g.Average(h => h.Score - h.Par),
-                100.0 * g.Count(h => h.GIR) / g.Count()))).ToList());
+        return new OverviewStatisticsDto(rows.Count, rows.Average(r => r.TotalScore), rows.Min(r => r.TotalScore),
+            rows.Average(r => r.TotalPutts), 100.0 * rows.Sum(r => r.GirCount) / totalHoles, avgFairway,
+            recent,
+            chronological.Select(r => new TrendPointDto(r.Id, DateOnly.FromDateTime(r.Date), r.TotalScore)).ToList(),
+            chronological.Select(r => new TrendPointDto(r.Id, DateOnly.FromDateTime(r.Date), 100.0 * r.GirCount / r.HoleCount)).ToList(),
+            chronological.Select(r => new TrendPointDto(r.Id, DateOnly.FromDateTime(r.Date), r.TotalPutts)).ToList(),
+            legacyFive, legacyTen, insights, (double)rows.Sum(r => r.TotalPutts) / totalHoles, groups,
+            chronological.Select(r => new TrendPointDto(r.Id, DateOnly.FromDateTime(r.Date), (double)r.ScoreToPar / r.HoleCount)).ToList(),
+            chronological.Select(r => new TrendPointDto(r.Id, DateOnly.FromDateTime(r.Date), (double)r.TotalPutts / r.HoleCount)).ToList(),
+            BuildMovingAverages(chronological), parTrend);
     }
+
+    private static OverviewStatisticsDto EmptyOverview() => new(0, 0, 0, 0, 0, null,
+        new(), new(), new(), new(), null, null, PracticeInsights.Build(new List<Round>()), 0, new(), new(), new(), new(), new());
+
+    private static RoundSummaryDto ToSummary(RoundMetricRow r) => new(r.Id, r.CourseId, r.CourseName,
+        DateOnly.FromDateTime(r.Date), r.CourseTeeId, r.Tee, r.TotalScore, r.ScoreToPar,
+        "Completed", r.HoleCount, r.HoleCount);
 
     private static RoundStatisticsDto BuildRoundStatistics(int roundId, List<Hole> holes)
     {
-        int totalScore = holes.Sum(h => h.Score);
-        int totalPar = holes.Sum(h => h.Par);
-        int totalPutts = holes.Sum(h => h.Putts);
-        int totalPenalties = holes.Sum(h => h.Penalty);
-
-        int holeCount = holes.Count;
-        double avgPutts = holeCount > 0 ? (double)totalPutts / holeCount : 0;
-
-        // Rates use recorded holes; fairways explicitly exclude historical par-3 values.
-        int girHoles = holes.Count(h => h.GIR);
-        double girPct = holeCount > 0 ? (double)girHoles / holeCount * 100 : 0;
-
-        // Fairway% only ever considers holes where FairwayHit is applicable (i.e. not par 3s).
-        var fairwayEligible = holes.Where(h => h.Par != 3 && h.FairwayHit.HasValue).ToList();
-        double? fairwayPct = fairwayEligible.Count > 0
-            ? (double)fairwayEligible.Count(h => h.FairwayHit == true) / fairwayEligible.Count * 100
-            : null;
-
-        int eagles = holes.Count(h => h.Score - h.Par <= -2);
-        int birdies = holes.Count(h => h.Score - h.Par == -1);
-        int pars = holes.Count(h => h.Score - h.Par == 0);
-        int bogeys = holes.Count(h => h.Score - h.Par == 1);
-        int doubleOrWorse = holes.Count(h => h.Score - h.Par >= 2);
-
-        var par3 = BuildParTypeStats(holes.Where(h => h.Par == 3).ToList());
-        var par4 = BuildParTypeStats(holes.Where(h => h.Par == 4).ToList());
-        var par5 = BuildParTypeStats(holes.Where(h => h.Par == 5).ToList());
-
-        return new RoundStatisticsDto(
-            roundId, totalScore, totalScore - totalPar, totalPutts, avgPutts,
-            girPct, fairwayPct, totalPenalties, eagles, birdies, pars, bogeys, doubleOrWorse,
-            par3, par4, par5);
+        var score = holes.Sum(h => h.Score); var par = holes.Sum(h => h.Par); var putts = holes.Sum(h => h.Putts);
+        var count = holes.Count; var fairway = holes.Where(h => h.Par != 3 && h.FairwayHit.HasValue).ToList();
+        return new(roundId, score, score - par, putts, count == 0 ? 0 : (double)putts / count,
+            count == 0 ? 0 : 100.0 * holes.Count(h => h.GIR) / count,
+            fairway.Count == 0 ? null : 100.0 * fairway.Count(h => h.FairwayHit == true) / fairway.Count,
+            holes.Sum(h => h.Penalty), holes.Count(h => h.Score - h.Par <= -2), holes.Count(h => h.Score - h.Par == -1),
+            holes.Count(h => h.Score - h.Par == 0), holes.Count(h => h.Score - h.Par == 1), holes.Count(h => h.Score - h.Par >= 2),
+            ParStats(holes, 3), ParStats(holes, 4), ParStats(holes, 5));
     }
 
-    private static ParTypeStatsDto BuildParTypeStats(List<Hole> holes)
-    {
-        if (holes.Count == 0) return new ParTypeStatsDto(0, 0, 0);
-
-        return new ParTypeStatsDto(
-            holes.Count,
-            holes.Average(h => h.Score),
-            holes.Average(h => h.Score - h.Par));
+    private static ParTypeStatsDto ParStats(List<Hole> holes, int par) {
+        var selected = holes.Where(h => h.Par == par).ToList();
+        return selected.Count == 0 ? new(0, 0, 0) : new(selected.Count, selected.Average(h => h.Score), selected.Average(h => h.Score - h.Par));
     }
 
-    private static List<PerformanceInsightDto> BuildInsights(
-        List<(Round Round, RoundStatisticsDto Stats)> rounds)
-        => PracticeInsights.Build(rounds.Select(x => x.Round));
-
-    private static List<MovingAveragePointDto> BuildMovingAverages(
-        List<(Round Round, RoundStatisticsDto Stats)> chronological)
+    private static List<MovingAveragePointDto> BuildMovingAverages(List<RoundMetricRow> rows)
     {
         var result = new List<MovingAveragePointDto>();
-        for (var i = 0; i < chronological.Count; i++)
+        for (var i = 0; i < rows.Count; i++)
         {
-            double? Average(int window, Func<(Round Round, RoundStatisticsDto Stats), double> value) => i + 1 < window
-                ? null : chronological.Skip(i + 1 - window).Take(window).Average(value);
-            result.Add(new MovingAveragePointDto(DateOnly.FromDateTime(chronological[i].Round.Date),
-                Average(5, x => (double)x.Stats.ScoreToPar / Math.Max(1, x.Round.Holes.Count)),
-                Average(10, x => (double)x.Stats.ScoreToPar / Math.Max(1, x.Round.Holes.Count)),
-                Average(5, x => x.Stats.AveragePuttsPerHole), Average(10, x => x.Stats.AveragePuttsPerHole)));
+            double? Average(int window, Func<RoundMetricRow, double> value) => i + 1 < window ? null : rows.Skip(i + 1 - window).Take(window).Average(value);
+            result.Add(new(DateOnly.FromDateTime(rows[i].Date), Average(5, r => (double)r.ScoreToPar / r.HoleCount),
+                Average(10, r => (double)r.ScoreToPar / r.HoleCount), Average(5, r => (double)r.TotalPutts / r.HoleCount),
+                Average(10, r => (double)r.TotalPutts / r.HoleCount)));
         }
         return result;
+    }
+
+    private sealed class RoundMetricRow
+    {
+        public int Id { get; init; } public int CourseId { get; init; } public string CourseName { get; init; } = "";
+        public int? CourseTeeId { get; init; } public string Tee { get; init; } = ""; public DateTime Date { get; init; }
+        public int HoleCount { get; init; } public int TotalScore { get; init; } public int TotalPar { get; init; }
+        public int TotalPutts { get; init; } public int GirCount { get; init; } public int FairwayEligible { get; init; }
+        public int FairwayHits { get; init; } public int ScoreToPar => TotalScore - TotalPar;
+    }
+
+    private sealed class ParMetricRow
+    {
+        public int RoundId { get; init; } public int Par { get; init; } public int Holes { get; init; }
+        public int ScoreToPar { get; init; } public int GirCount { get; init; }
     }
 }

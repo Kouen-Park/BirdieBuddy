@@ -55,7 +55,12 @@ function movingAverageSummary(data) {
   if (!points.length) return '<div class="card empty-state trend-card"><h3>Moving averages unlock after five rounds</h3><p>Record complete rounds to compare recent 5- and 10-round score-to-par and putting averages.</p></div>';
   const latest = points[points.length - 1];
   const metric = (label, value, suffix = '') => `<div><span class="stat-label">${label}</span><strong class="trend-value">${value == null ? '—' : Number(value).toFixed(2)}${suffix}</strong></div>`;
-  return `<section class="card trend-card" aria-labelledby="moving-average-title"><div class="section-title" id="moving-average-title">Recent moving averages</div><p class="progress-note">Rolling windows ending ${fmtDate(latest.date)} · score to par is normalized per hole.</p><div class="trend-grid">${metric('Last 5 · score to par / hole', latest.fiveRoundScoreToPar)}${metric('Last 10 · score to par / hole', latest.tenRoundScoreToPar)}${metric('Last 5 · putts / hole', latest.fiveRoundPuttsPerHole)}${metric('Last 10 · putts / hole', latest.tenRoundPuttsPerHole)}</div><div class="trend-bars" role="img" aria-label="Recent moving average history">${points.slice(-10).map(p => `<div class="trend-bar-group"><span class="trend-bar five" style="--bar:${Math.min(100, Math.max(8, ((p.fiveRoundPuttsPerHole || 0) / 3) * 100))}%"></span><span class="trend-bar ten" style="--bar:${Math.min(100, Math.max(8, ((p.tenRoundPuttsPerHole || 0) / 3) * 100))}%"></span><small>${fmtDate(p.date)}</small></div>`).join('')}</div></section>`;
+  return `<section class="card trend-card" aria-labelledby="moving-average-title"><div class="section-title" id="moving-average-title">Recent moving averages</div><p class="progress-note">Rolling windows ending ${fmtDate(latest.date)} · score to par is normalized per hole.</p><div class="trend-grid">${metric('Last 5 · score to par / hole', latest.fiveRoundScoreToPar)}${metric('Last 10 · score to par / hole', latest.tenRoundScoreToPar)}${metric('Last 5 · putts / hole', latest.fiveRoundPuttsPerHole)}${metric('Last 10 · putts / hole', latest.tenRoundPuttsPerHole)}</div><div class="trend-bars" role="img" aria-label="Recent moving average history">${points.slice(-10).map(p => `<div class="trend-bar-group"><span class="trend-bar five ${barHeightClass(p.fiveRoundPuttsPerHole)}"></span><span class="trend-bar ten ${barHeightClass(p.tenRoundPuttsPerHole)}"></span><small>${fmtDate(p.date)}</small></div>`).join('')}</div></section>`;
+}
+
+function barHeightClass(value) {
+  const normalized = Math.min(10, Math.max(1, Math.round(((Number(value) || 0) / 3) * 10)));
+  return `bar-${normalized}`;
 }
 
 function parTypeTrendSummary(data) {

@@ -18,6 +18,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Round> Rounds => Set<Round>();
     public DbSet<Hole> Holes => Set<Hole>();
     public DbSet<PracticeSession> PracticeSessions => Set<PracticeSession>();
+    public DbSet<GolfNzImportRun> GolfNzImportRuns => Set<GolfNzImportRun>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder
@@ -103,6 +104,10 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<CourseTee>()
             .HasIndex(ct => new { ct.CourseId, ct.CourseType, ct.Gender, ct.NineHoles, ct.Name })
             .IsUnique();
+        modelBuilder.Entity<CourseTee>().HasIndex(ct => ct.SourceKey).IsUnique().HasFilter("\"SourceKey\" IS NOT NULL");
+        modelBuilder.Entity<CourseHole>().HasIndex(ch => ch.SourceKey).IsUnique().HasFilter("\"SourceKey\" IS NOT NULL");
+        modelBuilder.Entity<GolfNzImportRun>().Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
+        modelBuilder.Entity<GolfNzImportRun>().HasIndex(r => r.StartedAt);
 
         modelBuilder.Entity<CourseHole>()
             .HasOne(ch => ch.CourseTee)

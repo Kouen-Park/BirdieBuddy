@@ -50,9 +50,9 @@ async function loadDashboard() {
 
       <div class="section-title">Performance trends</div>
       <div class="chart-grid">
-        <div class="card chart-card"><h3>Score to par per hole</h3><p>All completed rounds · 0 = par</p><canvas id="scoreChart" height="160" role="img" aria-describedby="scoreChartSummary" aria-label="Score to par per hole over time"></canvas><p class="chart-summary" id="scoreChartSummary">Loading trend summary…</p></div>
-        <div class="card chart-card"><h3>GIR % trend</h3><canvas id="girChart" height="160" role="img" aria-describedby="girChartSummary" aria-label="Greens in regulation percentage over time"></canvas><p class="chart-summary" id="girChartSummary">Loading trend summary…</p></div>
-        <div class="card chart-card"><h3>Putts per hole</h3><p>All completed rounds · strokes per hole</p><canvas id="puttsChart" height="160" role="img" aria-describedby="puttsChartSummary" aria-label="Putts per hole over time"></canvas><p class="chart-summary" id="puttsChartSummary">Loading trend summary…</p></div>
+        <div class="card chart-card"><h3>Score to par per hole</h3><p>All completed rounds · 0 = par</p><canvas id="scoreChart" height="160" role="img" aria-describedby="scoreChartSummary" aria-label="Score to par per hole over time"></canvas><p class="chart-summary" id="scoreChartSummary">Loading trend summary…</p>${chartDataTable('Score to par per hole', data.scoreToParPerHoleTrend, value => Number(value).toFixed(2))}</div>
+        <div class="card chart-card"><h3>GIR % trend</h3><canvas id="girChart" height="160" role="img" aria-describedby="girChartSummary" aria-label="Greens in regulation percentage over time"></canvas><p class="chart-summary" id="girChartSummary">Loading trend summary…</p>${chartDataTable('GIR percentage', data.girTrend, value => `${Number(value).toFixed(1)}%`)}</div>
+        <div class="card chart-card"><h3>Putts per hole</h3><p>All completed rounds · strokes per hole</p><canvas id="puttsChart" height="160" role="img" aria-describedby="puttsChartSummary" aria-label="Putts per hole over time"></canvas><p class="chart-summary" id="puttsChartSummary">Loading trend summary…</p>${chartDataTable('Putts per hole', data.puttsPerHoleTrend, value => Number(value).toFixed(2))}</div>
       </div>
 
       <div class="section-title">Recent rounds</div>
@@ -88,6 +88,11 @@ function insightCard(insight) {
 
 function statCard(label, value, extraClass = '') {
   return `<div class="card stat-card"><div class="stat-label">${label}</div><div class="stat-value ${extraClass}">${value}</div></div>`;
+}
+
+function chartDataTable(label, points, formatValue) {
+  const rows = (points || []).map(point => `<tr><th scope="row">${escapeHtml(fmtDate(point.date))}</th><td>${escapeHtml(formatValue(point.value))}</td></tr>`).join('');
+  return `<details class="chart-data"><summary>View ${escapeHtml(label)} data table</summary><div class="table-scroll"><table><caption>${escapeHtml(label)} chart data</caption><thead><tr><th scope="col">Date</th><th scope="col">Value</th></tr></thead><tbody>${rows || '<tr><td colspan="2">No data available.</td></tr>'}</tbody></table></div></details>`;
 }
 
 function drawCharts(data) {

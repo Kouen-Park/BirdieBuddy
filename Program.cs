@@ -137,7 +137,8 @@ if (app.Environment.IsDevelopment())
 
 // Apply pending schema migrations on startup. The large Golf NZ data import is
 // intentionally manual so the Render health check is not blocked by data loading.
-if (app.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
+if (!app.Configuration.GetValue("EF_DESIGNTIME", false) &&
+    app.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

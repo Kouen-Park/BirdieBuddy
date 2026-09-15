@@ -105,6 +105,15 @@ namespace BirdieBuddy.Migrations
                     b.Property<int>("CourseTeeId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<long?>("LastSeenImportRunId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceKey")
+                        .HasColumnType("text");
+
                     b.Property<int>("Distance")
                         .HasColumnType("integer");
 
@@ -121,6 +130,10 @@ namespace BirdieBuddy.Migrations
 
                     b.HasIndex("CourseTeeId", "HoleNumber")
                         .IsUnique();
+
+                    b.HasIndex("SourceKey")
+                        .IsUnique()
+                        .HasFilter("\"SourceKey\" IS NOT NULL");
 
                     b.ToTable("CourseHoles", t =>
                         {
@@ -147,6 +160,15 @@ namespace BirdieBuddy.Migrations
 
                     b.Property<int>("CourseId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<long?>("LastSeenImportRunId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceKey")
+                        .HasColumnType("text");
 
                     b.Property<string>("CourseType")
                         .IsRequired()
@@ -183,7 +205,69 @@ namespace BirdieBuddy.Migrations
                     b.HasIndex("CourseId", "CourseType", "Gender", "NineHoles", "Name")
                         .IsUnique();
 
+                    b.HasIndex("SourceKey")
+                        .IsUnique()
+                        .HasFilter("\"SourceKey\" IS NOT NULL");
+
                     b.ToTable("CourseTees");
+                });
+
+            modelBuilder.Entity("BirdieBuddy.Models.GolfNzImportRun", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("CoursesCreated")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CoursesUpdated")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text");
+
+                    b.Property<int>("HolesCreated")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HolesUpdated")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RecordsDeactivated")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceVersion")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("TeesCreated")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeesUpdated")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.ToTable("GolfNzImportRuns");
                 });
 
             modelBuilder.Entity("BirdieBuddy.Models.Hole", b =>

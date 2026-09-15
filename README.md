@@ -69,6 +69,7 @@ iPhone Safari certification is pending; see `tests/browser/iphone-safari-checkli
 - Dashboard and Statistics compare raw scores only within the same recorded round length. The summary shows average/best scores, average score to par and last-5/last-10 score-to-par averages. Each recent window requires that many rounds of the same length; these are recent-window summaries, not a full rolling-average chart.
 - Overall GIR and fairway rates are hole-weighted; historical par-3 fairways are excluded. Putting and score trend charts use per-hole units. Empty completed rounds are excluded. Historical partial completed rounds remain visible under their actual recorded length.
 - Statistics supports course, tee, 9/18-hole and inclusive date filters. Course/tee filtering does not change the independent individual-round selector below it.
+- Statistics overview uses a SQL projection for round-level aggregates, defaults to the last 365 days, and caps the selectable range at five years. The detailed hole query is limited to the selected round and the recent evidence rounds used for practice insights.
 - Existing total-based API fields remain for compatibility; new clients should use `byRoundLength`, `averagePuttsPerHole`, `scoreToParPerHoleTrend` and `puttsPerHoleTrend` for comparisons. No schema migration is required for these changes.
 - The local browser fixture also provides `/round-details.html?id=2` for manual hole-edit testing. It is an in-memory mock, not a PostgreSQL end-to-end test.
 
@@ -121,6 +122,16 @@ keyboard checks in a real Chromium browser. CI additionally sets `BIRDIEBUDDY_E2
 runs the registration-to-round-completion journey against the real ASP.NET Core application and a
 disposable PostgreSQL service. A local PostgreSQL-backed run can use `npm run test:e2e:app` with the
 same environment variable.
+
+Live counter controls are at least 56px for primary score/putt actions and 48px for compact actions.
+The status region distinguishes device-saved, syncing, offline, server-saved, conflict and error
+states. Dashboard Chart.js trends include expandable data tables containing the same date/value
+series, and moving-average bars use CSS classes rather than per-element inline styles. Offline boot
+failures explain how to reconnect and create a cached copy without deleting browser data.
+
+Physical iPhone Safari and VoiceOver remain a manual release gate. Chromium emulation checks layout,
+keyboard activation and browser behavior, but cannot certify iOS storage eviction, WebKit focus,
+VoiceOver announcements or home-indicator clearance.
 
 For the exact test matrix, disposable database safeguards, failure artifacts and full application E2E command, see [docs/testing.md](docs/testing.md).
 
@@ -239,7 +250,14 @@ POST /api/courses/import-golf-nz
 GET  /api/courses/import-golf-nz/status
 ```
 
-The job state remains process-local; run only one import at a time and consult structured server logs after a restart.
+The import is recorded durably in `GolfNzImportRuns`, including the source SHA-256 version, counters, completion status and a safe failure message. Use the operations endpoints to inspect history:
+
+```text
+GET /api/admin/operations/imports?limit=20
+GET /api/admin/operations/imports/{id}
+```
+
+Both operations endpoints require the same `X-Admin-Key`. Imported tees and holes that disappear from a full source snapshot are retained but marked inactive, so historical rounds remain intact while course selection excludes stale records. The import job's in-process lock still permits only one active import per application instance; distributed locking remains a pre-horizontal-scaling task.
 
 ## Data model notes
 
