@@ -4,7 +4,7 @@ Birdie Buddy uses layered tests because no single test runner covers browser dur
 
 ## Prerequisites
 
-- .NET 8 SDK
+- .NET 10 SDK
 - Node.js 22 or newer
 - npm
 - Chromium installed through Playwright
