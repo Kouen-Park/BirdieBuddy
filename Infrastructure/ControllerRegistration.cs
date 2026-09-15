@@ -6,6 +6,15 @@ public static class ControllerRegistration
 {
     public static IMvcBuilder AddBirdieBuddyControllers(this IServiceCollection services)
     {
+        // Register MVC first. Its ApiBehaviorOptions setup installs the framework
+        // default response factory, so our application contract must be configured
+        // afterwards to remain the final value.
+        var mvc = services.AddControllersWithViews(options =>
+        {
+            options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+            options.Filters.Add(new AntiforgeryProblemDetailsFilter());
+        });
+
         services.Configure<ApiBehaviorOptions>(options => options.InvalidModelStateResponseFactory = context =>
         {
             var problem = new ValidationProblemDetails(context.ModelState)
@@ -19,8 +28,8 @@ public static class ControllerRegistration
             problem.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
             return new BadRequestObjectResult(problem) { ContentTypes = { "application/problem+json" } };
         });
+
         // AddControllers alone omits the MVC services needed to instantiate this filter.
-        return services.AddControllersWithViews(options =>
-            options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+        return mvc;
     }
 }

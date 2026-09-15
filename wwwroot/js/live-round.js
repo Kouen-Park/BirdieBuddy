@@ -18,6 +18,21 @@ let holeRenderStartedAt = performance.now();
 const clean = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 const setStatus = (message, state = '') => { statusEl.textContent = message; statusEl.dataset.state = state; };
 
+function renderPageError(message, retry) {
+  const alert = document.createElement('div');
+  alert.className = 'alert error page-retry';
+  alert.setAttribute('role', 'alert');
+  const copy = document.createElement('p');
+  copy.textContent = message;
+  const button = document.createElement('button');
+  button.className = 'btn btn-secondary';
+  button.type = 'button';
+  button.textContent = 'Try again';
+  button.addEventListener('click', retry);
+  alert.append(copy, button);
+  root.replaceChildren(alert);
+}
+
 async function init() {
   const id = params.get('id');
   if (!id) return renderStart();
@@ -53,37 +68,79 @@ async function init() {
     if (verified && params.get('new') !== '1') recordTelemetry('draft_resumed');
     await flushQueue();
   } catch (error) {
-    root.innerHTML = `<div class="alert error">${clean(error.message)}</div>`;
+    renderPageError(error.message, init);
   }
 }
 
 async function renderStart() {
   try {
-    const courses = await Api.get('/courses');
+    const firstPage = await Api.get('/courses/page?limit=50');
     root.innerHTML = `
       <header class="live-intro"><span class="eyebrow">On-course scorecard</span><h1>Start a round</h1><p>Choose your course and tee. Each hole saves as you play.</p></header>
       <form class="card live-start" id="start-round-form">
-        <div class="field"><label for="live-course">Course</label><select id="live-course" required><option value="">Choose a course…</option>${courses.map(c => `<option value="${c.id}">${clean(c.name)}</option>`).join('')}</select></div>
+        <div class="field"><label for="live-course-search">Find a course</label><input id="live-course-search" type="search" placeholder="Search by course or location" autocomplete="off" /></div>
+        <div class="field"><label for="live-course">Course</label><select id="live-course" required><option value="">Choose a course…</option>${firstPage.items.map(c => `<option value="${c.id}">${clean(c.name)}</option>`).join('')}</select></div>
         <div class="field"><label for="live-tee">Tee</label><select id="live-tee" required disabled><option value="">Choose a course first…</option></select></div>
         <div class="field"><label for="live-date">Round date</label><input id="live-date" type="date" required /></div>
+        <div id="start-round-error" class="alert error" role="alert" hidden></div>
         <button class="btn btn-flag btn-wide" type="submit">Start round</button>
         <a class="quiet-link" href="/add-round.html">Enter a completed scorecard instead</a>
       </form>`;
     const courseSelect = document.getElementById('live-course');
     const teeSelect = document.getElementById('live-tee');
+    const courseSearch = document.getElementById('live-course-search');
+    const startError = document.getElementById('start-round-error');
+    const showStartError = message => {
+      startError.textContent = message || '';
+      startError.hidden = !message;
+    };
+    let courseSearchTimer = null;
+    let courseSearchRequest = 0;
     const today = new Date();
     document.getElementById('live-date').value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    courseSearch.addEventListener('input', () => {
+      clearTimeout(courseSearchTimer);
+      courseSearchTimer = setTimeout(async () => {
+        const request = ++courseSearchRequest;
+        courseSelect.disabled = true;
+        teeSelect.disabled = true;
+        courseSelect.innerHTML = '<option value="">Searching…</option>';
+        try {
+          const page = await Api.get(`/courses/page?limit=50&search=${encodeURIComponent(courseSearch.value.trim())}`);
+          if (request !== courseSearchRequest) return;
+          showStartError('');
+          courseSelect.innerHTML = `<option value="">${page.items.length ? 'Choose a course…' : 'No matching courses'}</option>${page.items.map(c => `<option value="${c.id}">${clean(c.name)}</option>`).join('')}`;
+          courseSelect.disabled = page.items.length === 0;
+        } catch (error) {
+          if (request === courseSearchRequest) {
+            courseSelect.innerHTML = '<option value="">Course search unavailable</option>';
+            courseSelect.disabled = true;
+            showStartError(`${error.message} Change the search or try again.`);
+          }
+        }
+      }, 250);
+    });
     courseSelect.addEventListener('change', async () => {
       teeSelect.disabled = true;
       teeSelect.innerHTML = '<option>Loading…</option>';
-      if (!courseSelect.value) return;
-      course = await Api.get(`/courses/${courseSelect.value}`);
-      teeSelect.innerHTML = (course.tees || []).map(t => `<option value="${t.id}">${clean(t.name)} · ${t.nineHoles ? '9' : '18'} holes</option>`).join('');
-      teeSelect.disabled = !teeSelect.options.length;
+      showStartError('');
+      if (!courseSelect.value) {
+        teeSelect.innerHTML = '<option value="">Choose a course first…</option>';
+        return;
+      }
+      try {
+        course = await Api.get(`/courses/${courseSelect.value}`);
+        teeSelect.innerHTML = (course.tees || []).map(t => `<option value="${t.id}">${clean(t.name)} · ${t.nineHoles ? '9' : '18'} holes</option>`).join('');
+        teeSelect.disabled = !teeSelect.options.length;
+        if (!teeSelect.options.length) showStartError('This course has no available tee. Choose another course.');
+      } catch (error) {
+        teeSelect.innerHTML = '<option value="">Tee details unavailable</option>';
+        showStartError(`${error.message} Choose the course again to retry.`);
+      }
     });
     document.getElementById('start-round-form').addEventListener('submit', startRound);
   } catch (error) {
-    root.innerHTML = `<div class="alert error">${clean(error.message)}</div>`;
+    renderPageError(error.message, renderStart);
   }
 }
 
@@ -91,7 +148,7 @@ async function startRound(event) {
   event.preventDefault();
   const button = event.submitter;
   button.disabled = true;
-  setStatus('Starting round…', 'saving');
+  setStatus('Starting round…', 'syncing');
   try {
     const created = await Api.post('/rounds/drafts', {
       courseId: Number(document.getElementById('live-course').value),
@@ -102,6 +159,8 @@ async function startRound(event) {
     location.replace(`/live-round.html?id=${created.id}&new=1`);
   } catch (error) {
     setStatus(error.message, 'error');
+    const inlineError = document.getElementById('start-round-error');
+    if (inlineError) { inlineError.textContent = error.message; inlineError.hidden = false; }
     button.disabled = false;
   }
 }
@@ -179,7 +238,7 @@ function captureChange() {
     store.queue(currentHole, payload());
     updateProgress();
     blockedNavigation = false;
-    setStatus('Saved on this device — syncing…', 'saving');
+    setStatus('Saved on this device — sync queued', 'device');
     clearTimeout(syncTimer);
     syncTimer = setTimeout(flushQueue, 600);
     return true;
@@ -217,7 +276,7 @@ async function flushQueue() {
   if (!store || reviewingConflict) return false;
   if (!navigator.onLine) { setStatus('Offline — changes are saved on this device', 'offline'); return false; }
   try {
-    setStatus('Syncing…', 'saving');
+    setStatus('Syncing with server…', 'syncing');
     await store.flush(
       (number, data) => Api.put(`/rounds/${store.roundId}/holes/by-number/${number}`, data),
       async () => (await Api.get('/auth/me')).id);
@@ -225,7 +284,7 @@ async function flushQueue() {
     conflictHole = null;
     const reviewButton = document.getElementById('review-conflict');
     if (reviewButton) reviewButton.hidden = true;
-    setStatus(pending ? `${pending} holes waiting to sync` : 'All changes saved to server', pending ? 'saving' : 'saved');
+    setStatus(pending ? `${pending} holes saved on device — waiting to sync` : 'Saved to server', pending ? 'device' : 'saved');
     updateProgress();
     return pending === 0;
   } catch (error) {
@@ -234,6 +293,8 @@ async function flushQueue() {
       conflictHole = error.holeNumber;
       const reviewButton = document.getElementById('review-conflict');
       if (reviewButton) reviewButton.hidden = false;
+      setStatus('Save conflict — review required. Device copy preserved.', 'conflict');
+      return false;
     }
     setStatus(`${error.message} Your device copy is preserved.`, 'error');
     return false;
@@ -313,7 +374,12 @@ async function finishRound() {
 
 async function abandonRound() {
   if (finalizing || blockedNavigation) return;
-  if (!confirm('Abandon this round? Its saved holes will remain in your history.')) return;
+  if (!await openConfirmDialog({
+    title: 'Abandon this round?',
+    message: 'Saved holes will remain in your history, but this round will no longer accept live entries.',
+    confirmLabel: 'Abandon round',
+    danger: true
+  })) return;
   finalizing = true;
   root.querySelectorAll('button, input, select').forEach(control => control.disabled = true);
   try {

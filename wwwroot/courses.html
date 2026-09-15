@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0e211f" />
 <title>Courses · Birdie Buddy</title>
 <link rel="stylesheet" href="/css/styles.css?v=20260908-local-assets" />
 </head>
@@ -16,13 +18,14 @@
         <p>Courses you can select when adding a round.</p>
       </div>
 
-      <div class="course-tools card">
+      <div class="course-tools card" role="search">
         <div class="field"><label for="course-search">Find a course</label><input id="course-search" type="search" placeholder="Search by course or location" autocomplete="off" /></div>
       </div>
       <div class="section-title">Available courses</div>
       <div id="local-courses">
         <p class="progress-note">Loading&hellip;</p>
       </div>
+      <button class="btn btn-secondary load-more" id="load-more-courses" type="button" hidden>Load more courses</button>
     </main>
   </div>
 

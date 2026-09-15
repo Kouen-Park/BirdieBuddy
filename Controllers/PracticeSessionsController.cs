@@ -21,15 +21,16 @@ public class PracticeSessionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<PracticeSessionDto>> Start(PracticeSessionCreateDto dto)
     {
-        var (session, error) = await _service.StartAsync(dto);
-        return error is null ? CreatedAtAction(nameof(GetRecent), session) : this.ApiProblem(400, "practice.invalid", "Practice session could not be started.", error);
+        var result = await _service.StartAsync(dto);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetRecent), result.Value)
+            : this.ApiProblem(result.Error!);
     }
 
     [HttpPost("{id:int}/complete")]
     public async Task<ActionResult<PracticeSessionDto>> Complete(int id, PracticeSessionCompleteDto dto)
     {
-        var (session, error) = await _service.CompleteAsync(id, dto);
-        if (error is not null) return this.ApiProblem(error == "Practice session not found." ? 404 : 400, "practice.invalid", "Practice session could not be completed.", error);
-        return Ok(session);
+        var result = await _service.CompleteAsync(id, dto);
+        return result.IsSuccess ? Ok(result.Value) : this.ApiProblem(result.Error!);
     }
 }

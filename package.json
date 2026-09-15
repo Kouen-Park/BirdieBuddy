@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "test:browser": "node --test tests/browser/*.test.cjs",
+    "test:e2e": "playwright test",
+    "test:e2e:fixture": "playwright test --project=fixture-mobile",
+    "test:e2e:app": "playwright test --project=app-mobile"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

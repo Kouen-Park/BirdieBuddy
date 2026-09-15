@@ -367,6 +367,10 @@ namespace BirdieBuddy.Migrations
 
                     b.HasIndex("CourseTeeId");
 
+                    b.HasIndex("UserId", "CourseId", "Date");
+
+                    b.HasIndex("UserId", "Status", "Date");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Rounds");
@@ -403,6 +407,9 @@ namespace BirdieBuddy.Migrations
                     b.Property<string>("PasswordSalt")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("SessionVersion")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

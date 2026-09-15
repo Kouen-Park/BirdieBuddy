@@ -7,7 +7,7 @@ namespace BirdieBuddy.Services;
 
 public interface IProductTelemetryService
 {
-    Task<string?> RecordAsync(int userId, ProductEventDto dto);
+    Task<ServiceResult<bool>> RecordAsync(int userId, ProductEventDto dto);
     Task<BetaMetricsDto> SummaryAsync(DateTime from);
 }
 
@@ -18,19 +18,37 @@ public sealed class ProductTelemetryService : IProductTelemetryService
     private readonly ApplicationDbContext _context;
     public ProductTelemetryService(ApplicationDbContext context) => _context = context;
 
-    public async Task<string?> RecordAsync(int userId, ProductEventDto dto)
+    public async Task<ServiceResult<bool>> RecordAsync(int userId, ProductEventDto dto)
     {
-        if (dto.ClientEventId == Guid.Empty || !AllowedEvents.Contains(dto.EventType)) return "Unsupported telemetry event.";
-        if (dto.EventType == "hole_input_completed" && (dto.DurationMs is < 0 or > 600_000 or null))
-            return "Hole input duration must be between 0 and 600000 milliseconds.";
-        if (dto.EventType == "draft_resumed" && dto.DurationMs is not null) return "Resume events do not include a duration.";
+        var eventType = dto.EventType ?? string.Empty;
+        if (dto.ClientEventId == Guid.Empty || !AllowedEvents.Contains(eventType))
+            return ServiceResult<bool>.Failure(ServiceErrors.TelemetryInvalid("Unsupported telemetry event."));
+        if (eventType == "hole_input_completed" && (dto.DurationMs is < 0 or > 600_000 or null))
+            return ServiceResult<bool>.Failure(ServiceErrors.TelemetryInvalid(
+                "Hole input duration must be between 0 and 600000 milliseconds."));
+        if (eventType == "draft_resumed" && dto.DurationMs is not null)
+            return ServiceResult<bool>.Failure(ServiceErrors.TelemetryInvalid(
+                "Resume events do not include a duration."));
         if (dto.RoundId is null || !await _context.Rounds.AnyAsync(r => r.Id == dto.RoundId && r.UserId == userId))
-            return "Round not found.";
-        if (await _context.ProductEvents.AnyAsync(e => e.UserId == userId && e.ClientEventId == dto.ClientEventId)) return null;
-        _context.ProductEvents.Add(new ProductEvent { UserId = userId, RoundId = dto.RoundId,
-            ClientEventId = dto.ClientEventId, EventType = dto.EventType, DurationMs = dto.DurationMs, OccurredAt = DateTime.UtcNow });
-        await _context.SaveChangesAsync();
-        return null;
+            return ServiceResult<bool>.Failure(ServiceErrors.RoundNotFound());
+        if (await _context.ProductEvents.AnyAsync(e => e.UserId == userId && e.ClientEventId == dto.ClientEventId))
+            return ServiceResult<bool>.Success(true);
+        var productEvent = new ProductEvent { UserId = userId, RoundId = dto.RoundId,
+            ClientEventId = dto.ClientEventId, EventType = eventType, DurationMs = dto.DurationMs, OccurredAt = DateTime.UtcNow };
+        _context.ProductEvents.Add(productEvent);
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is Npgsql.PostgresException postgres &&
+            postgres.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation &&
+            string.Equals(postgres.ConstraintName, "IX_ProductEvents_UserId_ClientEventId", StringComparison.Ordinal))
+        {
+            // The browser outbox may retry after a lost response. The unique
+            // key makes this operation safely idempotent under a race too.
+            _context.Entry(productEvent).State = EntityState.Detached;
+        }
+        return ServiceResult<bool>.Success(true);
     }
 
     public async Task<BetaMetricsDto> SummaryAsync(DateTime from)

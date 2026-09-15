@@ -14,7 +14,20 @@ Api.get('/auth/me').then(user => {
   }
 });
 document.getElementById('profile-form').addEventListener('submit', async event => { event.preventDefault(); try { await Api.put('/auth/profile', { displayName: document.getElementById('display-name').value }); show('Profile saved.'); } catch (error) { show(error.message, 'error'); } });
-document.getElementById('password-form').addEventListener('submit', async event => { event.preventDefault(); try { await Api.post('/auth/change-password', { currentPassword: document.getElementById('current-password').value, newPassword: document.getElementById('new-password').value }); event.target.reset(); show('Password changed.'); } catch (error) { show(error.message, 'error'); } });
+document.getElementById('password-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    await Api.post('/auth/change-password', { currentPassword: document.getElementById('current-password').value, newPassword: document.getElementById('new-password').value });
+    sessionStorage.removeItem('birdiebuddy.liveUser');
+    Api.csrfToken = null;
+    location.replace('/login.html?passwordChanged=1');
+  } catch (error) {
+    show(error.message, 'error');
+    button.disabled = false;
+  }
+});
 document.getElementById('export-account').addEventListener('click', async event => {
   const button = event.currentTarget; button.disabled = true;
   try {
@@ -29,7 +42,6 @@ document.getElementById('export-account').addEventListener('click', async event 
 document.getElementById('delete-account-form').addEventListener('submit', async event => {
   event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('button[type="submit"]');
   if (document.getElementById('delete-confirmation').value !== 'DELETE MY ACCOUNT') return show('Type DELETE MY ACCOUNT exactly to confirm.', 'error');
-  if (!confirm('Permanently delete this account and all of its Birdie Buddy data? This cannot be undone.')) return;
   button.disabled = true;
   try {
     if (!accountUserId) accountUserId = (await Api.get('/auth/me')).id;

@@ -89,14 +89,24 @@ public class PostgresIntegrationTests
             var duplicate = await Assert.ThrowsAsync<DbUpdateException>(() => check.SaveChangesAsync());
             Assert.Equal(PostgresErrorCodes.UniqueViolation, Assert.IsType<PostgresException>(duplicate.InnerException).SqlState);
         }
-        var staleResult = await service.UpsertHoleAsync(draft.Id, 1, new(4, 6, 2, false, false, 0, true, first.Hole));
-        Assert.Equal(RoundService.ConflictMessage, staleResult.Error);
+        var staleResult = await service.UpsertHoleAsync(draft.Id, 1, new(4, 6, 2, false, false, 0, true, first.Value));
+        Assert.Equal("round.save_conflict", staleResult.Error!.Code);
         foreach (var n in Enumerable.Range(2, 8))
             Assert.Null((await service.UpsertHoleAsync(draft.Id, n, new(4, 4, 2, true, true, 0))).Error);
-        Assert.Equal("Completed", (await service.CompleteAsync(draft.Id)).Round!.Status);
+        Assert.Equal("Completed", (await service.CompleteAsync(draft.Id)).Value!.Status);
         var stats = await new StatisticsService(db, new TestUser(user.Id)).GetOverviewStatisticsAsync(new(HoleCount: 9));
         Assert.Equal(1, stats.RoundsPlayed);
         Assert.Equal(37, stats.ByRoundLength![0].AverageScore);
+
+        var abandonDraft = (await service.StartAsync(new(course.Id, new(2026, 9, 4), tee.Id, null))).Value!;
+        await using var firstAbandonDb = new ApplicationDbContext(options);
+        await using var secondAbandonDb = new ApplicationDbContext(options);
+        await firstAbandonDb.Rounds.SingleAsync(r => r.Id == abandonDraft.Id);
+        await secondAbandonDb.Rounds.SingleAsync(r => r.Id == abandonDraft.Id);
+        Assert.True((await new RoundService(firstAbandonDb, new TestUser(user.Id))
+            .AbandonAsync(abandonDraft.Id)).IsSuccess);
+        Assert.True((await new RoundService(secondAbandonDb, new TestUser(user.Id))
+            .AbandonAsync(abandonDraft.Id)).IsSuccess);
     }
 
     private sealed record TestUser(int? Id) : ICurrentUser { public bool IsAuthenticated => true; }

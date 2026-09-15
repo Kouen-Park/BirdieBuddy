@@ -7,8 +7,10 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
 {
     public ApplicationDbContext CreateDbContext(string[] args)
     {
+        var connectionString = Environment.GetEnvironmentVariable("BIRDIEBUDDY_DESIGN_CONNECTION")
+            ?? "Host=localhost;Database=birdiebuddy_design;Username=postgres";
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseNpgsql("Host=localhost;Database=birdiebuddy_design;Username=postgres;Password=postgres")
+            .UseNpgsql(connectionString)
             .Options;
         return new ApplicationDbContext(options);
     }

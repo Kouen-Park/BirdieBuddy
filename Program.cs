@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using BirdieBuddy.Data;
 using BirdieBuddy.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -15,6 +16,7 @@ builder.AddBirdieBuddyTelemetry();
 builder.Services.AddBirdieBuddyControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<WriteConflictHandler>();
+builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
@@ -28,17 +30,27 @@ builder.Services.AddAntiforgery(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        await ApiErrors.WriteProblemAsync(context.HttpContext, StatusCodes.Status429TooManyRequests,
+            "rate_limit.exceeded", "Too many requests.",
+            "Please wait a moment before trying again.", token);
+    };
     options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 8,
+            PermitLimit = builder.Configuration.GetValue("RateLimiting:AuthPermitLimit", 8),
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0,
             AutoReplenishment = true
         }));
 });
 builder.Services.AddHttpContextAccessor();
+var dataProtection = builder.Services.AddDataProtection();
+var keyRingPath = builder.Configuration["DataProtection:KeyRingPath"];
+if (!string.IsNullOrWhiteSpace(keyRingPath))
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keyRingPath));
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -51,22 +63,31 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromDays(14);
         options.SlidingExpiration = true;
         options.LoginPath = "/login.html";
-        options.Events.OnRedirectToLogin = context =>
+        options.Events.OnRedirectToLogin = async context =>
         {
             if (context.Request.Path.StartsWithSegments("/api"))
             {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return Task.CompletedTask;
+                await ApiErrors.WriteProblemAsync(context.HttpContext, StatusCodes.Status401Unauthorized,
+                    "auth.required", "Authentication required.",
+                    "Sign in to access this resource.", context.HttpContext.RequestAborted);
+                return;
             }
 
             context.Response.Redirect(options.LoginPath);
-            return Task.CompletedTask;
         };
-        options.Events.OnRedirectToAccessDenied = context =>
+        options.Events.OnRedirectToAccessDenied = async context =>
         {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                await ApiErrors.WriteProblemAsync(context.HttpContext, StatusCodes.Status403Forbidden,
+                    "auth.forbidden", "Access denied.",
+                    "You do not have permission to access this resource.", context.HttpContext.RequestAborted);
+                return;
+            }
+
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            return Task.CompletedTask;
         };
+        options.Events.OnValidatePrincipal = SessionCookieValidator.ValidateAsync;
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -79,7 +100,15 @@ builder.Services.AddScoped<IGolfNzCourseImporter, GolfNzCourseImporter>();
 builder.Services.AddSingleton<IGolfNzImportJob, GolfNzImportJob>();
 
 builder.Services.AddScoped<ICourseService, CourseService>();
-builder.Services.AddScoped<IRoundService, RoundService>();
+builder.Services.AddScoped<IRoundQueryService, RoundQueryService>();
+builder.Services.AddScoped<ILiveRoundService, LiveRoundService>();
+builder.Services.AddScoped<IRoundLifecycleService, RoundLifecycleService>();
+builder.Services.AddScoped<ICompletedRoundEditor, CompletedRoundEditor>();
+builder.Services.AddScoped<IRoundService>(services => new RoundService(
+    services.GetRequiredService<IRoundQueryService>(),
+    services.GetRequiredService<ILiveRoundService>(),
+    services.GetRequiredService<IRoundLifecycleService>(),
+    services.GetRequiredService<ICompletedRoundEditor>()));
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -107,8 +136,9 @@ if (app.Environment.IsDevelopment())
 
 // Apply pending schema migrations on startup. The large Golf NZ data import is
 // intentionally manual so the Render health check is not blocked by data loading.
-using (var scope = app.Services.CreateScope())
+if (app.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
 {
+    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var connection = context.Database.GetDbConnection();
     await connection.OpenAsync();

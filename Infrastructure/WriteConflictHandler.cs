@@ -14,12 +14,8 @@ public sealed class WriteConflictHandler : IExceptionHandler
             exception is DbUpdateException { InnerException: PostgresException
                 { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_Holes_RoundId_HoleNumber" } };
         if (!conflict) return false;
-        context.Response.StatusCode = StatusCodes.Status409Conflict;
-        await context.Response.WriteAsJsonAsync(new ProblemDetails
-        {
-            Status = 409, Title = "Conflicting update", Detail = RoundService.ConflictMessage,
-            Extensions = { ["code"] = "round_conflict" }
-        }, cancellationToken: token);
+        await ApiErrors.WriteProblemAsync(context, StatusCodes.Status409Conflict,
+            "round.save_conflict", "The record changed elsewhere.", RoundService.ConflictMessage, token);
         return true;
     }
 }

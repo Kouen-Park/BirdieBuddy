@@ -27,6 +27,25 @@ public class CourseService : ICourseService
             .ToListAsync();
     }
 
+    public async Task<CoursePageDto> GetPageAsync(CourseQueryDto query)
+    {
+        var limit = Math.Clamp(query.Limit, 1, 100);
+        var courses = _context.Courses.AsNoTracking()
+            .Where(c => c.UserId == null || c.UserId == CurrentUserId);
+        if (query.Cursor.HasValue) courses = courses.Where(c => c.Id > query.Cursor.Value);
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            courses = courses.Where(c => c.Name.Contains(search) || c.Location.Contains(search));
+        }
+
+        var items = await courses.OrderBy(c => c.Id).Take(limit + 1)
+            .Select(c => new CourseSummaryDto(c.Id, c.Name, c.Location)).ToListAsync();
+        var hasMore = items.Count > limit;
+        if (hasMore) items.RemoveAt(items.Count - 1);
+        return new CoursePageDto(items, hasMore ? items[^1].Id : null);
+    }
+
     public async Task<CourseDto?> GetByIdAsync(int id)
     {
         var course = await _context.Courses
@@ -38,14 +57,15 @@ public class CourseService : ICourseService
         return course is null ? null : MapToDto(course);
     }
 
-    public async Task<CourseDto> CreateAsync(CourseCreateDto dto)
+    public async Task<ServiceResult<CourseDto>> CreateAsync(CourseCreateDto dto)
     {
-        if (dto.Holes.Count != 18)
-            throw new ArgumentException("A course must have exactly 18 holes.");
+        if (dto.Holes is null || dto.Holes.Count != 18)
+            return ServiceResult<CourseDto>.Failure(ServiceErrors.CourseInvalid("A course must have exactly 18 holes."));
 
         if (dto.Holes.Select(h => h.HoleNumber).Distinct().Count() != 18 ||
             dto.Holes.Any(h => h.HoleNumber is < 1 or > 18))
-            throw new ArgumentException("Hole numbers must be unique and between 1 and 18.");
+            return ServiceResult<CourseDto>.Failure(ServiceErrors.CourseInvalid(
+                "Hole numbers must be unique and between 1 and 18."));
 
         var tee = new CourseTee
         {
@@ -64,42 +84,42 @@ public class CourseService : ICourseService
         var course = new Course
         {
             UserId = CurrentUserId,
-            Name = dto.Name,
-            Location = dto.Location,
+            Name = dto.Name ?? string.Empty,
+            Location = dto.Location ?? string.Empty,
             CourseTees = new List<CourseTee> { tee }
         };
 
         _context.Courses.Add(course);
         await _context.SaveChangesAsync();
 
-        return MapToDto(course);
+        return ServiceResult<CourseDto>.Success(MapToDto(course));
     }
 
-    public async Task<bool> UpdateAsync(int id, CourseUpdateDto dto)
+    public async Task<ServiceResult<bool>> UpdateAsync(int id, CourseUpdateDto dto)
     {
         var course = await _context.Courses
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
-        if (course is null) return false;
+        if (course is null) return ServiceResult<bool>.Failure(ServiceErrors.CourseNotFound());
 
-        course.Name = dto.Name;
-        course.Location = dto.Location;
+        course.Name = dto.Name ?? string.Empty;
+        course.Location = dto.Location ?? string.Empty;
         await _context.SaveChangesAsync();
-        return true;
+        return ServiceResult<bool>.Success(true);
     }
 
-    public async Task<(bool Success, string? Error)> DeleteAsync(int id)
+    public async Task<ServiceResult<bool>> DeleteAsync(int id)
     {
         var course = await _context.Courses
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
-        if (course is null) return (false, "Course not found.");
+        if (course is null) return ServiceResult<bool>.Failure(ServiceErrors.CourseNotFound());
 
         bool hasRounds = await _context.Rounds.AnyAsync(r => r.CourseId == id && r.UserId == CurrentUserId);
         if (hasRounds)
-            return (false, "Cannot delete a course that has recorded rounds.");
+            return ServiceResult<bool>.Failure(ServiceErrors.CourseInUse());
 
         _context.Courses.Remove(course);
         await _context.SaveChangesAsync();
-        return (true, null);
+        return ServiceResult<bool>.Success(true);
     }
 
     private static CourseDto MapToDto(Course course)

@@ -10,6 +10,9 @@ public static class DeploymentConfiguration
         if (!builder.Environment.IsDevelopment() &&
             connection.Contains("Password=postgres", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("The local development database password cannot be used in production.");
+        if (!builder.Environment.IsDevelopment() &&
+            !builder.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
+            throw new InvalidOperationException("Database migrations cannot be disabled in production.");
 
         ValidateHttpsUri(builder, "Application:PublicBaseUrl");
         ValidateHttpsUri(builder, "OTEL_EXPORTER_OTLP_ENDPOINT", allowLocalHttp: true);

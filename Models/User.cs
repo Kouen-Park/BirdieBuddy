@@ -16,6 +16,10 @@ public class User
 
     public DateTime? EmailVerifiedAt { get; set; }
 
+    // Incremented whenever credentials change so previously issued cookies can
+    // be rejected without maintaining a server-side session store.
+    public int SessionVersion { get; set; } = 1;
+
     public List<Round> Rounds { get; set; } = new();
 
     public List<Course> Courses { get; set; } = new();

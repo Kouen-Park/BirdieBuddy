@@ -127,6 +127,7 @@ function renderNav(active) {
     const nav = document.getElementById('site-nav');
 
     if (!nav) return;
+    nav.setAttribute('aria-label', 'Primary navigation');
 
     nav.innerHTML = `
     <button
@@ -390,4 +391,56 @@ function escapeHtml(value) {
     return String(value ?? '')
         .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+}
+
+// Dialog helpers keep destructive and multi-field actions usable with a
+// keyboard and on a phone. They also avoid browser-native prompt/confirm UI,
+// which cannot carry the app's status and validation language.
+function openConfirmDialog({ title, message, confirmLabel = 'Continue', danger = false }) {
+    return new Promise(resolve => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'card app-dialog';
+        dialog.setAttribute('aria-labelledby', 'app-dialog-title');
+        dialog.innerHTML = `<form method="dialog">
+          <h2 id="app-dialog-title">${escapeHtml(title)}</h2>
+          <p>${escapeHtml(message)}</p>
+          <div class="detail-actions"><button class="btn btn-secondary" value="cancel">Cancel</button><button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" value="confirm">${escapeHtml(confirmLabel)}</button></div>
+        </form>`;
+        dialog.addEventListener('close', () => {
+            resolve(dialog.returnValue === 'confirm');
+            dialog.remove();
+        }, { once: true });
+        document.body.append(dialog);
+        dialog.showModal();
+    });
+}
+
+function openFormDialog({ title, description = '', fields, submitLabel = 'Save' }) {
+    return new Promise(resolve => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'card app-dialog';
+        dialog.setAttribute('aria-labelledby', 'app-dialog-title');
+        const fieldMarkup = fields.map(field => {
+            const id = `dialog-${field.name}`;
+            const control = field.type === 'textarea'
+                ? `<textarea id="${id}" name="${escapeHtml(field.name)}" rows="4" maxlength="${Number(field.maxLength || 2000)}" ${field.required ? 'required' : ''} placeholder="${escapeHtml(field.placeholder || '')}">${escapeHtml(field.value || '')}</textarea>`
+                : `<input id="${id}" name="${escapeHtml(field.name)}" type="${escapeHtml(field.type || 'text')}" value="${escapeHtml(field.value || '')}" maxlength="${Number(field.maxLength || 500)}" ${field.autocomplete ? `autocomplete="${escapeHtml(field.autocomplete)}"` : ''} ${field.required ? 'required' : ''} placeholder="${escapeHtml(field.placeholder || '')}"/>`;
+            return `<div class="field"><label for="${id}">${escapeHtml(field.label)}</label>${control}</div>`;
+        }).join('');
+        dialog.innerHTML = `<form method="dialog"><h2 id="app-dialog-title">${escapeHtml(title)}</h2>${description ? `<p>${escapeHtml(description)}</p>` : ''}${fieldMarkup}<div class="detail-actions"><button class="btn btn-secondary" value="cancel">Cancel</button><button class="btn btn-primary" value="submit">${escapeHtml(submitLabel)}</button></div></form>`;
+        dialog.addEventListener('close', () => {
+            const values = dialog.returnValue === 'submit'
+                ? Object.fromEntries(new FormData(dialog.querySelector('form')).entries())
+                : null;
+            resolve(values);
+            dialog.remove();
+        }, { once: true });
+        document.body.append(dialog);
+        dialog.showModal();
+        dialog.querySelector('input, textarea, select')?.focus({ preventScroll: true });
+    });
+}
+
+if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js').catch(() => {}), { once: true });
 }

@@ -17,8 +17,9 @@ public static class BrowserSecurity
                 if (context.Request.Path.StartsWithSegments("/api"))
                     context.Response.Headers["Cache-Control"] = "no-store";
                 else if (context.Request.Path == "/" ||
-                         new[] { ".html", ".css", ".js", ".ttf", ".woff", ".woff2" }.Contains(
-                             Path.GetExtension(context.Request.Path.Value ?? ""), StringComparer.OrdinalIgnoreCase))
+                         new[] { ".html", ".css", ".js", ".svg", ".ttf", ".woff", ".woff2" }.Contains(
+                             Path.GetExtension(context.Request.Path.Value ?? ""), StringComparer.OrdinalIgnoreCase) ||
+                         context.Request.Path.Value?.EndsWith(".webmanifest", StringComparison.OrdinalIgnoreCase) == true)
                     // Stable asset URLs must be revalidated after a deployment.
                     // Conditional requests can still return 304; this does not clear offline drafts.
                     context.Response.Headers["Cache-Control"] = "no-cache, must-revalidate";

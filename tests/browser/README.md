@@ -21,11 +21,25 @@ The first save of each hole simulates another device saving a score of 8 before 
 7. Compare device **5** with server **8**. Choose Keep my input & retry.
 8. Confirm **0 pending**, server-saved status, and score **5** after reload.
 
-These interactions were manually verified in the in-app browser. They do not constitute automated browser CI, a mobile accessibility audit, or PostgreSQL end-to-end verification.
+The conflict flow is now covered automatically in mobile Chromium by `tests/e2e/fixture-mobile.spec.cjs`; the numbered steps remain useful for exploratory review. Fixture coverage is not a full accessibility audit and does not prove PostgreSQL behavior. CI separately runs `tests/e2e/app-mobile.spec.cjs` against the real ASP.NET Core application and a disposable PostgreSQL service.
 
 ## Other fixtures
 
 - `/live-round.html?id=1`: ordinary back-nine autosave (no injected conflict).
 - `/round-details.html?id=2`: completed-hole editing.
 
-Run queue and shared-view regression tests with `node --test tests/browser/*.test.cjs`.
+Run queue and shared-view regression tests with:
+
+```bash
+npm run test:browser
+```
+
+Run the real Chromium fixture checks with:
+
+```bash
+npm ci
+npx playwright install chromium
+npm run test:e2e:fixture
+```
+
+Failure traces, screenshots and videos are retained under `output/playwright/`. See [`docs/testing.md`](../../docs/testing.md) for the PostgreSQL-backed application journey and CI matrix.

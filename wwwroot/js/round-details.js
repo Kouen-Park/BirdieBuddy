@@ -144,7 +144,13 @@ function editHole(round, hole) {
 }
 
 async function editRound(round) {
-  const date = prompt('Round date (YYYY-MM-DD)', round.date.slice(0, 10));
+  const values = await openFormDialog({
+    title: 'Edit round details',
+    description: 'Update the date without changing the recorded scorecard.',
+    fields: [{ name: 'date', label: 'Round date', type: 'date', value: round.date.slice(0, 10), required: true }],
+    submitLabel: 'Save changes'
+  });
+  const date = values?.date;
   if (!date) return;
   try {
     await Api.put(`/rounds/${round.id}`, { date, courseTeeId: round.courseTeeId, tee: round.tee, expectedUpdatedAt: round.updatedAt });
@@ -153,14 +159,36 @@ async function editRound(round) {
     const message = error.status === 409
       ? 'This round was updated in another session. Reload the round before editing it again.'
       : error.message;
-    content.insertAdjacentHTML('afterbegin', `<div class="alert error" role="alert">${escapeHtml(message)} <button class="text-button" onclick="loadRoundDetails()">Reload</button></div>`);
+    const alert = document.createElement('div');
+    alert.className = 'alert error';
+    alert.setAttribute('role', 'alert');
+    const copy = document.createElement('span');
+    copy.textContent = message;
+    const reload = document.createElement('button');
+    reload.className = 'text-button';
+    reload.type = 'button';
+    reload.textContent = 'Reload';
+    reload.addEventListener('click', loadRoundDetails);
+    alert.append(copy, ' ', reload);
+    content.prepend(alert);
   }
 }
 
 async function deleteRound() {
-  if (!confirm('Delete this round permanently?')) return;
+  if (!await openConfirmDialog({
+    title: 'Delete this round?',
+    message: 'This permanently removes the round and its recorded holes.',
+    confirmLabel: 'Delete round',
+    danger: true
+  })) return;
   try { await Api.del(`/rounds/${roundId}`); location.href = '/rounds.html'; }
-  catch (error) { content.insertAdjacentHTML('afterbegin', `<div class="alert error">${escapeHtml(error.message)}</div>`); }
+  catch (error) {
+    const alert = document.createElement('div');
+    alert.className = 'alert error';
+    alert.setAttribute('role', 'alert');
+    alert.textContent = error.message;
+    content.prepend(alert);
+  }
 }
 
 function statCard(label, value, extraClass = '') {

@@ -10,17 +10,17 @@ namespace BirdieBuddy.Services;
 
 public interface IAuthService
 {
-    Task<(CurrentUserDto? User, string? Error)> RegisterAsync(RegisterDto dto);
+    Task<ServiceResult<CurrentUserDto>> RegisterAsync(RegisterDto dto);
     Task<CurrentUserDto?> ValidateLoginAsync(LoginDto dto);
     Task<CurrentUserDto?> GetByIdAsync(int id);
-    Task<(CurrentUserDto? User, string? Error)> UpdateProfileAsync(int id, UpdateProfileDto dto);
-    Task<string?> ChangePasswordAsync(int id, ChangePasswordDto dto);
+    Task<ServiceResult<CurrentUserDto>> UpdateProfileAsync(int id, UpdateProfileDto dto);
+    Task<ServiceResult<bool>> ChangePasswordAsync(int id, ChangePasswordDto dto);
     Task<(string? Email, string? Token)> CreatePasswordResetAsync(string email);
-    Task<string?> ResetPasswordAsync(ResetPasswordDto dto);
+    Task<ServiceResult<bool>> ResetPasswordAsync(ResetPasswordDto dto);
     Task<(string? Email, string? Token)> CreateEmailVerificationAsync(int id);
-    Task<string?> VerifyEmailAsync(VerifyEmailDto dto);
+    Task<ServiceResult<bool>> VerifyEmailAsync(VerifyEmailDto dto);
     Task<AccountExportDto?> ExportAsync(int id);
-    Task<string?> DeleteAccountAsync(int id, DeleteAccountDto dto);
+    Task<ServiceResult<bool>> DeleteAccountAsync(int id, DeleteAccountDto dto);
 }
 
 public sealed class AuthService : IAuthService
@@ -37,20 +37,23 @@ public sealed class AuthService : IAuthService
         _context = context;
     }
 
-    public async Task<(CurrentUserDto? User, string? Error)> RegisterAsync(RegisterDto dto)
+    public async Task<ServiceResult<CurrentUserDto>> RegisterAsync(RegisterDto dto)
     {
         var email = (dto.Email ?? string.Empty).Trim().ToLowerInvariant();
         var displayName = (dto.DisplayName ?? string.Empty).Trim();
         var password = dto.Password ?? string.Empty;
 
         if (!new EmailAddressAttribute().IsValid(email))
-            return (null, "Enter a valid email address.");
+            return ServiceResult<CurrentUserDto>.Failure(ServiceErrors.RegistrationInvalid(
+                "Enter a valid email address."));
         if (displayName.Length is < 2 or > 80)
-            return (null, "Display name must be between 2 and 80 characters.");
+            return ServiceResult<CurrentUserDto>.Failure(ServiceErrors.RegistrationInvalid(
+                "Display name must be between 2 and 80 characters."));
         if (password.Length < 8 || !Regex.IsMatch(password, "[A-Za-z]") || !Regex.IsMatch(password, "\\d"))
-            return (null, "Password must be at least 8 characters and include a letter and a number.");
+            return ServiceResult<CurrentUserDto>.Failure(ServiceErrors.RegistrationInvalid(
+                "Password must be at least 8 characters and include a letter and a number."));
         if (await _context.Users.AnyAsync(u => u.Email == email))
-            return (null, "An account with this email already exists.");
+            return ServiceResult<CurrentUserDto>.Failure(ServiceErrors.EmailExists());
 
         var salt = RandomNumberGenerator.GetBytes(SaltSize);
         var hash = HashPassword(password, salt);
@@ -60,12 +63,20 @@ public sealed class AuthService : IAuthService
             DisplayName = displayName,
             PasswordSalt = Convert.ToBase64String(salt),
             PasswordHash = Convert.ToBase64String(hash),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            SessionVersion = 1
         };
 
         _context.Users.Add(user);
-        await _context.SaveChangesAsync();
-        return (ToDto(user), null);
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception, "IX_Users_Email"))
+        {
+            return ServiceResult<CurrentUserDto>.Failure(ServiceErrors.EmailExists());
+        }
+        return ServiceResult<CurrentUserDto>.Success(ToDto(user));
     }
 
     public async Task<CurrentUserDto?> ValidateLoginAsync(LoginDto dto)
@@ -86,7 +97,7 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
-        var actualHash = HashPassword(dto.Password, salt);
+        var actualHash = HashPassword(dto.Password ?? string.Empty, salt);
         return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash) ? ToDto(user) : null;
     }
 
@@ -96,21 +107,24 @@ public sealed class AuthService : IAuthService
         return user is null ? null : ToDto(user);
     }
 
-    public async Task<(CurrentUserDto? User, string? Error)> UpdateProfileAsync(int id, UpdateProfileDto dto)
+    public async Task<ServiceResult<CurrentUserDto>> UpdateProfileAsync(int id, UpdateProfileDto dto)
     {
         var name = (dto.DisplayName ?? string.Empty).Trim();
-        if (name.Length is < 2 or > 80) return (null, "Display name must be between 2 and 80 characters.");
+        if (name.Length is < 2 or > 80)
+            return ServiceResult<CurrentUserDto>.Failure(ServiceErrors.ProfileInvalid(
+                "Display name must be between 2 and 80 characters."));
         var user = await _context.Users.FindAsync(id);
-        if (user is null) return (null, "Account not found.");
+        if (user is null)
+            return ServiceResult<CurrentUserDto>.Failure(ServiceErrors.AuthenticationRequired());
         user.DisplayName = name;
         await _context.SaveChangesAsync();
-        return (ToDto(user), null);
+        return ServiceResult<CurrentUserDto>.Success(ToDto(user));
     }
 
-    public async Task<string?> ChangePasswordAsync(int id, ChangePasswordDto dto)
+    public async Task<ServiceResult<bool>> ChangePasswordAsync(int id, ChangePasswordDto dto)
     {
         var user = await _context.Users.FindAsync(id);
-        if (user is null) return "Account not found.";
+        if (user is null) return ServiceResult<bool>.Failure(ServiceErrors.AuthenticationRequired());
         byte[] salt;
         byte[] expected;
         try
@@ -118,17 +132,24 @@ public sealed class AuthService : IAuthService
             salt = Convert.FromBase64String(user.PasswordSalt);
             expected = Convert.FromBase64String(user.PasswordHash);
         }
-        catch (FormatException) { return "Current password is incorrect."; }
+        catch (FormatException)
+        {
+            return ServiceResult<bool>.Failure(ServiceErrors.PasswordChangeInvalid(
+                "Current password is incorrect."));
+        }
         if (!CryptographicOperations.FixedTimeEquals(HashPassword(dto.CurrentPassword ?? string.Empty, salt), expected))
-            return "Current password is incorrect.";
+            return ServiceResult<bool>.Failure(ServiceErrors.PasswordChangeInvalid(
+                "Current password is incorrect."));
         var password = dto.NewPassword ?? string.Empty;
         if (password.Length < 8 || !Regex.IsMatch(password, "[A-Za-z]") || !Regex.IsMatch(password, "\\d"))
-            return "New password must be at least 8 characters and include a letter and a number.";
+            return ServiceResult<bool>.Failure(ServiceErrors.PasswordChangeInvalid(
+                "New password must be at least 8 characters and include a letter and a number."));
         var newSalt = RandomNumberGenerator.GetBytes(SaltSize);
         user.PasswordSalt = Convert.ToBase64String(newSalt);
         user.PasswordHash = Convert.ToBase64String(HashPassword(password, newSalt));
+        user.SessionVersion++;
         await _context.SaveChangesAsync();
-        return null;
+        return ServiceResult<bool>.Success(true);
     }
 
     public async Task<(string? Email, string? Token)> CreatePasswordResetAsync(string email)
@@ -140,19 +161,23 @@ public sealed class AuthService : IAuthService
         return (user.Email, token);
     }
 
-    public async Task<string?> ResetPasswordAsync(ResetPasswordDto dto)
+    public async Task<ServiceResult<bool>> ResetPasswordAsync(ResetPasswordDto dto)
     {
         var passwordError = ValidatePassword(dto.NewPassword, "New password");
-        if (passwordError is not null) return passwordError;
+        if (passwordError is not null)
+            return ServiceResult<bool>.Failure(ServiceErrors.ResetTokenInvalid(passwordError));
         var token = await FindUsableTokenAsync(dto.Token, PasswordResetToken);
-        if (token is null) return "This reset link is invalid or has expired.";
-        SetPassword(token.User, dto.NewPassword);
+        if (token is null)
+            return ServiceResult<bool>.Failure(ServiceErrors.ResetTokenInvalid(
+                "This reset link is invalid or has expired."));
+        SetPassword(token.User, dto.NewPassword ?? string.Empty);
+        token.User.SessionVersion++;
         token.UsedAt = DateTime.UtcNow;
         foreach (var other in await _context.AccountTokens.Where(t => t.UserId == token.UserId &&
                      t.Type == PasswordResetToken && t.UsedAt == null).ToListAsync())
             other.UsedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        return null;
+        return ServiceResult<bool>.Success(true);
     }
 
     public async Task<(string? Email, string? Token)> CreateEmailVerificationAsync(int id)
@@ -163,14 +188,16 @@ public sealed class AuthService : IAuthService
         return (user.Email, token);
     }
 
-    public async Task<string?> VerifyEmailAsync(VerifyEmailDto dto)
+    public async Task<ServiceResult<bool>> VerifyEmailAsync(VerifyEmailDto dto)
     {
         var token = await FindUsableTokenAsync(dto.Token, EmailVerificationToken);
-        if (token is null) return "This verification link is invalid or has expired.";
+        if (token is null)
+            return ServiceResult<bool>.Failure(ServiceErrors.VerificationTokenInvalid(
+                "This verification link is invalid or has expired."));
         token.User.EmailVerifiedAt ??= DateTime.UtcNow;
         token.UsedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        return null;
+        return ServiceResult<bool>.Success(true);
     }
 
     public async Task<AccountExportDto?> ExportAsync(int id)
@@ -206,13 +233,15 @@ public sealed class AuthService : IAuthService
             productEvents);
     }
 
-    public async Task<string?> DeleteAccountAsync(int id, DeleteAccountDto dto)
+    public async Task<ServiceResult<bool>> DeleteAccountAsync(int id, DeleteAccountDto dto)
     {
         if (!string.Equals(dto.Confirmation?.Trim(), "DELETE MY ACCOUNT", StringComparison.Ordinal))
-            return "Type DELETE MY ACCOUNT exactly to confirm.";
+            return ServiceResult<bool>.Failure(ServiceErrors.AccountDeletionInvalid(
+                "Type DELETE MY ACCOUNT exactly to confirm."));
         var user = await _context.Users.FindAsync(id);
-        if (user is null) return "Account not found.";
-        if (!PasswordMatches(user, dto.Password ?? string.Empty)) return "Password is incorrect.";
+        if (user is null) return ServiceResult<bool>.Failure(ServiceErrors.AuthenticationRequired());
+        if (!PasswordMatches(user, dto.Password ?? string.Empty))
+            return ServiceResult<bool>.Failure(ServiceErrors.AccountDeletionInvalid("Password is incorrect."));
         await using var transaction = _context.Database.IsRelational()
             ? await _context.Database.BeginTransactionAsync()
             : null;
@@ -238,7 +267,7 @@ public sealed class AuthService : IAuthService
             if (transaction is not null) await transaction.RollbackAsync();
             throw;
         }
-        return null;
+        return ServiceResult<bool>.Success(true);
     }
 
     private static byte[] HashPassword(string password, byte[] salt) =>
@@ -294,6 +323,11 @@ public sealed class AuthService : IAuthService
         catch (FormatException) { return false; }
     }
 
+    private static bool IsUniqueViolation(DbUpdateException exception, string constraintName) =>
+        exception.InnerException is Npgsql.PostgresException postgres &&
+        postgres.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation &&
+        string.Equals(postgres.ConstraintName, constraintName, StringComparison.Ordinal);
+
     private static CurrentUserDto ToDto(User user) =>
-        new(user.Id, user.Email, user.DisplayName, user.EmailVerifiedAt is not null);
+        new(user.Id, user.Email, user.DisplayName, user.EmailVerifiedAt is not null, user.SessionVersion);
 }

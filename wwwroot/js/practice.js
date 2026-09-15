@@ -28,15 +28,35 @@ async function startSession(button) {
   try {
     await Api.post('/practice/sessions', { focusCode: button.dataset.focus, drillTitle: button.dataset.title, minutes: Number(button.dataset.minutes) });
     await loadPractice();
-  } catch (error) { alert(error.message); button.disabled = false; }
+  } catch (error) {
+    showPracticeError(error.message);
+    button.disabled = false;
+  }
 }
 
 async function completeSession(id) {
-  const result = prompt('What result did you record? (optional)');
-  if (result === null) return;
-  const notes = prompt('Any notes for next time? (optional)');
-  try { await Api.post(`/practice/sessions/${id}/complete`, { result, notes }); await loadPractice(); }
-  catch (error) { alert(error.message); }
+  const values = await openFormDialog({
+    title: 'Log practice result',
+    description: 'Capture what you noticed so the next session has a useful starting point.',
+    fields: [
+      { name: 'result', label: 'Result (optional)', type: 'text', maxLength: 500, placeholder: 'What did you notice?' },
+      { name: 'notes', label: 'Notes for next time (optional)', type: 'textarea', maxLength: 2000, placeholder: 'One small thing to repeat or adjust.' }
+    ],
+    submitLabel: 'Save result'
+  });
+  if (!values) return;
+  try {
+    await Api.post(`/practice/sessions/${id}/complete`, { result: values.result || null, notes: values.notes || null });
+    await loadPractice();
+  } catch (error) { showPracticeError(error.message); }
+}
+
+function showPracticeError(message) {
+  const alert = document.createElement('div');
+  alert.className = 'alert error';
+  alert.setAttribute('role', 'alert');
+  alert.textContent = message;
+  practice.prepend(alert);
 }
 
 loadPractice().catch(error => { practice.innerHTML = `<div class="alert error">${escapeHtml(error.message)}</div>`; });

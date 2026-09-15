@@ -29,6 +29,10 @@ public class CoursesController : ControllerBase
     public async Task<ActionResult<List<CourseSummaryDto>>> GetAll()
         => Ok(await _courseService.GetAllAsync());
 
+    [HttpGet("page")]
+    public async Task<ActionResult<CoursePageDto>> GetPage([FromQuery] CourseQueryDto query)
+        => Ok(await _courseService.GetPageAsync(query));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<CourseDto>> GetById(int id)
     {
@@ -39,34 +43,24 @@ public class CoursesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CourseDto>> Create(CourseCreateDto dto)
     {
-        try
-        {
-            var course = await _courseService.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = course.Id }, course);
-        }
-        catch (ArgumentException ex)
-        {
-            return this.ApiProblem(400, "course.invalid", "Course could not be created.", ex.Message);
-        }
+        var result = await _courseService.CreateAsync(dto);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result.Value)
+            : this.ApiProblem(result.Error!);
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, CourseUpdateDto dto)
     {
-        var success = await _courseService.UpdateAsync(id, dto);
-        return success ? NoContent() : this.ApiProblem(404, "course.not_found", "Course not found.");
+        var result = await _courseService.UpdateAsync(id, dto);
+        return result.IsSuccess ? NoContent() : this.ApiProblem(result.Error!);
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var (success, error) = await _courseService.DeleteAsync(id);
-        if (!success)
-            return this.ApiProblem(error == "Course not found." ? 404 : 409,
-                error == "Course not found." ? "course.not_found" : "course.in_use",
-                "Course could not be deleted.", error);
-
-        return NoContent();
+        var result = await _courseService.DeleteAsync(id);
+        return result.IsSuccess ? NoContent() : this.ApiProblem(result.Error!);
     }
 
     [HttpPost("import-golf-nz")]

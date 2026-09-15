@@ -88,6 +88,10 @@ public class ApplicationDbContext : DbContext
             .HasMaxLength(20);
 
         modelBuilder.Entity<Round>().Property(r => r.UpdatedAt).IsConcurrencyToken();
+        modelBuilder.Entity<Round>()
+            .HasIndex(r => new { r.UserId, r.Status, r.Date });
+        modelBuilder.Entity<Round>()
+            .HasIndex(r => new { r.UserId, r.CourseId, r.Date });
 
         modelBuilder.Entity<CourseTee>()
             .HasOne(ct => ct.Course)

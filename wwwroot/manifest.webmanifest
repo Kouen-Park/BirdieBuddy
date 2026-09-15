@@ -1,0 +1,17 @@
+{
+  "name": "Birdie Buddy",
+  "short_name": "Birdie Buddy",
+  "description": "Mobile golf round tracking and performance notes.",
+  "start_url": "/live-round.html",
+  "display": "standalone",
+  "background_color": "#f1f5f2",
+  "theme_color": "#0e211f",
+  "icons": [
+    {
+      "src": "/icons/birdie-buddy.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

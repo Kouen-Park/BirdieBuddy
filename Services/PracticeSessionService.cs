@@ -23,28 +23,34 @@ public sealed class PracticeSessionService : IPracticeSessionService
                 s.StartedAt, s.CompletedAt, s.Result, s.Notes)).ToListAsync();
     }
 
-    public async Task<(PracticeSessionDto? Session, string? Error)> StartAsync(PracticeSessionCreateDto dto)
+    public async Task<ServiceResult<PracticeSessionDto>> StartAsync(PracticeSessionCreateDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.FocusCode) || string.IsNullOrWhiteSpace(dto.DrillTitle))
-            return (null, "A practice focus and drill title are required.");
-        if (dto.Minutes is < 1 or > 240) return (null, "Practice minutes must be between 1 and 240.");
+            return ServiceResult<PracticeSessionDto>.Failure(ServiceErrors.PracticeInvalid(
+                "A practice focus and drill title are required."));
+        if (dto.Minutes is < 1 or > 240)
+            return ServiceResult<PracticeSessionDto>.Failure(ServiceErrors.PracticeInvalid(
+                "Practice minutes must be between 1 and 240."));
         var session = new PracticeSession { UserId = UserId, FocusCode = dto.FocusCode.Trim(), DrillTitle = dto.DrillTitle.Trim(), Minutes = dto.Minutes };
         _context.PracticeSessions.Add(session);
         await _context.SaveChangesAsync();
-        return (ToDto(session), null);
+        return ServiceResult<PracticeSessionDto>.Success(ToDto(session));
     }
 
-    public async Task<(PracticeSessionDto? Session, string? Error)> CompleteAsync(int id, PracticeSessionCompleteDto dto)
+    public async Task<ServiceResult<PracticeSessionDto>> CompleteAsync(int id, PracticeSessionCompleteDto dto)
     {
         var session = await _context.PracticeSessions.FirstOrDefaultAsync(s => s.Id == id && s.UserId == UserId);
-        if (session is null) return (null, "Practice session not found.");
-        if (session.CompletedAt.HasValue) return (ToDto(session), null);
-        if (dto.Result?.Length > 500 || dto.Notes?.Length > 2000) return (null, "Practice result or notes are too long.");
+        if (session is null)
+            return ServiceResult<PracticeSessionDto>.Failure(ServiceErrors.PracticeNotFound());
+        if (session.CompletedAt.HasValue) return ServiceResult<PracticeSessionDto>.Success(ToDto(session));
+        if (dto.Result?.Length > 500 || dto.Notes?.Length > 2000)
+            return ServiceResult<PracticeSessionDto>.Failure(ServiceErrors.PracticeInvalid(
+                "Practice result or notes are too long."));
         session.Result = string.IsNullOrWhiteSpace(dto.Result) ? null : dto.Result.Trim();
         session.Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim();
         session.CompletedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        return (ToDto(session), null);
+        return ServiceResult<PracticeSessionDto>.Success(ToDto(session));
     }
 
     private static PracticeSessionDto ToDto(PracticeSession s) => new(s.Id, s.FocusCode, s.DrillTitle, s.Minutes, s.StartedAt, s.CompletedAt, s.Result, s.Notes);

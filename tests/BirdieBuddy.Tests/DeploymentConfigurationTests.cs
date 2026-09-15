@@ -26,6 +26,12 @@ public sealed class DeploymentConfigurationTests
         verificationWithoutEmail.Configuration["ConnectionStrings:DefaultConnection"] = "Host=db;Database=birdie;Username=app;Password=strong";
         verificationWithoutEmail.Configuration["Authentication:RequireVerifiedEmail"] = "true";
         Assert.Throws<InvalidOperationException>(() => verificationWithoutEmail.ValidateDeploymentConfiguration());
+
+        var migrationsDisabled = ProductionBuilder();
+        migrationsDisabled.Configuration["ConnectionStrings:DefaultConnection"] =
+            "Host=db;Database=birdie;Username=app;Password=strong";
+        migrationsDisabled.Configuration["Database:ApplyMigrationsOnStartup"] = "false";
+        Assert.Throws<InvalidOperationException>(() => migrationsDisabled.ValidateDeploymentConfiguration());
     }
 
     [Fact]

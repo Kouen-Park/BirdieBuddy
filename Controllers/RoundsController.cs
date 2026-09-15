@@ -26,6 +26,10 @@ public class RoundsController : ControllerBase
     public async Task<ActionResult<RoundPageDto>> GetPage([FromQuery] RoundQueryDto query)
         => Ok(await _roundService.GetPageAsync(query));
 
+    [HttpGet("options")]
+    public async Task<ActionResult<List<RoundOptionDto>>> GetOptions([FromQuery] int limit = 100)
+        => Ok(await _roundService.GetOptionsAsync(limit));
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<RoundDetailDto>> GetById(int id)
     {
@@ -36,60 +40,54 @@ public class RoundsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<RoundDetailDto>> Create(RoundCreateDto dto)
     {
-        var (round, error) = await _roundService.CreateAsync(dto);
-        if (error is not null) return this.ApiProblem(400, "round.invalid", "Round could not be created.", error);
-        return CreatedAtAction(nameof(GetById), new { id = round!.Id }, round);
+        var result = await _roundService.CreateAsync(dto);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result.Value)
+            : this.ApiProblem(result.Error!);
     }
 
     [HttpPost("drafts")]
     public async Task<ActionResult<RoundDetailDto>> StartDraft(RoundStartDto dto)
     {
-        var (round, error) = await _roundService.StartAsync(dto);
-        if (error is not null) return this.ApiProblem(400, "round.invalid", "Round could not be started.", error);
-        return CreatedAtAction(nameof(GetById), new { id = round!.Id }, round);
+        var result = await _roundService.StartAsync(dto);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result.Value)
+            : this.ApiProblem(result.Error!);
     }
 
     [HttpPut("{roundId:int}/holes/by-number/{holeNumber:int}")]
     public async Task<ActionResult<HoleDto>> UpsertHole(int roundId, int holeNumber, HoleUpsertDto dto)
     {
-        var (hole, error) = await _roundService.UpsertHoleAsync(roundId, holeNumber, dto);
-        if (error is not null)
-            return this.ApiProblem(error == RoundService.ConflictMessage ? 409 : error == "Round not found." ? 404 : 400,
-                error == RoundService.ConflictMessage ? "round.save_conflict" : error == "Round not found." ? "round.not_found" : "round.hole_invalid",
-                "Hole could not be saved.", error);
-        return Ok(hole);
+        var result = await _roundService.UpsertHoleAsync(roundId, holeNumber, dto);
+        return result.IsSuccess ? Ok(result.Value) : this.ApiProblem(result.Error!);
     }
 
     [HttpPost("{roundId:int}/complete")]
     public async Task<ActionResult<RoundDetailDto>> Complete(int roundId)
     {
-        var (round, error) = await _roundService.CompleteAsync(roundId);
-        if (error is not null)
-            return this.ApiProblem(error == "Round not found." ? 404 : 400,
-                error == "Round not found." ? "round.not_found" : "round.completion_invalid",
-                "Round could not be completed.", error);
-        return Ok(round);
+        var result = await _roundService.CompleteAsync(roundId);
+        return result.IsSuccess ? Ok(result.Value) : this.ApiProblem(result.Error!);
     }
 
     [HttpPost("{roundId:int}/abandon")]
     public async Task<IActionResult> Abandon(int roundId)
-        => await _roundService.AbandonAsync(roundId) ? NoContent() : this.ApiProblem(404, "round.not_found", "Round not found.");
+    {
+        var result = await _roundService.AbandonAsync(roundId);
+        return result.IsSuccess ? NoContent() : this.ApiProblem(result.Error!);
+    }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, RoundUpdateDto dto)
     {
-        var (success, error) = await _roundService.UpdateWithErrorAsync(id, dto);
-        if (success) return NoContent();
-        return this.ApiProblem(error == RoundService.ConflictMessage ? 409 : 404,
-            error == RoundService.ConflictMessage ? "round.save_conflict" : "round.not_found",
-            error == RoundService.ConflictMessage ? "Round could not be updated." : "Round not found.", error);
+        var result = await _roundService.UpdateWithErrorAsync(id, dto);
+        return result.IsSuccess ? NoContent() : this.ApiProblem(result.Error!);
     }
 
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var success = await _roundService.DeleteAsync(id);
-        return success ? NoContent() : this.ApiProblem(404, "round.not_found", "Round not found.");
+        var result = await _roundService.DeleteAsync(id);
+        return result.IsSuccess ? NoContent() : this.ApiProblem(result.Error!);
     }
 
     [HttpGet("{roundId:int}/holes")]
@@ -102,23 +100,16 @@ public class RoundsController : ControllerBase
     [HttpPost("{roundId:int}/holes")]
     public async Task<ActionResult<HoleDto>> AddHole(int roundId, HoleCreateDto dto)
     {
-        var (hole, error) = await _roundService.AddHoleAsync(roundId, dto);
-        if (error is not null)
-            return this.ApiProblem(error == "Round not found." ? 404 : 400,
-                error == "Round not found." ? "round.not_found" : "round.hole_invalid", "Hole could not be added.", error);
-
-        return CreatedAtAction(nameof(GetHoles), new { roundId }, hole);
+        var result = await _roundService.AddHoleAsync(roundId, dto);
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetHoles), new { roundId }, result.Value)
+            : this.ApiProblem(result.Error!);
     }
 
     [HttpPut("{roundId:int}/holes/{holeId:int}")]
     public async Task<IActionResult> UpdateHole(int roundId, int holeId, HoleUpdateDto dto)
     {
-        var (success, error) = await _roundService.UpdateHoleAsync(roundId, holeId, dto);
-        if (!success)
-            return this.ApiProblem(error == RoundService.ConflictMessage ? 409 : error == "Hole not found." ? 404 : 400,
-                error == RoundService.ConflictMessage ? "round.save_conflict" : error == "Hole not found." ? "round.hole_not_found" : "round.hole_invalid",
-                "Hole could not be updated.", error);
-
-        return NoContent();
+        var result = await _roundService.UpdateHoleAsync(roundId, holeId, dto);
+        return result.IsSuccess ? NoContent() : this.ApiProblem(result.Error!);
     }
 }

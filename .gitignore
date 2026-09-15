@@ -4,3 +4,4 @@ obj/
 *.user
 appsettings.Development.json
 output/
+node_modules/

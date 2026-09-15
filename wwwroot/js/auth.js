@@ -2,6 +2,13 @@ const authForm = document.getElementById('auth-form');
 const authError = document.getElementById('auth-error');
 const submitButton = document.getElementById('auth-submit');
 const isRegister = document.body.dataset.authMode === 'register';
+const authParams = new URLSearchParams(window.location.search);
+
+if (!isRegister && authParams.get('passwordChanged') === '1') {
+    authError.className = 'alert success auth-error';
+    authError.textContent = 'Password changed. Sign in again with your new password.';
+    authError.hidden = false;
+}
 
 function getReturnUrl() {
     const value = new URLSearchParams(window.location.search).get('returnUrl');

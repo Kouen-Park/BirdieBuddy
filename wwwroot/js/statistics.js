@@ -68,7 +68,7 @@ function parTypeTrendSummary(data) {
 
 async function loadRoundOptions() {
   try {
-    const rounds = await Api.get('/rounds');
+    const rounds = await Api.get('/rounds/options?limit=100');
     const completedRounds = rounds.filter(r => r.status === 'Completed');
     if (completedRounds.length === 0) {
       roundSelect.innerHTML = `<option>No rounds yet</option>`;

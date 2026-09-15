@@ -35,13 +35,11 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<ActionResult<CurrentUserDto>> Register(RegisterDto dto)
     {
-        var (user, error) = await _authService.RegisterAsync(dto);
-        if (error is not null)
-            return this.ApiProblem(error.Contains("already exists") ? 409 : 400,
-                error.Contains("already exists") ? "auth.email_exists" : "auth.registration_invalid",
-                "Account could not be created.", error);
+        var result = await _authService.RegisterAsync(dto);
+        if (!result.IsSuccess) return this.ApiProblem(result.Error!);
+        var user = result.Value!;
 
-        await SendVerificationAsync(user!.Id);
+        await SendVerificationAsync(user.Id);
         if (_configuration.GetValue("Authentication:RequireVerifiedEmail", false))
             return Accepted(new { requiresEmailVerification = true, email = user.Email });
         await SignInAsync(user);
@@ -86,16 +84,18 @@ public class AuthController : ControllerBase
     [HttpPut("profile")]
     public async Task<ActionResult<CurrentUserDto>> UpdateProfile(UpdateProfileDto dto)
     {
-        var (user, error) = await _authService.UpdateProfileAsync(CurrentUserId(), dto);
-        return error is null ? Ok(user) : this.ApiProblem(400, "auth.profile_invalid", "Profile could not be updated.", error);
+        var result = await _authService.UpdateProfileAsync(CurrentUserId(), dto);
+        return result.IsSuccess ? Ok(result.Value) : this.ApiProblem(result.Error!);
     }
 
     [HttpPost("change-password")]
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
     {
-        var error = await _authService.ChangePasswordAsync(CurrentUserId(), dto);
-        return error is null ? NoContent() : this.ApiProblem(400, "auth.password_change_invalid", "Password could not be changed.", error);
+        var result = await _authService.ChangePasswordAsync(CurrentUserId(), dto);
+        if (!result.IsSuccess) return this.ApiProblem(result.Error!);
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return NoContent();
     }
 
     [AllowAnonymous]
@@ -103,7 +103,7 @@ public class AuthController : ControllerBase
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword(RequestPasswordResetDto dto)
     {
-        var (email, token) = await _authService.CreatePasswordResetAsync(dto.Email);
+        var (email, token) = await _authService.CreatePasswordResetAsync(dto.Email ?? string.Empty);
         if (email is not null && token is not null)
             await TrySendAsync(() => _emailSender.SendPasswordResetAsync(email, BuildUrl("reset-password.html", token)));
         return Accepted(new { message = "If that address belongs to an account, a reset email has been sent." });
@@ -114,8 +114,8 @@ public class AuthController : ControllerBase
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
     {
-        var error = await _authService.ResetPasswordAsync(dto);
-        return error is null ? NoContent() : this.ApiProblem(400, "auth.reset_token_invalid", "Password could not be reset.", error);
+        var result = await _authService.ResetPasswordAsync(dto);
+        return result.IsSuccess ? NoContent() : this.ApiProblem(result.Error!);
     }
 
     [HttpPost("send-verification")]
@@ -131,8 +131,8 @@ public class AuthController : ControllerBase
     [HttpPost("verify-email")]
     public async Task<IActionResult> VerifyEmail(VerifyEmailDto dto)
     {
-        var error = await _authService.VerifyEmailAsync(dto);
-        return error is null ? NoContent() : this.ApiProblem(400, "auth.verification_token_invalid", "Email could not be verified.", error);
+        var result = await _authService.VerifyEmailAsync(dto);
+        return result.IsSuccess ? NoContent() : this.ApiProblem(result.Error!);
     }
 
     [HttpGet("export")]
@@ -148,9 +148,8 @@ public class AuthController : ControllerBase
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> DeleteAccount(DeleteAccountDto dto)
     {
-        var error = await _authService.DeleteAccountAsync(CurrentUserId(), dto);
-        if (error is not null)
-            return this.ApiProblem(400, "auth.account_deletion_invalid", "Account could not be deleted.", error);
+        var result = await _authService.DeleteAccountAsync(CurrentUserId(), dto);
+        if (!result.IsSuccess) return this.ApiProblem(result.Error!);
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return NoContent();
     }
@@ -183,7 +182,8 @@ public class AuthController : ControllerBase
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.DisplayName)
+            new Claim(ClaimTypes.Name, user.DisplayName),
+            new Claim("birdiebuddy.session-version", user.SessionVersion.ToString())
         };
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
         await HttpContext.SignInAsync(

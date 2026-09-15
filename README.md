@@ -2,6 +2,16 @@
 
 Birdie Buddy is a mobile-first golf round tracker and performance notebook. It uses ASP.NET Core 8, EF Core 8, PostgreSQL, cookie authentication, and a vanilla HTML/CSS/JavaScript frontend served from `wwwroot`.
 
+The repository currently targets a small English-language mobile-web beta. The priority is reliable round completion and recovery in poor-connectivity golf-course conditions; native iOS authentication, social features, payments and shot-by-shot tracking are intentionally outside the current scope.
+
+## Documentation map
+
+- [Architecture](docs/architecture.md): request pipeline, authentication, ownership, round-service boundaries, offline state and scaling limits
+- [Testing and CI](docs/testing.md): every test layer, local PostgreSQL setup, Playwright artifacts and CI responsibilities
+- [Beta operations](docs/beta-operations.md): release gates, SMTP rollout, backup rehearsal, monitoring and physical iPhone checks
+- [Browser fixture guide](tests/browser/README.md): deterministic local fixture URLs and conflict scenarios
+- [Physical iPhone Safari checklist](tests/browser/iphone-safari-checklist.md): required pre-release WebKit and VoiceOver checks
+
 ## Features
 
 - Private member accounts with secure password hashing, profile/password management, data export, and account deletion
@@ -11,6 +21,23 @@ Birdie Buddy is a mobile-first golf round tracker and performance notebook. It u
 - 9/18-hole aware statistics, score/GIR/putting trends, and evidence-based practice priorities
 - CSRF protection, login rate limiting, security headers, ownership checks, and admin-protected imports
 - Liveness/readiness checks, migration locking, automated tests, and GitHub Actions CI
+
+## Architecture at a glance
+
+The application is deployed as one ASP.NET Core process. It serves the static frontend and authenticated controller API, while EF Core/Npgsql persists data in PostgreSQL. Browser `localStorage` holds a user-and-round-scoped live-entry outbox, and the service worker caches only the application shell; PostgreSQL remains the durable source of truth.
+
+The round domain is split behind the stable `IRoundService` controller contract:
+
+| Component | Responsibility |
+|---|---|
+| `RoundService` | Thin compatibility facade used by controllers |
+| `RoundQueryService` | Lists, selectors, pagination and round detail reads |
+| `LiveRoundService` | Draft creation and live hole writes |
+| `RoundLifecycleService` | Completed-scorecard creation, completion and abandonment |
+| `CompletedRoundEditor` | Completed-round metadata/hole edits and deletion |
+| `RoundRules` | Shared validation, tee resolution and DTO mapping |
+
+All feature services are scoped with the request's `ApplicationDbContext` and current user. Ownership filters are applied in service queries, not inferred from browser-submitted IDs. See [the architecture document](docs/architecture.md) for the full request and persistence model.
 
 ### Practice rules
 
@@ -45,7 +72,11 @@ iPhone Safari certification is pending; see `tests/browser/iphone-safari-checkli
 - Existing total-based API fields remain for compatibility; new clients should use `byRoundLength`, `averagePuttsPerHole`, `scoreToParPerHoleTrend` and `puttsPerHoleTrend` for comparisons. No schema migration is required for these changes.
 - The local browser fixture also provides `/round-details.html?id=2` for manual hole-edit testing. It is an in-memory mock, not a PostgreSQL end-to-end test.
 
-Requirements: .NET 8 SDK and PostgreSQL.
+Requirements:
+
+- .NET 8 SDK
+- PostgreSQL 16 for application development and relational integration tests
+- Node.js 22 or newer plus npm for browser-module and Playwright tests
 
 An example local development connection is:
 
@@ -61,6 +92,8 @@ dotnet restore
 dotnet run
 ```
 
+The app validates that `ConnectionStrings:DefaultConnection` is present before startup. Use .NET Secret Manager locally and deployment environment variables in hosted environments; never commit working credentials to `appsettings*.json`.
+
 Pending migrations run at startup under a PostgreSQL advisory lock. Swagger is available at `/swagger` in Development. Health endpoints are `/health/live` and `/health/ready`.
 
 Chart.js 4.4.4 and the DM Mono, Outfit, and Space Grotesk fonts are served from `wwwroot/vendor`; production pages do not depend on a third-party CDN. Upstream license texts are kept beside those assets. The Content Security Policy permits scripts and fonts only from this application. Inline styles remain allowed because Chart.js applies responsive canvas dimensions at runtime.
@@ -73,8 +106,61 @@ Run the tests with:
 
 ```bash
 dotnet test tests/BirdieBuddy.Tests/BirdieBuddy.Tests.csproj
-node --test tests/browser/*.test.cjs
+npm ci
+npm run test:browser
+npx playwright install chromium
+npm run test:e2e:fixture
 ```
+
+The HTTP integration suite uses `WebApplicationFactory<Program>` so authentication, CSRF,
+rate limiting, security headers, readiness, and error responses run through the real application
+pipeline. It replaces PostgreSQL with an isolated in-memory database and disables startup
+migrations only in the Development test host; production configuration rejects that override.
+The Playwright fixture project runs the mobile scorecard, offline recovery, conflict dialog, and
+keyboard checks in a real Chromium browser. CI additionally sets `BIRDIEBUDDY_E2E_POSTGRES` and
+runs the registration-to-round-completion journey against the real ASP.NET Core application and a
+disposable PostgreSQL service. A local PostgreSQL-backed run can use `npm run test:e2e:app` with the
+same environment variable.
+
+For the exact test matrix, disposable database safeguards, failure artifacts and full application E2E command, see [docs/testing.md](docs/testing.md).
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `Controllers/` | Authenticated HTTP API endpoints and status-code mapping |
+| `DTOs/` | Validated browser-facing request and response contracts |
+| `Services/` | Authentication, courses, round slices, statistics, practice and import workflows |
+| `Infrastructure/` | ProblemDetails, security headers, antiforgery, session validation, observability and deployment validation |
+| `Data/`, `Models/`, `Migrations/` | EF Core context, persistence entities and PostgreSQL schema history |
+| `wwwroot/` | Static mobile UI, service worker, local outbox and self-hosted assets |
+| `tests/BirdieBuddy.Tests/` | Service, HTTP pipeline and PostgreSQL integration tests |
+| `tests/browser/` | DOM-free JavaScript tests and deterministic mock API fixture |
+| `tests/e2e/` | Playwright mobile fixture and real application journeys |
+| `scripts/` | Deployment smoke check, SMTP probe, backup rehearsal and Golf NZ source data |
+
+## Configuration reference
+
+Environment variables use ASP.NET Core's double-underscore notation for nested keys.
+
+| Variable | Required | Purpose |
+|---|---:|---|
+| `ConnectionStrings__DefaultConnection` | Yes | Npgsql connection string used by EF Core and readiness checks |
+| `ASPNETCORE_ENVIRONMENT` | Hosted | Use `Production` for deployed instances |
+| `Application__PublicBaseUrl` | Email flows | HTTPS origin used to generate verification/reset links |
+| `Authentication__RequireVerifiedEmail` | No | Enforces verified-email login; defaults to `false` |
+| `Email__From` | Email flows | Sender address; must be configured with SMTP host |
+| `Email__Smtp__Host` | Email flows | SMTP server; required when verification enforcement is enabled |
+| `Email__Smtp__Port` | No | SMTP port, normally `587` |
+| `Email__Smtp__Username` / `Email__Smtp__Password` | Provider-specific | SMTP credentials stored as deployment secrets |
+| `Administration__ImportKey` | Admin import | Secret sent as `X-Admin-Key` to import/operations endpoints |
+| `DataProtection__KeyRingPath` | Multi-instance | Persistent shared key directory for authentication-cookie decryption |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Observability | HTTPS OTLP destination; loopback HTTP is allowed for a local collector |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Provider-specific | Secret exporter headers or API token |
+| `Database__ApplyMigrationsOnStartup` | No | Defaults to `true`; production startup rejects `false` |
+| `RateLimiting__AuthPermitLimit` | No | Authentication request allowance per fixed one-minute window; defaults to `8` |
+
+Production validates the database setting, HTTPS URLs, SMTP pairs and migration policy before serving traffic.
 
 Generate the same reviewable migration script locally with:
 
@@ -107,6 +193,7 @@ The included Dockerfile listens on port `10000`. Configure these Render environm
 - `Email__From`, `Email__Smtp__Host`, `Email__Smtp__Port`, `Email__Smtp__Username`, and `Email__Smtp__Password` for verification and password-reset delivery
 - `OTEL_EXPORTER_OTLP_ENDPOINT` to enable vendor-neutral external traces, metrics, and logs
 - `OTEL_EXPORTER_OTLP_HEADERS` when the selected OTLP provider requires an API key or authorization header
+- `DataProtection__KeyRingPath` pointing to a persistent shared volume before scaling beyond one app instance
 
 Do not put production credentials in an appsettings file. SMTP defaults to TLS on port 587. Email verification enforcement defaults to off; production startup refuses to enable it unless SMTP host/from are both configured. When enabled, new accounts receive a verification link and remain signed out until verified; correct-password login requests for an unverified account send a fresh link and return `auth.email_unverified`. Existing accounts are marked verified by the rollout migration so they are not locked out. Confirm `/health/ready` after each deploy and retain automated PostgreSQL backups. Before a schema deployment, test the migration against a recent database copy and document the restore point.
 
@@ -126,6 +213,7 @@ PUT  /api/rounds/{roundId}/holes/by-number/{holeNumber}
 POST /api/rounds/{roundId}/complete
 POST /api/rounds/{roundId}/abandon
 GET  /api/rounds/page?status=Draft&limit=20&courseId=&from=&to=&holeCount=
+GET  /api/rounds/options?limit=100
 ```
 
 The hole upsert route is idempotent for `(roundId, holeNumber)`. A round is one of `Draft`, `Completed`, or `Abandoned`; only drafts accept live hole updates. The legacy all-at-once `POST /api/rounds` remains supported.
@@ -136,9 +224,9 @@ The hole upsert route is idempotent for `(roundId, holeNumber)`. A round is one 
 - Device drafts are scoped by user and round. Requests are serialized; newer edits made during a save remain queued. Web Locks coordinate synchronization between supporting browser tabs.
 - Replays check the signed-in user and submit `checkExpected: true` with the previously read `expectedHole` (or `null` for an unrecorded hole). Conflicts return HTTP 409 and keep local data instead of overwriting the server.
 - EF uses the existing `UpdatedAt` column as a concurrency token. This mapping change does not require a new database column. Clients that omit `checkExpected` keep the older unconditional update contract; migrate them to the guarded contract.
-- Completion and abandonment require an empty successfully synchronized outbox. Actual tee hole numbers are used, including back-nine layouts numbered 10–18; completed scorecards must match the whole selected layout.
+- Completion and abandonment require an empty successfully synchronized outbox. Actual tee hole numbers are used, including back-nine layouts numbered 10–18; completed scorecards must match the whole selected layout. Repeating completion or abandonment after a lost response is safe for the same terminal state.
 - The old unscoped `birdiebuddy.liveQueue` is deliberately not replayed or deleted because its owning account is unknown. Preserve it for manual recovery if it contains unsynced historical input.
-- Local drafts are not a backup or a full offline-installable application. The page/assets must already be available, and reopening an offline draft uses the current tab's previously verified identity. Conflict comparison/resolution UI and PostgreSQL-backed race testing remain follow-up work.
+- The live scorecard registers a small PWA shell and service worker so the scorecard page, local outbox, and required assets can reopen when connectivity drops. It is still not a data backup: the browser must have opened the shell once while online, and the previously verified account identity is required to resume an offline draft.
 
 For a manual UI smoke check without real accounts or a database, run `node tests/browser/smoke-server.cjs` and open `http://127.0.0.1:4173/live-round.html?id=1`. This fixture uses in-memory mock API responses; it does not replace the real HTTP/backend tests.
 
