@@ -455,8 +455,6 @@ namespace BirdieBuddy.Migrations
 
                     b.HasIndex("UserId", "Status", "Date");
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("Rounds");
                 });
 

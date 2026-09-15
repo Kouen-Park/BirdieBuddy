@@ -35,9 +35,15 @@ public class StatisticsService : IStatisticsService
         if (to.DayNumber - from.DayNumber + 1 > MaximumLookbackDays)
             from = to.AddDays(-MaximumLookbackDays + 1);
 
+        var fromUtc = RoundRules.ToUtc(from);
         var filtered = _context.Rounds.AsNoTracking()
             .Where(r => r.UserId == CurrentUserId && r.Status == RoundStatus.Completed && r.Holes.Any())
-            .Where(r => r.Date >= RoundRules.ToUtc(from) && r.Date < RoundRules.ToUtc(to).AddDays(1));
+            .Where(r => r.Date >= fromUtc);
+        if (to < DateOnly.MaxValue)
+        {
+            var toExclusiveUtc = RoundRules.ToUtc(to).AddDays(1);
+            filtered = filtered.Where(r => r.Date < toExclusiveUtc);
+        }
         if (query.CourseId.HasValue) filtered = filtered.Where(r => r.CourseId == query.CourseId.Value);
         if (query.CourseTeeId.HasValue) filtered = filtered.Where(r => r.CourseTeeId == query.CourseTeeId.Value);
         if (query.HoleCount.HasValue) filtered = filtered.Where(r => r.Holes.Count == query.HoleCount.Value);

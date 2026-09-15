@@ -25,7 +25,12 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname === '/api/security/csrf') return json({ token: 'local-fixture-token' });
   if (url.pathname === '/api/telemetry/events' && req.method === 'POST') return json({}, 202);
   if (url.pathname === '/api/rounds/1' && req.method === 'GET') return json(round);
-  if (url.pathname === '/api/rounds/3' && req.method === 'GET') return json(conflictRound);
+  if (url.pathname === '/api/rounds/3' && req.method === 'GET') {
+    conflictRound.holes = [];
+    conflictRound.currentHole = 10;
+    injectedConflicts.clear();
+    return json(conflictRound);
+  }
   if (url.pathname === '/api/rounds/2' && req.method === 'GET') return json(completed);
   if (url.pathname === '/api/statistics/round/2') return json({
     totalScore: completed.holes.reduce((n, h) => n + h.score, 0), scoreToPar: completed.holes.reduce((n, h) => n + h.score - h.par, 0),
@@ -67,7 +72,8 @@ const server = http.createServer(async (req, res) => {
   }
   if (url.pathname.startsWith('/api/')) return json({ detail: 'Not available in this UI fixture.' }, 404);
   if (url.pathname === '/favicon.ico') { res.writeHead(204); return res.end(); }
-  const file = path.resolve(webroot, `.${url.pathname}`);
+  const requestPath = url.pathname === '/' ? '/index.html' : url.pathname;
+  const file = path.resolve(webroot, `.${requestPath}`);
   if (!file.startsWith(webroot + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return json({}, 404);
   const type = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' }[path.extname(file)] || 'application/octet-stream';
   res.writeHead(200, { 'Content-Type': type });

@@ -13,6 +13,10 @@ public partial class AddGolfNzImportHistoryAndStaleRecords : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
+        migrationBuilder.DropIndex(
+            name: "IX_Rounds_UserId",
+            table: "Rounds");
+
         migrationBuilder.CreateTable(
             name: "GolfNzImportRuns",
             columns: table => new
@@ -59,5 +63,6 @@ public partial class AddGolfNzImportHistoryAndStaleRecords : Migration
         migrationBuilder.DropColumn("LastSeenImportRunId", "CourseHoles");
         migrationBuilder.DropColumn("SourceKey", "CourseHoles");
         migrationBuilder.DropTable("GolfNzImportRuns");
+        migrationBuilder.CreateIndex("IX_Rounds_UserId", "Rounds", "UserId");
     }
 }

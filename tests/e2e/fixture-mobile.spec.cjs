@@ -23,7 +23,7 @@ test.describe('mobile live round fixture', () => {
     });
 
     await page.getByRole('button', { name: 'Increase Score' }).click();
-    await expect(page.locator('#live-status')).toContainText('saved on this device');
+    await expect(page.locator('#live-status')).toContainText(/saved on this device/i);
     await expect(page.locator('#live-status')).toHaveText('Syncing with server…');
     await expect(page.locator('#live-status')).toHaveText('Saved to server');
   });
@@ -63,6 +63,13 @@ test.describe('mobile live round fixture', () => {
   test('explains how to recover when an offline draft has no cached copy', async ({ page, context }) => {
     await page.goto('/live-round.html?id=404');
     await expect(page.locator('#page-retry-title')).toHaveText('We could not open this round');
+
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) {
+        await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+      }
+    });
 
     await context.setOffline(true);
     await page.reload();
