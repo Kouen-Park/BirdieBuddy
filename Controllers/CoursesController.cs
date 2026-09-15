@@ -26,14 +26,17 @@ public class CoursesController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<List<CourseSummaryDto>>> GetAll()
         => Ok(await _courseService.GetAllAsync());
 
     [HttpGet("page")]
+    [AllowAnonymous]
     public async Task<ActionResult<CoursePageDto>> GetPage([FromQuery] CourseQueryDto query)
         => Ok(await _courseService.GetPageAsync(query));
 
     [HttpGet("{id:int}")]
+    [AllowAnonymous]
     public async Task<ActionResult<CourseDto>> GetById(int id)
     {
         var course = await _courseService.GetByIdAsync(id);

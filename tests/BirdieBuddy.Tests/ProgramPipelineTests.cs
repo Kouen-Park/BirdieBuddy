@@ -35,6 +35,9 @@ public sealed class ProgramPipelineTests : IClassFixture<BirdieBuddyApplicationF
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready")).StatusCode);
 
+        var publicCourses = await client.GetAsync("/api/courses/page?limit=1");
+        Assert.Equal(HttpStatusCode.OK, publicCourses.StatusCode);
+
         var unauthorized = await client.GetAsync("/api/rounds");
         Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
         Assert.Equal("application/problem+json", unauthorized.Content.Headers.ContentType?.MediaType);

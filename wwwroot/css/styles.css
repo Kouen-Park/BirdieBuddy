@@ -946,30 +946,37 @@ table caption { text-align: left; padding: 16px; }
 
 .field select,
 .field input[type='date'],
-.field input[type='text'] {
+.field input[type='text'],
+.field input[type='search'] {
     width: 100%;
-    min-height: 44px;
-    padding: 10px 12px;
-    border: 1px solid var(--line-strong);
-    border-radius: 10px;
+    min-height: 48px;
+    padding: 11px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
     outline: none;
     background: var(--paper);
     color: var(--ink-900);
-    transition: border-color 160ms ease, box-shadow 160ms ease;
+    box-sizing: border-box;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .field select:hover,
 .field input[type='date']:hover,
-.field input[type='text']:hover {
+.field input[type='text']:hover,
+.field input[type='search']:hover {
     border-color: var(--fairway);
 }
 
 .field select:focus,
 .field input[type='date']:focus,
-.field input[type='text']:focus {
+.field input[type='text']:focus,
+.field input[type='search']:focus {
     border-color: var(--fairway);
+    background: #fff;
     box-shadow: 0 0 0 4px rgba(44, 113, 104, 0.12);
 }
+
+.field input[type='search']::placeholder { color: var(--ink-500); opacity: 1; }
 
 #custom-tee-input {
     display: none;

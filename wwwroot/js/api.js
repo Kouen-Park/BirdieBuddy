@@ -173,12 +173,17 @@ function renderNav(active) {
 
 
 async function hydrateCurrentUser() {
-    const publicPages = ['/login.html', '/signup.html'];
+    const publicPages = ['/login.html', '/signup.html', '/courses.html'];
     if (publicPages.includes(window.location.pathname)) return;
 
     try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
         if (response.status === 401) {
+            if (window.location.pathname === '/courses.html') {
+                const account = document.getElementById('sidebar-account');
+                if (account) account.innerHTML = '<a class="btn btn-secondary" href="/login.html?returnUrl=%2Fcourses.html">Sign in to track rounds</a>';
+                return;
+            }
             const returnUrl = `${window.location.pathname}${window.location.search}`;
             window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
             return;
