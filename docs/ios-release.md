@@ -5,12 +5,12 @@
 - Open `ios/BirdieBuddyApp.xcodeproj` in Xcode 16 or later.
 - Select an Apple Developer Team for the `BirdieBuddyApp` target.
 - Confirm or replace the bundle identifier `com.birdiebuddy.mobile` before the first App Store Connect record is created.
-- Set `API_BASE_URL` to the production HTTPS origin in the Archive scheme. Never ship the localhost default.
+- Verify the Release target's `API_BASE_URL` build setting points to the intended production HTTPS origin. Release configuration rejects HTTP and localhost endpoints; use a scheme environment override only for deliberate staging builds.
 - Increment `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` for each submitted build.
 
 ## Automated gates
 
-- GitHub Actions `ios-tests` succeeds on an iOS Simulator.
+- GitHub Actions `ios-tests` succeeds with Xcode 26.6 on an iOS Simulator.
 - The iOS test script dynamically selects the newest installed iPhone Simulator; do not pin CI to a model that may disappear from future Xcode images.
 - ASP.NET Core build, .NET tests, browser tests, PostgreSQL integration tests, and browser E2E remain green.
 - Release configuration archives with no signing, privacy-manifest, or asset-catalog warnings.
@@ -19,6 +19,7 @@
 
 - Complete an 18-hole round with Wi-Fi disabled and intermittent cellular service.
 - Kill and relaunch during a draft; verify the outbox remains user- and round-scoped.
+- Let the access token expire during offline entry; verify the draft survives and synchronizes after reauthentication.
 - Create a server conflict and verify both “Use server value” and “Keep my value”.
 - Switch accounts and confirm another user's draft is never displayed or synchronized.
 - Check iPhone SE-sized layout, safe areas, keyboard avoidance, Dynamic Type, and VoiceOver.

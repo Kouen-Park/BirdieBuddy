@@ -85,8 +85,11 @@ jobs:
           path: output/playwright/
           if-no-files-found: ignore
   ios-tests:
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.6'
       - name: Build and test SwiftUI client
         run: ./scripts/test-ios.sh

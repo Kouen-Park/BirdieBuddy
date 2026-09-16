@@ -163,7 +163,7 @@ Open the HTTPS URL printed by ASP.NET Core. Swagger is available at `/swagger` i
 - An iOS 17+ simulator or device
 - A running BirdieBuddy API
 
-Open `ios/BirdieBuddyApp.xcodeproj`, then set `API_BASE_URL` in the scheme environment to the API origin. The native client intentionally has no third-party dependencies.
+Open `ios/BirdieBuddyApp.xcodeproj`. Debug builds default to `http://localhost:5000`, while Release builds use the production HTTPS origin configured by the target's `API_BASE_URL` build setting. A scheme environment variable with the same name can override either value for local or staging runs. Release configuration rejects HTTP and localhost endpoints. The native client intentionally has no third-party dependencies.
 
 Run its test suite from Xcode or the command line:
 
@@ -191,7 +191,7 @@ npm run test:e2e:fixture
 ./scripts/test-ios.sh
 ```
 
-CI additionally runs PostgreSQL integration tests, full browser E2E, migration SQL generation, publish and Docker validation, and the SwiftUI test target.
+CI additionally runs PostgreSQL integration tests, full browser E2E, migration SQL generation, publish and Docker validation, and the SwiftUI test target on Xcode 26.6.
 
 ## Repository map
 
@@ -210,12 +210,12 @@ CI additionally runs PostgreSQL integration tests, full browser E2E, migration S
 
 ## Roadmap
 
-### 1. Harden the native core — next
+### 1. Harden the native core — in progress
 
 - Move the file-backed round outbox to a fully modelled SwiftData or SQLite persistence layer.
-- Restore active drafts and pending conflicts after app termination.
-- Make token expiry during offline entry preserve data and resume sync after reauthentication.
-- Expand XCTest coverage for refresh rotation, ordered sync, conflict resolution, and account isolation.
+- Persist pending conflict review state across app termination.
+- Resume pending sync automatically after reauthentication and network recovery.
+- Expand XCTest coverage for concurrent refresh requests and account isolation.
 
 ### 2. Reach deliberate web parity
 
