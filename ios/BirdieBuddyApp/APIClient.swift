@@ -2,16 +2,44 @@ import Foundation
 
 actor APIClient {
     let baseURL: URL
-    private let keychain: KeychainStore
+    private let keychain: any SessionStoring
+    private let urlSession: URLSession
     private var session: MobileSession?
+    private var sessionInvalidated: (@Sendable () async -> Void)?
 
-    init(baseURL: URL, keychain: KeychainStore = KeychainStore()) {
+    init(baseURL: URL, keychain: any SessionStoring = KeychainStore(), urlSession: URLSession = .shared) {
         self.baseURL = baseURL
         self.keychain = keychain
-        self.session = try? keychain.load()
+        self.urlSession = urlSession
+        if let stored = try? keychain.load() {
+            self.session = stored
+        } else {
+            self.session = nil
+            keychain.remove()
+        }
     }
 
     func currentUser() -> CurrentUser? { session?.user }
+
+    func setSessionInvalidationHandler(_ handler: @escaping @Sendable () async -> Void) {
+        sessionInvalidated = handler
+    }
+
+    func restoreSession() async -> CurrentUser? {
+        guard let cached = session else { return nil }
+        do {
+            try await refresh()
+            return session?.user
+        } catch is URLError {
+            return cached.user
+        } catch let problem as ApiProblem where problem.status == 401 || problem.status == 403 {
+            await invalidateSession()
+            return nil
+        } catch {
+            // A transient server failure must not erase a still-usable offline session.
+            return cached.user
+        }
+    }
 
     func signIn(email: String, password: String) async throws -> CurrentUser {
         let result: MobileSession = try await send(path: "/api/mobile/auth/session", method: "POST", body: MobileSessionRequest(email: email, password: password), authenticated: false)
@@ -22,8 +50,7 @@ actor APIClient {
 
     func signOut() async {
         _ = try? await sendEmpty(path: "/api/mobile/auth/revoke", method: "POST")
-        keychain.remove()
-        session = nil
+        await invalidateSession(notify: false)
     }
 
     func courses() async throws -> [CourseSummary] {
@@ -80,7 +107,7 @@ actor APIClient {
     }
 
     func exportData() async throws -> Data {
-        let (data, response) = try await rawRequest(path: "/api/auth/export", method: "GET", body: Optional<EmptyBody>.none, authenticated: true)
+        let (data, response) = try await perform(path: "/api/auth/export", method: "GET", body: Optional<EmptyBody>.none, authenticated: true)
         guard (200..<300).contains(response.statusCode) else { throw try decodeProblem(data) }
         return data
     }
@@ -88,16 +115,12 @@ actor APIClient {
     func deleteAccount(password: String) async throws {
         try await sendEmpty(path: "/api/auth/delete-account", method: "POST",
             body: DeleteAccountRequest(password: password, confirmation: "DELETE MY ACCOUNT"), authenticated: true)
-        keychain.remove(); session = nil
+        await invalidateSession()
     }
 
     private func send<T: Decodable, Body: Encodable>(path: String, method: String, body: Body?, authenticated: Bool) async throws -> T {
-        var request = try makeRequest(path: path, method: method, authenticated: authenticated)
-        if let body { request.httpBody = try JSONEncoder.birdieBuddy.encode(body); request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-        if http.statusCode == 401 && authenticated { try await refresh(); return try await send(path: path, method: method, body: body, authenticated: true) }
-        guard (200..<300).contains(http.statusCode) else { throw try decodeProblem(data) }
+        let (data, response) = try await perform(path: path, method: method, body: body, authenticated: authenticated)
+        guard (200..<300).contains(response.statusCode) else { throw try decodeProblem(data) }
         return try JSONDecoder.birdieBuddy.decode(T.self, from: data)
     }
 
@@ -106,15 +129,38 @@ actor APIClient {
     }
 
     private func sendEmpty<Body: Encodable>(path: String, method: String, body: Body?, authenticated: Bool) async throws {
-        let (data, response) = try await rawRequest(path: path, method: method, body: body, authenticated: authenticated)
+        let (data, response) = try await perform(path: path, method: method, body: body, authenticated: authenticated)
         guard (200..<300).contains(response.statusCode) else { throw try decodeProblem(data) }
     }
 
-    private func rawRequest<Body: Encodable>(path: String, method: String, body: Body?, authenticated: Bool) async throws -> (Data, HTTPURLResponse) {
+    private func perform<Body: Encodable>(
+        path: String,
+        method: String,
+        body: Body?,
+        authenticated: Bool,
+        canRefresh: Bool = true
+    ) async throws -> (Data, HTTPURLResponse) {
         var request = try makeRequest(path: path, method: method, authenticated: authenticated)
         if let body { request.httpBody = try JSONEncoder.birdieBuddy.encode(body); request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await urlSession.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+
+        if http.statusCode == 401 && authenticated {
+            guard canRefresh else {
+                let problem = try decodeProblem(data)
+                await invalidateSession()
+                throw problem
+            }
+            do {
+                try await refresh()
+            } catch {
+                if let problem = error as? ApiProblem, problem.status == 401 || problem.status == 403 {
+                    await invalidateSession()
+                }
+                throw error
+            }
+            return try await perform(path: path, method: method, body: body, authenticated: true, canRefresh: false)
+        }
         return (data, http)
     }
 
@@ -123,6 +169,13 @@ actor APIClient {
         let refreshed: MobileSession = try await send(path: "/api/mobile/auth/refresh", method: "POST", body: MobileRefreshRequest(refreshToken: current.refreshToken), authenticated: false)
         try keychain.save(refreshed)
         session = refreshed
+    }
+
+    private func invalidateSession(notify: Bool = true) async {
+        let hadSession = session != nil
+        keychain.remove()
+        session = nil
+        if notify, hadSession { await sessionInvalidated?() }
     }
 
     private func makeRequest(path: String, method: String, authenticated: Bool) throws -> URLRequest {

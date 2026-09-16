@@ -1,7 +1,13 @@
 import Foundation
 import Security
 
-struct KeychainStore {
+protocol SessionStoring {
+    func save(_ session: MobileSession) throws
+    func load() throws -> MobileSession?
+    func remove()
+}
+
+struct KeychainStore: SessionStoring {
     private let service = "com.birdiebuddy.mobile"
     private let account = "session"
 
@@ -13,6 +19,7 @@ struct KeychainStore {
         SecItemDelete(base as CFDictionary)
         var item = base
         item[kSecValueData as String] = data
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { throw KeychainError.saveFailed }
     }
 
