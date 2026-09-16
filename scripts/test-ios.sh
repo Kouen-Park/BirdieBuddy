@@ -52,9 +52,9 @@ xcodebuild_arguments=(
   -maximum-concurrent-test-simulator-destinations 1
 )
 
-# Building separately prevents XCTest from trying to compile and materialize
-# simulator workers at the same time, which is unreliable on hosted runners.
-xcodebuild build-for-testing "${xcodebuild_arguments[@]}"
-xcodebuild test-without-building \
+# Keep build and test in one XCTest invocation. Splitting these phases caused
+# Xcode 26 to inject libXCTestBundleInject twice into the hosted app, which
+# traps before the test daemon can establish its connection.
+xcodebuild test \
   "${xcodebuild_arguments[@]}" \
   -resultBundlePath "$result_bundle_path"
