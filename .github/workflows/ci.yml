@@ -93,3 +93,11 @@ jobs:
           xcode-version: '26.6'
       - name: Build and test SwiftUI client
         run: ./scripts/test-ios.sh
+      - name: Upload iOS test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: output/ios/*.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
