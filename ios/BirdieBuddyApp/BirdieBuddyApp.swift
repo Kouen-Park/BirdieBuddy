@@ -17,7 +17,13 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if appState.isSignedIn {
+            if appState.isRestoring {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Restoring your session…")
+                        .foregroundStyle(.secondary)
+                }
+            } else if appState.isSignedIn {
                 MainTabView()
             } else {
                 LoginView()
