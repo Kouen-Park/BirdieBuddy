@@ -70,7 +70,14 @@ final class BirdieBuddyAppTests: XCTestCase {
         let persistence = try RoundPersistenceStore(directoryURL: directory)
         let migrated = try await persistence.pending(userId: 7)
 
-        XCTAssertEqual(migrated, [latest])
+        let migratedWrite = try XCTUnwrap(migrated.first)
+        XCTAssertEqual(migrated.count, 1)
+        XCTAssertEqual(migratedWrite.id, latest.id)
+        XCTAssertEqual(migratedWrite.roundId, latest.roundId)
+        XCTAssertEqual(migratedWrite.holeNumber, latest.holeNumber)
+        XCTAssertEqual(migratedWrite.revision, latest.revision)
+        XCTAssertEqual(migratedWrite.payload, latest.payload)
+        XCTAssertEqual(migratedWrite.state, .queued)
         XCTAssertFalse(FileManager.default.fileExists(atPath: legacyURL.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: legacyURL.path + ".migrated-v1"))
     }
