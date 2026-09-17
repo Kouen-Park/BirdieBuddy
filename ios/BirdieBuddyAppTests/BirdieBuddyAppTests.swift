@@ -17,14 +17,13 @@ final class BirdieBuddyAppTests: XCTestCase {
     func testOutboxKeepsLatestRevisionPerHoleAndSeparatesUsers() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let firstUser = RoundDraftStore(userId: 7, directoryURL: directory)
-        let secondUser = RoundDraftStore(userId: 8, directoryURL: directory)
+        let persistence = try RoundPersistenceStore(directoryURL: directory, inMemory: true)
         let first = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1, expectedUpdatedAt: nil, payload: Data([1]))
         let latest = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 2, expectedUpdatedAt: nil, payload: Data([2]))
-        try await firstUser.enqueue(first)
-        try await firstUser.enqueue(latest)
-        let firstUserWrites = try await firstUser.load()
-        let secondUserWrites = try await secondUser.load()
+        try await persistence.enqueue(userId: 7, write: first)
+        try await persistence.enqueue(userId: 7, write: latest)
+        let firstUserWrites = try await persistence.pending(userId: 7)
+        let secondUserWrites = try await persistence.pending(userId: 8)
         XCTAssertEqual(firstUserWrites, [latest])
         XCTAssertTrue(secondUserWrites.isEmpty)
     }
@@ -35,10 +34,11 @@ final class BirdieBuddyAppTests: XCTestCase {
         let first = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1, expectedUpdatedAt: nil, payload: Data([1]))
         let second = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 2, revision: 2, expectedUpdatedAt: nil, payload: Data([2]))
 
-        try await RoundDraftStore(userId: 7, directoryURL: directory).enqueue(first)
-        try await RoundDraftStore(userId: 7, directoryURL: directory).enqueue(second)
+        let persistence = try RoundPersistenceStore(directoryURL: directory, inMemory: true)
+        try await persistence.enqueue(userId: 7, write: first)
+        try await persistence.enqueue(userId: 7, write: second)
 
-        let writes = try await RoundDraftStore(userId: 7, directoryURL: directory).load()
+        let writes = try await persistence.pending(userId: 7)
         XCTAssertEqual(Set(writes.map(\.id)), Set([first.id, second.id]))
     }
 
@@ -47,14 +47,228 @@ final class BirdieBuddyAppTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let first = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1, expectedUpdatedAt: nil, payload: Data([1]))
         let second = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 2, revision: 2, expectedUpdatedAt: nil, payload: Data([2]))
-        let writer = RoundDraftStore(userId: 7, directoryURL: directory)
-        try await writer.enqueue(first)
-        try await writer.enqueue(second)
+        let persistence = try RoundPersistenceStore(directoryURL: directory, inMemory: true)
+        try await persistence.enqueue(userId: 7, write: first)
+        try await persistence.enqueue(userId: 7, write: second)
+        try await persistence.acknowledge(userId: 7, id: first.id)
 
-        try await RoundDraftStore(userId: 7, directoryURL: directory).acknowledge(first.id)
-
-        let writes = try await RoundDraftStore(userId: 7, directoryURL: directory).load()
+        let writes = try await persistence.pending(userId: 7)
         XCTAssertEqual(writes, [second])
+    }
+
+    func testLegacyJSONMigratesOnceAndArchivesOriginal() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let older = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1,
+            expectedUpdatedAt: nil, payload: Data([1]))
+        let latest = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 2,
+            expectedUpdatedAt: nil, payload: Data([2]))
+        let legacyURL = directory.appendingPathComponent("round-outbox-7.json")
+        try JSONEncoder.birdieBuddy.encode([older, latest]).write(to: legacyURL)
+
+        let persistence = try RoundPersistenceStore(directoryURL: directory)
+        let migrated = try await persistence.pending(userId: 7)
+
+        XCTAssertEqual(migrated, [latest])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: legacyURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: legacyURL.path + ".migrated-v1"))
+    }
+
+    func testDeletingAccountDataDoesNotDeleteAnotherUsersWrites() async throws {
+        let persistence = try RoundPersistenceStore(inMemory: true)
+        let first = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1,
+            expectedUpdatedAt: nil, payload: Data([1]))
+        let second = PendingHoleWrite(id: UUID(), roundId: 20, holeNumber: 1, revision: 1,
+            expectedUpdatedAt: nil, payload: Data([2]))
+        try await persistence.enqueue(userId: 7, write: first)
+        try await persistence.enqueue(userId: 8, write: second)
+
+        try await persistence.deleteUserData(userId: 7)
+
+        let deletedUserWrites = try await persistence.pending(userId: 7)
+        let remainingUserWrites = try await persistence.pending(userId: 8)
+        XCTAssertTrue(deletedUserWrites.isEmpty)
+        XCTAssertEqual(remainingUserWrites, [second])
+    }
+
+    func testConflictPersistsAndServerResolutionClearsWriteAtomically() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let request = HoleUpsertRequest(par: 4, score: 6, putts: 2, gir: false, fairwayHit: true,
+            penalty: 0, checkExpected: true, expectedHole: nil)
+        let write = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1,
+            expectedUpdatedAt: nil, payload: try JSONEncoder.birdieBuddy.encode(request))
+        do {
+            let persistence = try RoundPersistenceStore(directoryURL: directory)
+            try await persistence.enqueue(userId: 7, write: write)
+            try await persistence.saveConflict(userId: 7, write: write, serverHole: makeHole(number: 1, score: 4))
+        }
+
+        let relaunched = try RoundPersistenceStore(directoryURL: directory)
+        let restoredConflict = try await relaunched.conflict(userId: 7, roundId: 10)
+        let conflict = try XCTUnwrap(restoredConflict)
+        let server = try await relaunched.useServerValue(userId: 7, conflictId: conflict.id)
+
+        XCTAssertEqual(server?.score, 4)
+        let clearedConflict = try await relaunched.conflict(userId: 7, roundId: 10)
+        let clearedWrites = try await relaunched.pending(userId: 7, roundId: 10)
+        XCTAssertNil(clearedConflict)
+        XCTAssertTrue(clearedWrites.isEmpty)
+    }
+
+    func testKeepingLocalConflictCreatesForcedHigherRevisionWrite() async throws {
+        let persistence = try RoundPersistenceStore(inMemory: true)
+        let request = HoleUpsertRequest(par: 4, score: 6, putts: 2, gir: false, fairwayHit: true,
+            penalty: 0, checkExpected: true, expectedHole: makeHole(number: 1, score: 4))
+        let original = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 4,
+            expectedUpdatedAt: nil, payload: try JSONEncoder.birdieBuddy.encode(request))
+        try await persistence.enqueue(userId: 7, write: original)
+        try await persistence.saveConflict(userId: 7, write: original, serverHole: makeHole(number: 1, score: 5))
+        let storedConflict = try await persistence.conflict(userId: 7, roundId: 10)
+        let conflict = try XCTUnwrap(storedConflict)
+
+        let storedForced = try await persistence.keepLocalValue(userId: 7, conflictId: conflict.id, revision: 1)
+        let forced = try XCTUnwrap(storedForced)
+        let decoded = try JSONDecoder.birdieBuddy.decode(HoleUpsertRequest.self, from: forced.payload)
+
+        XCTAssertEqual(forced.revision, 5)
+        XCTAssertFalse(decoded.checkExpected)
+        XCTAssertNil(decoded.expectedHole)
+        let remainingConflict = try await persistence.conflict(userId: 7, roundId: 10)
+        XCTAssertNil(remainingConflict)
+    }
+
+    func testSyncRetriesNetworkFailureAndAcknowledgesAfterRecovery() async throws {
+        let persistence = try RoundPersistenceStore(inMemory: true)
+        let session = makeURLSession()
+        let store = InMemorySessionStore(session: makeSession(accessToken: "access", refreshToken: "refresh"))
+        let api = APIClient(baseURL: URL(string: "https://example.test")!, keychain: store, urlSession: session)
+        let coordinator = SyncCoordinator(persistence: persistence, api: api)
+        let request = HoleUpsertRequest(par: 4, score: 4, putts: 2, gir: true, fairwayHit: true,
+            penalty: 0, checkExpected: true, expectedHole: nil)
+        let write = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1,
+            expectedUpdatedAt: nil, payload: try JSONEncoder.birdieBuddy.encode(request))
+        try await persistence.enqueue(userId: 7, write: write)
+        MockURLProtocol.requestHandler = { _ in throw URLError(.notConnectedToInternet) }
+
+        _ = await coordinator.synchronize(userId: 7, trigger: .manualSave)
+        let offlineStatus = try await persistence.status(userId: 7, roundId: 10)
+        XCTAssertEqual(offlineStatus, .savedOnDevice)
+
+        MockURLProtocol.requestHandler = { request in Self.response(request, status: 200, json: Self.holeJSON(number: 1)) }
+        _ = await coordinator.synchronize(userId: 7, trigger: .networkRestored)
+        let recoveredStatus = try await persistence.status(userId: 7, roundId: 10)
+        XCTAssertEqual(recoveredStatus, .synced)
+    }
+
+    func testExpiredAuthenticationPreservesPendingWriteAfterRefreshFailure() async throws {
+        let persistence = try RoundPersistenceStore(inMemory: true)
+        let session = makeURLSession()
+        let store = InMemorySessionStore(session: makeSession(accessToken: "expired", refreshToken: "expired-refresh"))
+        let api = APIClient(baseURL: URL(string: "https://example.test")!, keychain: store, urlSession: session)
+        let coordinator = SyncCoordinator(persistence: persistence, api: api)
+        let request = HoleUpsertRequest(par: 4, score: 4, putts: 2, gir: true, fairwayHit: true,
+            penalty: 0, checkExpected: true, expectedHole: nil)
+        let write = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1,
+            expectedUpdatedAt: nil, payload: try JSONEncoder.birdieBuddy.encode(request))
+        try await persistence.enqueue(userId: 7, write: write)
+        MockURLProtocol.requestHandler = { request in
+            Self.response(request, status: 401, json: Self.problemJSON)
+        }
+
+        _ = await coordinator.synchronize(userId: 7, trigger: .foreground)
+
+        let status = try await persistence.status(userId: 7, roundId: 10)
+        let remaining = try await persistence.pending(userId: 7, roundId: 10)
+        XCTAssertEqual(status, .savedOnDevice)
+        XCTAssertEqual(remaining.map(\.id), [write.id])
+        XCTAssertNil(store.session)
+    }
+
+    func testPermanentClientErrorRequiresAttentionInsteadOfRetryingForever() async throws {
+        let persistence = try RoundPersistenceStore(inMemory: true)
+        let session = makeURLSession()
+        let store = InMemorySessionStore(session: makeSession(accessToken: "access", refreshToken: "refresh"))
+        let api = APIClient(baseURL: URL(string: "https://example.test")!, keychain: store, urlSession: session)
+        let coordinator = SyncCoordinator(persistence: persistence, api: api)
+        let request = HoleUpsertRequest(par: 4, score: 4, putts: 2, gir: true, fairwayHit: true,
+            penalty: 0, checkExpected: true, expectedHole: nil)
+        let write = PendingHoleWrite(id: UUID(), roundId: 10, holeNumber: 1, revision: 1,
+            expectedUpdatedAt: nil, payload: try JSONEncoder.birdieBuddy.encode(request))
+        try await persistence.enqueue(userId: 7, write: write)
+        MockURLProtocol.requestHandler = { request in
+            Self.response(request, status: 422, json: #"{"status":422,"title":"Invalid","code":"round.invalid"}"#)
+        }
+
+        _ = await coordinator.synchronize(userId: 7, trigger: .manualSave)
+        _ = await coordinator.synchronize(userId: 7, trigger: .foreground)
+
+        let status = try await persistence.status(userId: 7, roundId: 10)
+        XCTAssertEqual(status, .attentionRequired)
+    }
+
+    func testSyncSendsWritesInRevisionOrder() async throws {
+        let persistence = try RoundPersistenceStore(inMemory: true)
+        let session = makeURLSession()
+        let store = InMemorySessionStore(session: makeSession(accessToken: "access", refreshToken: "refresh"))
+        let api = APIClient(baseURL: URL(string: "https://example.test")!, keychain: store, urlSession: session)
+        let coordinator = SyncCoordinator(persistence: persistence, api: api)
+        let request = HoleUpsertRequest(par: 4, score: 4, putts: 2, gir: true, fairwayHit: true,
+            penalty: 0, checkExpected: true, expectedHole: nil)
+        let requestOrder = RequestOrder()
+        for (holeNumber, revision) in [(2, 20), (1, 10)] {
+            try await persistence.enqueue(userId: 7, write: PendingHoleWrite(
+                id: UUID(), roundId: 10, holeNumber: holeNumber, revision: revision,
+                expectedUpdatedAt: nil, payload: try JSONEncoder.birdieBuddy.encode(request)
+            ))
+        }
+        MockURLProtocol.requestHandler = { request in
+            let holeNumber = Int(request.url?.lastPathComponent ?? "0") ?? 0
+            requestOrder.holeNumbers.append(holeNumber)
+            return Self.response(request, status: 200, json: Self.holeJSON(number: holeNumber))
+        }
+
+        _ = await coordinator.synchronize(userId: 7, trigger: .networkRestored)
+
+        XCTAssertEqual(requestOrder.holeNumbers, [1, 2])
+    }
+
+    func testConflictStopsOnlyItsRoundAndAllowsOtherRoundsToSync() async throws {
+        let persistence = try RoundPersistenceStore(inMemory: true)
+        let session = makeURLSession()
+        let store = InMemorySessionStore(session: makeSession(accessToken: "access", refreshToken: "refresh"))
+        let api = APIClient(baseURL: URL(string: "https://example.test")!, keychain: store, urlSession: session)
+        let coordinator = SyncCoordinator(persistence: persistence, api: api)
+        let request = HoleUpsertRequest(par: 4, score: 5, putts: 2, gir: false, fairwayHit: true,
+            penalty: 0, checkExpected: true, expectedHole: nil)
+        for roundId in [10, 20] {
+            try await persistence.enqueue(userId: 7, write: PendingHoleWrite(
+                id: UUID(), roundId: roundId, holeNumber: 1, revision: 1,
+                expectedUpdatedAt: nil, payload: try JSONEncoder.birdieBuddy.encode(request)
+            ))
+        }
+        MockURLProtocol.requestHandler = { request in
+            switch (request.httpMethod, request.url?.path) {
+            case ("PUT", "/api/rounds/10/holes/by-number/1"):
+                return Self.response(request, status: 409,
+                    json: #"{"status":409,"title":"Conflict","code":"round.hole_conflict"}"#)
+            case ("GET", "/api/rounds/10"):
+                return Self.response(request, status: 200, json: Self.draftJSON(status: "Draft"))
+            case ("PUT", "/api/rounds/20/holes/by-number/1"):
+                return Self.response(request, status: 200, json: Self.holeJSON(number: 1))
+            default:
+                return Self.response(request, status: 404, json: Self.problemJSON)
+            }
+        }
+
+        let report = await coordinator.synchronize(userId: 7, trigger: .networkRestored)
+
+        let conflictedStatus = try await persistence.status(userId: 7, roundId: 10)
+        let otherRoundStatus = try await persistence.status(userId: 7, roundId: 20)
+        XCTAssertEqual(report.conflictRoundIds, [10])
+        XCTAssertEqual(conflictedStatus, .reviewRequired)
+        XCTAssertEqual(otherRoundStatus, .synced)
     }
 
     func testMutableSnapshotKeepsLocallyEditedHole() {
@@ -207,11 +421,11 @@ final class BirdieBuddyAppTests: XCTestCase {
         let courses = try await api.courses()
         let selectedCourse = try XCTUnwrap(courses.first)
         let draft = try await api.startDraft(courseId: selectedCourse.id, teeId: 4)
-        let offlineStore = RoundDraftStore(userId: 7, directoryURL: directory)
+        let offlineStore = try RoundPersistenceStore(directoryURL: directory)
         for holeNumber in 1...18 {
             let request = HoleUpsertRequest(par: 4, score: 4, putts: 2, gir: true, fairwayHit: true,
                 penalty: 0, checkExpected: true, expectedHole: nil)
-            try await offlineStore.enqueue(PendingHoleWrite(
+            try await offlineStore.enqueue(userId: 7, write: PendingHoleWrite(
                 id: UUID(),
                 roundId: draft.id,
                 holeNumber: holeNumber,
@@ -221,18 +435,16 @@ final class BirdieBuddyAppTests: XCTestCase {
             ))
         }
 
-        let relaunchedStore = RoundDraftStore(userId: 7, directoryURL: directory)
-        let restoredWrites = try await relaunchedStore.pending(for: draft.id)
+        let restoredWrites = try await offlineStore.pending(userId: 7, roundId: draft.id)
         XCTAssertEqual(restoredWrites.count, 18)
         for write in restoredWrites {
             let request = try JSONDecoder.birdieBuddy.decode(HoleUpsertRequest.self, from: write.payload)
             _ = try await api.saveHole(roundId: write.roundId, holeNumber: write.holeNumber, request: request)
-            try await relaunchedStore.acknowledge(write.id)
+            try await offlineStore.acknowledge(userId: 7, id: write.id)
         }
         _ = try await api.complete(roundId: draft.id)
 
-        let finalStore = RoundDraftStore(userId: 7, directoryURL: directory)
-        let remaining = try await finalStore.pending(for: draft.id)
+        let remaining = try await offlineStore.pending(userId: 7, roundId: draft.id)
         XCTAssertEqual(selectedCourse.id, 3)
         XCTAssertEqual(draft.expectedHoles, 18)
         XCTAssertEqual(counts.protected, 18)
@@ -298,6 +510,10 @@ private final class RequestCounts {
     var protected = 0
     var refresh = 0
     var authorizationHeaders: [String] = []
+}
+
+private final class RequestOrder {
+    var holeNumbers: [Int] = []
 }
 
 private actor AsyncCounter {
