@@ -57,22 +57,27 @@ final class AppState: ObservableObject {
     @Published private(set) var user: CurrentUser?
     @Published private(set) var isRestoring = true
     @Published var errorMessage: String?
+    @Published private(set) var roundSyncStatuses: [Int: RoundSyncStatus] = [:]
 
     let api: APIClient
-    private var roundDraftStores: [Int: RoundDraftStore] = [:]
+    let roundPersistence: RoundPersistenceStore
+    private let syncCoordinator: SyncCoordinator
 
-    init(api: APIClient? = nil) {
-        self.api = api ?? APIClient(baseURL: AppConfiguration.apiBaseURL)
+    init(api: APIClient? = nil, roundPersistence: RoundPersistenceStore? = nil) {
+        let resolvedAPI = api ?? APIClient(baseURL: AppConfiguration.apiBaseURL)
+        let resolvedPersistence: RoundPersistenceStore
+        if let roundPersistence {
+            resolvedPersistence = roundPersistence
+        } else {
+            do { resolvedPersistence = try RoundPersistenceStore() }
+            catch { preconditionFailure("Could not open round persistence: \(error)") }
+        }
+        self.api = resolvedAPI
+        self.roundPersistence = resolvedPersistence
+        syncCoordinator = SyncCoordinator(persistence: resolvedPersistence, api: resolvedAPI)
     }
 
     var isSignedIn: Bool { user != nil }
-
-    func roundDraftStore(for userId: Int) -> RoundDraftStore {
-        if let store = roundDraftStores[userId] { return store }
-        let store = RoundDraftStore(userId: userId)
-        roundDraftStores[userId] = store
-        return store
-    }
 
     func restoreSession() async {
         await api.setSessionInvalidationHandler { [weak self] in
@@ -80,20 +85,48 @@ final class AppState: ObservableObject {
         }
         user = await api.restoreSession()
         isRestoring = false
-        if user != nil { await loadCoursesSilently() }
+        if user != nil {
+            await loadCoursesSilently()
+            _ = await syncPending(trigger: .sessionRestore)
+        }
     }
 
     func signIn(email: String, password: String) async {
         errorMessage = nil
-        do { user = try await api.signIn(email: email, password: password) }
+        do {
+            user = try await api.signIn(email: email, password: password)
+            _ = await syncPending(trigger: .reauthentication)
+        }
         catch { errorMessage = Self.message(for: error) }
     }
 
     func signOut() async {
         await api.signOut()
         user = nil
-        roundDraftStores.removeAll()
+        roundSyncStatuses = [:]
         errorMessage = nil
+    }
+
+    func deleteAccount(password: String) async throws {
+        guard let userId = user?.id else { return }
+        try await api.deleteAccount(password: password)
+        try await roundPersistence.deleteUserData(userId: userId)
+        user = nil
+        roundSyncStatuses = [:]
+        errorMessage = nil
+    }
+
+    @discardableResult
+    func syncPending(trigger: SyncTrigger, roundId: Int? = nil) async -> SyncReport {
+        guard let userId = user?.id else { return SyncReport() }
+        let report = await syncCoordinator.synchronize(userId: userId, trigger: trigger, roundId: roundId)
+        roundSyncStatuses = (try? await roundPersistence.statuses(userId: userId)) ?? [:]
+        return report
+    }
+
+    func refreshSyncStatuses() async {
+        guard let userId = user?.id else { roundSyncStatuses = [:]; return }
+        roundSyncStatuses = (try? await roundPersistence.statuses(userId: userId)) ?? [:]
     }
 
     func updateProfile(displayName: String) async -> Bool {
@@ -107,7 +140,7 @@ final class AppState: ObservableObject {
 
     private func handleSessionInvalidation() {
         user = nil
-        roundDraftStores.removeAll()
+        roundSyncStatuses = [:]
         errorMessage = "Your session expired. Sign in again to sync saved changes."
     }
 

@@ -50,7 +50,7 @@ struct AccountView: View {
                     Button("Delete account", role: .destructive) {
                         Task {
                             isWorking = true
-                            do { try await appState.api.deleteAccount(password: password); await appState.signOut() }
+                            do { try await appState.deleteAccount(password: password) }
                             catch { message = AppState.message(for: error) }
                             isWorking = false
                         }

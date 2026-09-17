@@ -14,6 +14,8 @@ struct BirdieBuddyApp: App {
 
 struct RootView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var connectivity = ConnectivityMonitor()
 
     var body: some View {
         Group {
@@ -30,6 +32,12 @@ struct RootView: View {
             }
         }
         .task { await appState.restoreSession() }
+        .onChange(of: connectivity.isOnline) { _, isOnline in
+            if isOnline { Task { await appState.syncPending(trigger: .networkRestored) } }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await appState.syncPending(trigger: .foreground) } }
+        }
     }
 }
 

@@ -23,6 +23,11 @@ struct RoundHistoryView: View {
                                     .font(.subheadline).foregroundStyle(.secondary)
                                 Text("\(round.totalScore) (\(round.scoreToPar >= 0 ? "+" : "")\(round.scoreToPar))")
                                     .font(.title3.bold())
+                                if let syncStatus = appState.roundSyncStatuses[round.id], syncStatus != .synced {
+                                    Label(syncStatus.label, systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
+                                        .font(.caption)
+                                        .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
+                                }
                             }
                             .padding(.vertical, 4)
                         }
@@ -31,7 +36,7 @@ struct RoundHistoryView: View {
             }
             .navigationTitle("Rounds")
             .refreshable { await load() }
-            .task { await load() }
+            .task { await load(); await appState.refreshSyncStatuses() }
         }
     }
 

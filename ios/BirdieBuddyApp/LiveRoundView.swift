@@ -55,7 +55,6 @@ struct LiveRoundView: View {
     @State private var status = ""
     @State private var errorMessage: String?
     @State private var isSaving = false
-    @StateObject private var connectivity = ConnectivityMonitor()
     @State private var conflict: ConflictState?
 
     init(draft: RoundDraft) {
@@ -68,16 +67,17 @@ struct LiveRoundView: View {
     private var currentHole: Hole? { snapshot.hole(number: holeNumber) }
     private var expectedServerHole: Hole? { serverHoles[holeNumber] }
     private var expectedPar: Int { currentHole?.par ?? 4 }
-    private var outbox: RoundDraftStore? {
-        guard let userId = appState.user?.id else { return nil }
-        return appState.roundDraftStore(for: userId)
-    }
+    private var userId: Int? { appState.user?.id }
+    private var syncStatus: RoundSyncStatus { appState.roundSyncStatuses[draft.id] ?? .synced }
 
     var body: some View {
         Form {
             Section {
                 Text("Hole \(holeNumber) of \(draft.expectedHoles)").font(.title2.bold())
-                if !connectivity.isOnline { Label("Offline — saved on this device", systemImage: "icloud.slash") }
+                if syncStatus != .synced {
+                    Label(syncStatus.label, systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
+                        .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
+                }
                 Text(status).foregroundStyle(.secondary)
             }
             Section("Score") {
@@ -103,30 +103,13 @@ struct LiveRoundView: View {
         }
         .navigationTitle("Live round")
         .onAppear { loadCurrentHole() }
-        .task { await syncOutbox() }
+        .task { await restoreConflictAndSync() }
         .onChange(of: holeIndex) { _, _ in loadCurrentHole() }
-        .onChange(of: connectivity.isOnline) { _, online in
-            if online { Task { await syncOutbox() } }
-        }
         .sheet(item: $conflict) { conflict in
             ConflictReviewView(conflict: conflict, onUseServer: {
-                self.conflict = nil
                 isSaving = true
-                if let server = conflict.server {
-                    applyServerHole(server)
-                    loadCurrentHole()
-                }
-                Task {
-                    defer { isSaving = false }
-                    do {
-                        try await outbox?.acknowledge(conflict.pending.id)
-                        status = "Using server value"
-                    } catch {
-                        errorMessage = "Could not update the saved changes on this device."
-                    }
-                }
+                Task { await useServerValue(for: conflict) }
             }, onKeepLocal: {
-                self.conflict = nil
                 isSaving = true
                 Task { await keepLocalValue(for: conflict) }
             })
@@ -148,7 +131,7 @@ struct LiveRoundView: View {
         defer { isSaving = false }
         let request = HoleUpsertRequest(par: expectedPar, score: score, putts: putts, gir: gir, fairwayHit: fairway, penalty: penalty,
             checkExpected: !force, expectedHole: force ? nil : expectedServerHole)
-        guard let store = outbox else {
+        guard let userId else {
             errorMessage = "Sign in again before saving this round."
             status = "Local save failed"
             return .failed
@@ -161,71 +144,26 @@ struct LiveRoundView: View {
                 holeNumber: holeNumber,
                 revision: Int(Date.timeIntervalSinceReferenceDate * 1000),
                 expectedUpdatedAt: draft.updatedAt,
-                payload: try JSONEncoder.birdieBuddy.encode(request)
+                payload: try JSONEncoder.birdieBuddy.encode(request),
+                serverSnapshot: try expectedServerHole.map { try JSONEncoder.birdieBuddy.encode($0) }
             )
-            try await store.enqueue(write)
+            try await appState.roundPersistence.enqueue(userId: userId, write: write)
             applyLocalRequest(request, holeNumber: holeNumber)
+            await appState.refreshSyncStatuses()
         } catch {
             errorMessage = "Could not save this input on the device."
             status = "Local save failed"
             return .failed
         }
-        do {
-            let saved = try await appState.api.saveHole(roundId: draft.id, holeNumber: holeNumber, request: request)
-            try await store.acknowledge(write.id)
-            applyServerHole(saved)
-            status = "Saved to server"
-            return .serverSaved
-        } catch let problem as ApiProblem where problem.status == 409 {
-            do {
-                let latest = try await appState.api.round(id: draft.id)
-                conflict = ConflictState(holeNumber: holeNumber, local: request, server: latest.holes.first { $0.holeNumber == holeNumber }, pending: write)
-                status = "Review required"
-                return .conflict
-            } catch {
-                errorMessage = AppState.message(for: error)
-                return .failed
-            }
-        } catch is URLError {
-            status = "Saved on device — will sync when online"
-            return .queuedOffline
-        } catch {
-            errorMessage = AppState.message(for: error)
-            status = "Saved on device — sync paused"
-            return .failed
+        let report = await appState.syncPending(trigger: .manualSave, roundId: draft.id)
+        report.savedHoles.forEach { applyServerHole($0) }
+        await loadPersistedConflict()
+        switch syncStatus {
+        case .synced: status = "Saved to server"; return .serverSaved
+        case .reviewRequired: status = "Review required"; return .conflict
+        case .savedOnDevice, .syncing: status = "Saved on device — will sync when online"; return .queuedOffline
+        case .attentionRequired: status = "Saved on device — action required"; return .failed
         }
-    }
-
-    private func syncOutbox() async {
-        guard let userId = appState.user?.id else { return }
-        let store = appState.roundDraftStore(for: userId)
-        do {
-            let pending = try await store.pending(for: draft.id)
-            for write in pending {
-                let request = try JSONDecoder.birdieBuddy.decode(HoleUpsertRequest.self, from: write.payload)
-                do {
-                    let saved = try await appState.api.saveHole(roundId: write.roundId, holeNumber: write.holeNumber, request: request)
-                    try await store.acknowledge(write.id)
-                    applyServerHole(saved)
-                } catch let problem as ApiProblem where problem.status == 409 {
-                    do {
-                        let latest = try await appState.api.round(id: draft.id)
-                        conflict = ConflictState(
-                            holeNumber: write.holeNumber,
-                            local: request,
-                            server: latest.holes.first { $0.holeNumber == write.holeNumber },
-                            pending: write
-                        )
-                        status = "Sync paused — review hole \(write.holeNumber)"
-                    } catch {
-                        errorMessage = AppState.message(for: error)
-                        status = "Sync paused — changes remain on device"
-                    }
-                    return
-                }
-            }
-            if !pending.isEmpty { status = "Offline changes synced" }
-        } catch { status = "Sync unavailable — changes remain on device" }
     }
 
     private func advance() async {
@@ -236,9 +174,9 @@ struct LiveRoundView: View {
             return
         }
 
-        guard outcome.permitsCompletion, conflict == nil, let store = outbox else { return }
+        guard outcome.permitsCompletion, conflict == nil, let userId else { return }
         do {
-            guard try await store.pending(for: draft.id).isEmpty else {
+            guard try await appState.roundPersistence.pending(userId: userId, roundId: draft.id).isEmpty else {
                 status = "Sync all saved holes before finishing"
                 return
             }
@@ -268,44 +206,60 @@ struct LiveRoundView: View {
         serverHoles[hole.holeNumber] = hole
     }
 
+    private func restoreConflictAndSync() async {
+        let report = await appState.syncPending(trigger: .liveRound, roundId: draft.id)
+        report.savedHoles.forEach { applyServerHole($0) }
+        await loadPersistedConflict()
+    }
+
+    private func loadPersistedConflict() async {
+        guard let userId,
+              let persisted = try? await appState.roundPersistence.conflict(userId: userId, roundId: draft.id) else {
+            conflict = nil
+            return
+        }
+        do {
+            let local = try JSONDecoder.birdieBuddy.decode(HoleUpsertRequest.self, from: persisted.localPayload)
+            let server = persisted.serverHolePayload.flatMap { try? JSONDecoder.birdieBuddy.decode(Hole.self, from: $0) }
+            conflict = ConflictState(id: persisted.id, holeNumber: persisted.holeNumber, local: local, server: server)
+            status = "Sync paused — review hole \(persisted.holeNumber)"
+        } catch {
+            errorMessage = "The saved conflict could not be opened."
+        }
+    }
+
+    private func useServerValue(for conflict: ConflictState) async {
+        defer { isSaving = false }
+        guard let userId else { return }
+        do {
+            if let server = try await appState.roundPersistence.useServerValue(userId: userId, conflictId: conflict.id) {
+                applyServerHole(server)
+                loadCurrentHole()
+            }
+            self.conflict = nil
+            status = "Using server value"
+            await appState.refreshSyncStatuses()
+            await restoreConflictAndSync()
+        } catch {
+            errorMessage = "Could not update the saved changes on this device."
+        }
+    }
+
     private func keepLocalValue(for conflict: ConflictState) async {
         defer { isSaving = false }
-        guard let store = outbox else {
+        guard let userId else {
             errorMessage = "Sign in again before saving this round."
             return
         }
-        let request = HoleUpsertRequest(
-            par: conflict.local.par,
-            score: conflict.local.score,
-            putts: conflict.local.putts,
-            gir: conflict.local.gir,
-            fairwayHit: conflict.local.fairwayHit,
-            penalty: conflict.local.penalty,
-            checkExpected: false,
-            expectedHole: nil
-        )
         do {
-            let write = PendingHoleWrite(
-                id: UUID(),
-                roundId: conflict.pending.roundId,
-                holeNumber: conflict.holeNumber,
-                revision: max(Int(Date.timeIntervalSinceReferenceDate * 1000), conflict.pending.revision + 1),
-                expectedUpdatedAt: conflict.pending.expectedUpdatedAt,
-                payload: try JSONEncoder.birdieBuddy.encode(request)
-            )
-            try await store.enqueue(write)
-            applyLocalRequest(request, holeNumber: conflict.holeNumber)
-            do {
-                let saved = try await appState.api.saveHole(roundId: write.roundId, holeNumber: write.holeNumber, request: request)
-                try await store.acknowledge(write.id)
-                applyServerHole(saved)
-                status = "Kept this device's value"
-            } catch is URLError {
-                status = "Saved on device — will sync when online"
-            } catch {
-                errorMessage = AppState.message(for: error)
-                status = "Saved on device — sync paused"
-            }
+            let revision = Int(Date.timeIntervalSinceReferenceDate * 1000)
+            guard try await appState.roundPersistence.keepLocalValue(userId: userId, conflictId: conflict.id, revision: revision) != nil else { return }
+            applyLocalRequest(conflict.local, holeNumber: conflict.holeNumber)
+            self.conflict = nil
+            let report = await appState.syncPending(trigger: .conflictResolution, roundId: draft.id)
+            report.savedHoles.forEach { applyServerHole($0) }
+            status = appState.roundSyncStatuses[draft.id] == .synced ? "Kept this device's value" : "Saved on device — will sync when online"
+            await loadPersistedConflict()
         } catch {
             errorMessage = "Could not save this input on the device."
             status = "Local save failed"
@@ -314,11 +268,10 @@ struct LiveRoundView: View {
 }
 
 struct ConflictState: Identifiable {
-    let id = UUID()
+    let id: UUID
     let holeNumber: Int
     let local: HoleUpsertRequest
     let server: Hole?
-    let pending: PendingHoleWrite
 }
 
 struct ConflictReviewView: View {
