@@ -6,3 +6,6 @@ appsettings.Development.json
 output/
 node_modules/
 .playwright-cli/
+**/xcuserdata/
+*.xcuserstate
+**/*.xcodeproj/project.xcworkspace/contents.xcworkspacedata

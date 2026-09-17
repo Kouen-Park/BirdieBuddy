@@ -14,14 +14,16 @@ Run the tests from Xcode or with:
 
 The script selects an available simulator from the newest installed iOS runtime instead of depending on one hard-coded iPhone model. Set `BIRDIEBUDDY_IOS_SIMULATOR_ID` to a simulator UDID to override the selection.
 
-The app restores its Keychain session at launch. An expired access token is refreshed once, the original request is retried once, and a second authentication failure signs the user out without retrying indefinitely. Network and transient server failures preserve the cached user so offline draft entry remains available.
+The app restores its Keychain session at launch. An expired access token is refreshed once, the original request is retried once, and a second authentication failure signs the user out without retrying indefinitely. Network and transient server failures preserve the cached user so offline draft entry remains available. Pending hole writes and conflicts live in SwiftData and synchronize from app lifecycle events, so reopening the live-round screen is not required after connectivity returns.
 
 ## Data rules
 
 - Access and refresh tokens are stored in Keychain, never UserDefaults.
-- Drafts and outbox entries are user- and round-scoped.
+- Drafts, outbox entries, and conflicts are user- and round-scoped in SwiftData.
 - A local write is acknowledged only after durable local storage succeeds.
 - A `409` is a review state, not a retryable network failure.
+- Logout preserves the signed-out user's local writes without exposing them to another account; successful account deletion removes that user's local records.
+- Retryable network/408/429/5xx failures remain queued, while other 4xx responses become an explicit action-required state.
 - The client uses UTC for server timestamps and the device calendar only for presentation.
 
-The native regression suite includes a mocked end-to-end journey covering course selection, 18 durable hole writes, process-style store recreation, ordered synchronization, acknowledgement, and round completion.
+The native regression suite includes migration and account-isolation coverage plus a mocked end-to-end journey covering course selection, 18 durable hole writes, process-style store recreation, ordered synchronization, acknowledgement, and round completion.

@@ -10,7 +10,7 @@
 
 ## Automated gates
 
-- GitHub Actions `ios-tests` succeeds with Xcode 26.6 on an iOS Simulator.
+- GitHub Actions `ios-tests` succeeds with Xcode 26.5 on an iOS Simulator.
 - The iOS test script dynamically selects the newest installed iPhone Simulator; do not pin CI to a model that may disappear from future Xcode images.
 - ASP.NET Core build, .NET tests, browser tests, PostgreSQL integration tests, and browser E2E remain green.
 - Release configuration archives with no signing, privacy-manifest, or asset-catalog warnings.
@@ -24,6 +24,19 @@
 - Switch accounts and confirm another user's draft is never displayed or synchronized.
 - Check iPhone SE-sized layout, safe areas, keyboard avoidance, Dynamic Type, and VoiceOver.
 - Test background/foreground transitions, low-power mode, and Wi-Fi/cellular switching.
+
+Record each physical-device run with the following fields before internal TestFlight:
+
+| Field | Required evidence |
+|---|---|
+| Build | Commit SHA, marketing version, build number, API environment |
+| Device | Model, iOS version, free storage, low-power mode state |
+| Round | Course/tee, 9 or 18 holes, start and completion time |
+| Connectivity | Offline start, Wi-Fi/cellular transition, reconnect result |
+| Lifecycle | Background duration, force-quit hole, restored pending count |
+| Accessibility | iPhone SE-sized layout, largest Dynamic Type, VoiceOver labels, keyboard avoidance |
+| Recovery | Reauthentication result, conflict choice tested, final sync status |
+| Outcome | Pass/fail, screenshots or screen recording, issue link, tester/date |
 
 ## App Store Connect
 

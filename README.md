@@ -191,7 +191,7 @@ npm run test:e2e:fixture
 ./scripts/test-ios.sh
 ```
 
-CI additionally runs PostgreSQL integration tests, full browser E2E, migration SQL generation, publish and Docker validation, and the SwiftUI test target on Xcode 26.6.
+CI additionally runs PostgreSQL integration tests, full browser E2E, migration SQL generation, publish and Docker validation, and the SwiftUI test target on Xcode 26.5.
 
 ## Repository map
 
@@ -210,12 +210,12 @@ CI additionally runs PostgreSQL integration tests, full browser E2E, migration S
 
 ## Roadmap
 
-### 1. Harden the native core — in progress
+### 1. Harden the native core — implemented, awaiting device gate
 
-- Move the file-backed round outbox to a fully modelled SwiftData or SQLite persistence layer.
-- Persist pending conflict review state across app termination.
-- Resume pending sync automatically after reauthentication and network recovery.
-- Expand XCTest coverage for concurrent refresh requests and account isolation.
+- SwiftData now persists user-scoped pending writes and conflict review state across app termination.
+- App-wide synchronization resumes after session restoration, reauthentication, network recovery, foreground entry, and live-round entry.
+- Retryable failures remain queued, conflicts pause only their round, and permanent client failures require explicit attention.
+- XCTest covers migration, revision de-duplication, account isolation/deletion, conflict restoration, network recovery, and permanent client errors.
 
 ### 2. Reach deliberate web parity
 
