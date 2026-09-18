@@ -29,6 +29,7 @@ async function startSession(button) {
     await Api.post('/practice/sessions', { focusCode: button.dataset.focus, drillTitle: button.dataset.title, minutes: Number(button.dataset.minutes) });
     await loadPractice();
   } catch (error) {
+    if (error.authRequired) return;
     showPracticeError(error.message);
     button.disabled = false;
   }
@@ -59,7 +60,7 @@ function showPracticeError(message) {
   practice.prepend(alert);
 }
 
-loadPractice().catch(error => { practice.innerHTML = `<div class="alert error">${escapeHtml(error.message)}</div>`; });
+loadPractice().catch(error => { if (!error.authRequired) practice.innerHTML = `<div class="alert error">${escapeHtml(error.message)}</div>`; });
 /* Legacy inline rendering removed: practice sessions are now persisted with each drill. */
 /*
 Api.get('/statistics/overview').then(data => {

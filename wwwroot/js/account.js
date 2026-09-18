@@ -12,6 +12,8 @@ Api.get('/auth/me').then(user => {
       catch (error) { show(error.message, 'error'); button.disabled = false; }
     });
   }
+}).catch(error => {
+  if (!error.authRequired) show(error.message, 'error');
 });
 document.getElementById('profile-form').addEventListener('submit', async event => { event.preventDefault(); try { await Api.put('/auth/profile', { displayName: document.getElementById('display-name').value }); show('Profile saved.'); } catch (error) { show(error.message, 'error'); } });
 document.getElementById('password-form').addEventListener('submit', async event => {
