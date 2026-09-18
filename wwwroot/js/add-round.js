@@ -22,6 +22,7 @@ async function init() {
       courseSelect.appendChild(opt);
     });
   } catch (err) {
+    if (err.authRequired) return;
     showAlert(`Couldn't load courses: ${err.message}`);
   }
 }
@@ -43,6 +44,7 @@ courseSelect.addEventListener('change', async () => {
     selectedCourse = await Api.get(`/courses/${courseSelect.value}`);
     populateTees(selectedCourse);
   } catch (err) {
+    if (err.authRequired) return;
     showAlert(`Couldn't load course details: ${err.message}`);
   }
 });

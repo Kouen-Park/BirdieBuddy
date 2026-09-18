@@ -9,6 +9,23 @@ function isPublicPagePath(pathname = window.location.pathname) {
     return isPublicBrowsePath(pathname) || AUTH_ENTRY_PATHS.has(pathname);
 }
 
+function renderLoginRequired() {
+    const main = document.querySelector('main');
+    if (!main || main.dataset.authRequired === 'true') return;
+
+    const returnUrl = `${window.location.pathname}${window.location.search}`;
+    const section = document.createElement('section');
+    section.className = 'card auth-required';
+    section.setAttribute('aria-labelledby', 'auth-required-title');
+    section.innerHTML = `
+      <span class="eyebrow">Members only</span>
+      <h2 id="auth-required-title">This service requires you to sign in.</h2>
+      <p>Sign in to access your rounds, statistics, practice plan and account details.</p>
+      <a class="btn btn-flag" href="/login.html?returnUrl=${encodeURIComponent(returnUrl)}">Sign in to continue</a>`;
+    main.replaceChildren(section);
+    main.dataset.authRequired = 'true';
+}
+
 // Thin fetch wrapper around the Birdie Buddy API. Every page script uses this
 // instead of calling fetch() directly so error handling stays in one place.
 const Api = {
@@ -41,9 +58,10 @@ const Api = {
         });
 
         if (res.status === 401 && !isPublicPagePath()) {
-            const returnUrl = `${window.location.pathname}${window.location.search}`;
-            window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
-            throw new Error('Authentication required.');
+            renderLoginRequired();
+            const error = new Error('Authentication required.');
+            error.authRequired = true;
+            throw error;
         }
 
         if (res.status === 204) return null;
@@ -193,8 +211,7 @@ async function hydrateCurrentUser() {
                 renderGuestAccount();
                 return;
             }
-            const returnUrl = `${window.location.pathname}${window.location.search}`;
-            window.location.replace(`/login.html?returnUrl=${encodeURIComponent(returnUrl)}`);
+            renderLoginRequired();
             return;
         }
         if (!response.ok) throw new Error('Account connection unavailable.');

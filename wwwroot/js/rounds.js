@@ -30,6 +30,7 @@ async function loadRounds(reset = false) {
     cursor = page.nextCursor;
     renderRows();
   } catch (error) {
+    if (error.authRequired) return;
     content.innerHTML = `<div class="alert error">${escapeHtml(error.message)}</div>`;
   } finally { content.removeAttribute('aria-busy'); }
 }

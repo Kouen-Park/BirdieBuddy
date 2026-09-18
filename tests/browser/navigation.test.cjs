@@ -84,3 +84,33 @@ test('the root path stays public and renders guest account actions', async () =>
   assert.match(account.innerHTML, /Create account/);
   assert.match(account.innerHTML, /Sign in/);
 });
+
+test('protected pages show a sign-in container instead of redirecting on 401', async () => {
+  const main = {
+    dataset: {},
+    replaceChildren(node) { this.child = node; }
+  };
+  const document = {
+    querySelector: selector => selector === 'main' ? main : null,
+    createElement: () => ({
+      className: '',
+      attrs: {},
+      setAttribute(key, value) { this.attrs[key] = value; }
+    })
+  };
+  const window = {
+    location: { pathname: '/statistics.html', search: '?courseId=4' }
+  };
+  const context = vm.createContext({
+    document,
+    window,
+    fetch: async () => ({ status: 401, ok: false })
+  });
+
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../../wwwroot/js/api.js'), 'utf8'), context);
+  await assert.rejects(vm.runInContext('Api.get("/statistics/overview")', context), error => error.authRequired === true);
+
+  assert.equal(main.dataset.authRequired, 'true');
+  assert.match(main.child.innerHTML, /This service requires you to sign in/);
+  assert.match(main.child.innerHTML, /\/login\.html\?returnUrl=/);
+});

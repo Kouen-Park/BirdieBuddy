@@ -46,6 +46,7 @@ async function loadOverview() {
     `;
   } catch (err) {
     if (request !== overviewRequest) return;
+    if (err.authRequired) return;
     overviewEl.innerHTML = `<div class="alert error">Couldn't load statistics: ${escapeHtml(err.message)}</div>`;
   }
 }
@@ -87,6 +88,7 @@ async function loadRoundOptions() {
     roundSelect.addEventListener('change', () => loadRoundBreakdown(roundSelect.value));
     loadRoundBreakdown(roundSelect.value);
   } catch (err) {
+    if (err.authRequired) return;
     breakdownEl.innerHTML = `<div class="alert error">Couldn't load rounds: ${escapeHtml(err.message)}</div>`;
   }
 }
@@ -113,6 +115,7 @@ async function loadRoundBreakdown(roundId) {
       </div>
     `;
   } catch (err) {
+    if (err.authRequired) return;
     breakdownEl.innerHTML = `<div class="alert error">Couldn't load this round's statistics: ${escapeHtml(err.message)}</div>`;
   }
 }
