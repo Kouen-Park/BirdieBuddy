@@ -77,6 +77,7 @@ async function loadRoundDetails() {
       editHole(round, round.holes.find(h => h.id === Number(button.dataset.editHole)));
     }));
   } catch (err) {
+    if (err.authRequired) return;
     content.innerHTML = `<div class="alert error">Couldn't load this round: ${escapeHtml(err.message)}</div>`;
   }
 }

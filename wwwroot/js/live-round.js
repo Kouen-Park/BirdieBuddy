@@ -82,6 +82,7 @@ async function init() {
     if (verified && params.get('new') !== '1') recordTelemetry('draft_resumed');
     await flushQueue();
   } catch (error) {
+    if (error.authRequired) return;
     renderPageError(error.message, init);
   }
 }
@@ -154,6 +155,7 @@ async function renderStart() {
     });
     document.getElementById('start-round-form').addEventListener('submit', startRound);
   } catch (error) {
+    if (error.authRequired) return;
     renderPageError(error.message, renderStart);
   }
 }

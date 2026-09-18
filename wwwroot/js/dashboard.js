@@ -78,6 +78,7 @@ async function loadDashboard() {
     }
     drawCharts(data);
   } catch (err) {
+    if (err.authRequired) return;
     el.innerHTML = `<div class="alert error">Couldn't load the dashboard: ${escapeHtml(err.message)}</div>`;
   }
 }
