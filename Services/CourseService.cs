@@ -35,8 +35,9 @@ public class CourseService : ICourseService
         if (query.Cursor.HasValue) courses = courses.Where(c => c.Id > query.Cursor.Value);
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            var search = query.Search.Trim();
-            courses = courses.Where(c => c.Name.Contains(search) || c.Location.Contains(search));
+            var search = query.Search.Trim().ToLowerInvariant();
+            courses = courses.Where(c =>
+                c.Name.ToLower().Contains(search) || c.Location.ToLower().Contains(search));
         }
 
         var items = await courses.OrderBy(c => c.Id).Take(limit + 1)
