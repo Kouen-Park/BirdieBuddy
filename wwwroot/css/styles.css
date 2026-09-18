@@ -1910,3 +1910,21 @@ tr.clickable {
         margin-top: 17px;
     }
 }
+
+/* ---------- Numeric alignment & heading balance ---------- */
+
+/* Align digits in score/stat columns so numbers line up cleanly. */
+.list-card table td,
+.stat-value,
+.trend-value,
+.practice-number,
+.pill {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Prevent lonely last-word "widows" on page and section headings. */
+.page-header h1,
+.section-title,
+.empty-state h3 {
+    text-wrap: balance;
+}

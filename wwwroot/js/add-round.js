@@ -9,6 +9,12 @@ const alertBox = document.getElementById('form-alert');
 
 let selectedCourse = null;
 let selectedTee = null;
+let isDirty = false;
+
+// Warn before leaving with an unsaved scorecard — add-round holds nothing until the POST.
+window.addEventListener('beforeunload', event => {
+  if (isDirty) { event.preventDefault(); event.returnValue = ''; }
+});
 
 dateInput.valueAsDate = new Date();
 
@@ -168,7 +174,7 @@ function renderScorecard(course, tee) {
     tbody.appendChild(row);
   });
 
-  tbody.addEventListener('input', updateRunningTotal);
+  tbody.addEventListener('input', () => { isDirty = true; updateRunningTotal(); });
   document.getElementById('save-btn').addEventListener('click', saveRound);
   updateRunningTotal();
 }
@@ -255,6 +261,7 @@ async function saveRound() {
   btn.textContent = 'Saving…';
   try {
     const round = await Api.post('/rounds', dto);
+    isDirty = false;
     location.href = `/round-details.html?id=${round.id}`;
   } catch (err) {
     showAlert(`Couldn't save the round: ${err.message}`);

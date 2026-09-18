@@ -7,6 +7,19 @@ const statsFilters = document.getElementById('stats-filters');
 let overviewRequest = 0;
 let teeRequest = 0;
 
+// Filter controls that round-trip through the URL query string.
+const STATS_FILTER_FIELDS = ['stats-course', 'stats-tee', 'stats-holes', 'stats-from', 'stats-to'];
+
+function statsSyncFiltersToUrl() {
+  const params = new URLSearchParams();
+  STATS_FILTER_FIELDS.forEach(id => {
+    const value = (document.getElementById(id).value || '').trim();
+    if (value) params.set(id, value);
+  });
+  const query = params.toString();
+  history.replaceState(null, '', query ? `?${query}` : location.pathname);
+}
+
 function overviewPath() {
   const params = new URLSearchParams();
   [['courseId', 'stats-course'], ['courseTeeId', 'stats-tee'], ['holeCount', 'stats-holes'], ['from', 'stats-from'], ['to', 'stats-to']].forEach(([key, id]) => {
@@ -127,26 +140,48 @@ function parCard(label, s) {
   return `<div class="card chart-card"><h3>${label}</h3>${body}</div>`;
 }
 
-loadOverview();
 loadRoundOptions();
-statsFilters.addEventListener('submit', event => { event.preventDefault(); loadOverview(); });
-Api.get('/courses').then(courses => {
-  const select = document.getElementById('stats-course');
-  courses.forEach(course => { const option = document.createElement('option'); option.value = course.id; option.textContent = course.name; select.append(option); });
-}).catch(error => { overviewEl.textContent = `Could not load course filters: ${error.message}`; });
+statsFilters.addEventListener('submit', event => { event.preventDefault(); statsSyncFiltersToUrl(); loadOverview(); });
 
-document.getElementById('stats-course').addEventListener('change', async event => {
+// Populate the tee dropdown for a course; returns once options are in place.
+async function populateTees(courseId) {
   const request = ++teeRequest;
   const select = document.getElementById('stats-tee');
   select.replaceChildren(new Option('All tees', ''));
   select.disabled = true;
-  if (!event.target.value) return;
+  if (!courseId) return;
   try {
-    const course = await Api.get(`/courses/${event.target.value}`);
+    const course = await Api.get(`/courses/${courseId}`);
     if (request !== teeRequest) return;
     course.tees.forEach(tee => select.append(new Option(tee.name, tee.id)));
     select.disabled = false;
   } catch (error) {
     if (request === teeRequest) overviewEl.textContent = `Could not load tees: ${error.message}`;
   }
-});
+}
+
+document.getElementById('stats-course').addEventListener('change', event => populateTees(event.target.value));
+
+// Restore filters from the URL after courses (and dependent tees) are available,
+// then load the overview so a bookmarked/shared/refreshed view keeps its filters.
+Api.get('/courses')
+  .then(courses => {
+    const select = document.getElementById('stats-course');
+    courses.forEach(course => { const option = document.createElement('option'); option.value = course.id; option.textContent = course.name; select.append(option); });
+  })
+  .catch(error => { overviewEl.textContent = `Could not load course filters: ${error.message}`; })
+  .finally(async () => {
+    const params = new URLSearchParams(location.search);
+    ['stats-holes', 'stats-from', 'stats-to'].forEach(id => {
+      const value = params.get(id);
+      if (value !== null) document.getElementById(id).value = value;
+    });
+    const courseId = params.get('stats-course');
+    if (courseId !== null) {
+      document.getElementById('stats-course').value = courseId;
+      await populateTees(courseId);
+      const teeId = params.get('stats-tee');
+      if (teeId !== null) document.getElementById('stats-tee').value = teeId;
+    }
+    loadOverview();
+  });
