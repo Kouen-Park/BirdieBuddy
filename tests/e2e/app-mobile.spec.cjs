@@ -15,7 +15,7 @@ test('lets a guest browse the home page and course catalogue', async ({ page }) 
 
   await page.getByRole('link', { name: 'Explore courses' }).click();
   await expect(page).toHaveURL(/\/courses\.html$/);
-  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
   await expect(page.getByLabel('Find a course')).toBeVisible();
 });
 
@@ -53,6 +53,8 @@ test('registers, starts, resumes, and completes a full round', async ({ page }) 
   expect(created.status).toBe(201);
 
   await page.goto('/live-round.html');
+  await page.getByLabel('Find a course').fill(courseName);
+  await expect(page.locator('#live-course option', { hasText: courseName })).toBeVisible();
   await page.locator('#live-course').selectOption(String(created.body.id));
   await expect(page.locator('#live-tee')).toBeEnabled();
   await page.locator('#live-tee').selectOption({ index: 0 });
