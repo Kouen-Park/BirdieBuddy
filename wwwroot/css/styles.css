@@ -142,6 +142,9 @@
 .auth-required { max-width: 680px; margin: 8vh auto; padding: clamp(28px, 6vw, 56px); border-left: 5px solid var(--sun); }
 .auth-required h2 { margin: 10px 0 12px; color: var(--ink-950); font: 600 clamp(28px, 5vw, 46px)/1 var(--font-display); letter-spacing: -.05em; }
 .auth-required p { max-width: 52ch; margin: 0 0 24px; color: var(--ink-500); font-size: 16px; line-height: 1.6; }
+.auth-required-wrap { display: grid; gap: 18px; }
+.auth-required-wrap .auth-required { max-width: none; margin: 0; }
+.member-demo { pointer-events: none; }
 @media (max-width: 600px) { .guest-preview-grid { grid-template-columns: 1fr; } }
 .space-top { margin-top: 14px; }
 .custom-tee-input { margin-top: 8px; }

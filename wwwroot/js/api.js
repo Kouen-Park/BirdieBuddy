@@ -13,16 +13,41 @@ function renderLoginRequired() {
     const main = document.querySelector('main');
     if (!main || main.dataset.authRequired === 'true') return;
 
+    const previews = {
+        '/rounds.html': {
+            title: 'Your rounds, all in one place.',
+            description: 'Sign in to save rounds and revisit every scorecard.',
+            demo: '<div class="card list-card member-demo"><table><caption>Example round history</caption><thead><tr><th>Date</th><th class="text-cell">Course</th><th>Score</th><th>To par</th></tr></thead><tbody><tr><td>18 Sep 2026</td><td class="text-cell">Kauri Cliffs</td><td>84</td><td><span class="pill">+12</span></td></tr><tr><td>07 Sep 2026</td><td class="text-cell">Titirangi</td><td>78</td><td><span class="pill">+6</span></td></tr></tbody></table></div>'
+        },
+        '/statistics.html': {
+            title: 'See how your game is moving.',
+            description: 'Sign in to unlock your averages, trends and round breakdowns.',
+            demo: '<div class="stat-grid member-demo"><div class="card stat-card"><div class="stat-label">Completed rounds</div><div class="stat-value">12</div></div><div class="card stat-card"><div class="stat-label">Putts per hole</div><div class="stat-value">1.82</div></div><div class="card stat-card"><div class="stat-label">Average GIR %</div><div class="stat-value">42%</div></div></div>'
+        },
+        '/practice.html': {
+            title: 'Build a practice plan around your game.',
+            description: 'Sign in to see tailored practice priorities and keep a record of your drills.',
+            demo: '<div class="card practice-item member-demo"><span class="eyebrow">Example practice priority</span><h2>Turn good drives into lower scores</h2><p>Use your recent rounds to find the next small improvement.</p><strong>Practice plan and progress tracking unlock after sign in.</strong></div>'
+        }
+    };
+    const preview = previews[window.location.pathname] || {
+        title: 'This service requires you to sign in.',
+        description: 'Sign in to access this service.',
+        demo: ''
+    };
     const returnUrl = `${window.location.pathname}${window.location.search}`;
     const section = document.createElement('section');
-    section.className = 'card auth-required';
-    section.setAttribute('aria-labelledby', 'auth-required-title');
-    section.innerHTML = `
+    section.className = 'auth-required-wrap';
+    section.innerHTML = `<div class="card auth-required" aria-labelledby="auth-required-title">
       <span class="eyebrow">Members only</span>
-      <h2 id="auth-required-title">This service requires you to sign in.</h2>
-      <p>Sign in to access your rounds, statistics, practice plan and account details.</p>
-      <a class="btn btn-flag" href="/login.html?returnUrl=${encodeURIComponent(returnUrl)}">Sign in to continue</a>`;
-    main.replaceChildren(section);
+      <h2 id="auth-required-title">${preview.title}</h2>
+      <p>${preview.description}</p>
+      <a class="btn btn-flag" href="/login.html?returnUrl=${encodeURIComponent(returnUrl)}">Sign in to continue</a>
+    </div>${preview.demo}`;
+    Array.from(main.children).forEach(child => {
+        if (!child.classList.contains('page-header')) child.remove();
+    });
+    main.append(section);
     main.dataset.authRequired = 'true';
 }
 
@@ -120,7 +145,7 @@ function renderNav(active) {
             label: 'Rounds',
             key: 'rounds',
             icon: '↗',
-            requiresAuth: true
+            requiresAuth: false
         },
         {
             href: '/live-round.html',
@@ -140,14 +165,14 @@ function renderNav(active) {
             label: 'Statistics',
             key: 'statistics',
             icon: '◒',
-            requiresAuth: true
+            requiresAuth: false
         },
         {
             href: '/practice.html',
             label: 'Practice',
             key: 'practice',
             icon: '✧',
-            requiresAuth: true
+            requiresAuth: false
         },
         {
             href: '/account.html',
