@@ -54,7 +54,7 @@ test('registers, starts, resumes, and completes a full round', async ({ page }) 
 
   await page.goto('/live-round.html');
   await page.getByLabel('Find a course').fill(courseName);
-  await expect(page.locator('#live-course option', { hasText: courseName })).toBeVisible();
+  await expect(page.locator('#live-course option', { hasText: courseName })).toHaveCount(1);
   await page.locator('#live-course').selectOption(String(created.body.id));
   await expect(page.locator('#live-tee')).toBeEnabled();
   await page.locator('#live-tee').selectOption({ index: 0 });
