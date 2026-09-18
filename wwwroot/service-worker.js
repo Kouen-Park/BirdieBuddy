@@ -7,7 +7,7 @@ const SHELL = [
   '/round-details.html',
   '/css/styles.css?v=20260909-records',
   '/css/styles.css?v=20260908-local-assets',
-  '/js/api.js?v=20260918-guest-label',
+  '/js/api.js?v=20260918-member-preview',
   '/js/live-store.js?v=20260903-rail3',
   '/js/live-round.js?v=20260903-rail3',
   '/vendor/fonts/outfit-400.ttf',
