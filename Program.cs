@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using System.Security.Cryptography;
 using BirdieBuddy.Infrastructure;
+using BirdieBuddy.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.ValidateDeploymentConfiguration();
@@ -136,8 +138,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Apply pending schema migrations on startup. The large Golf NZ data import is
-// intentionally manual so the Render health check is not blocked by data loading.
+// Apply pending schema migrations and import Golf NZ data on startup. The
+// advisory lock prevents multiple Render instances from importing concurrently.
 if (!app.Configuration.GetValue("EF_DESIGNTIME", false) &&
     app.Configuration.GetValue("Database:ApplyMigrationsOnStartup", true))
 {
@@ -151,6 +153,38 @@ if (!app.Configuration.GetValue("EF_DESIGNTIME", false) &&
     try
     {
         await context.Database.MigrateAsync();
+
+        if (app.Configuration.GetValue("Database:ImportGolfNzOnStartup", true))
+        {
+            var dataPath = Path.Combine(app.Environment.ContentRootPath, "scripts", "golf_nz_courses.json");
+            if (!File.Exists(dataPath))
+                dataPath = Path.Combine(app.Environment.ContentRootPath, "scripts", "golf_nz_course.json");
+            if (!File.Exists(dataPath))
+                throw new FileNotFoundException("Golf NZ data file was not found.", dataPath);
+
+            var sourceVersion = $"sha256:{Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(dataPath))).ToLowerInvariant()}";
+            var alreadyImported = await context.GolfNzImportRuns.AnyAsync(run =>
+                run.Status == GolfNzImportStatus.Completed && run.SourceVersion == sourceVersion);
+            if (!alreadyImported)
+            {
+                var run = new GolfNzImportRun { StartedAt = DateTime.UtcNow, SourceVersion = sourceVersion };
+                context.GolfNzImportRuns.Add(run);
+                await context.SaveChangesAsync();
+                try
+                {
+                    var importer = scope.ServiceProvider.GetRequiredService<IGolfNzCourseImporter>();
+                    await importer.ImportAsync(run.Id);
+                }
+                catch (Exception exception)
+                {
+                    run.Status = GolfNzImportStatus.Failed;
+                    run.CompletedAt = DateTime.UtcNow;
+                    run.ErrorMessage = exception.Message;
+                    await context.SaveChangesAsync();
+                    throw;
+                }
+            }
+        }
     }
     finally
     {
