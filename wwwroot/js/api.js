@@ -235,11 +235,11 @@ async function hydrateCurrentUser() {
     try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
         if (response.status === 401) {
-            if (isPublicBrowsePath()) {
-                renderGuestAccount();
-                return;
-            }
-            renderLoginRequired();
+            // Guests get the guest sidebar on every page; non-public pages also
+            // show the in-body login prompt. This keeps the account block from
+            // being stuck on "Loading…" when a guest previews a gated page.
+            renderGuestAccount();
+            if (!isPublicBrowsePath()) renderLoginRequired();
             return;
         }
         if (!response.ok) throw new Error('Account connection unavailable.');
