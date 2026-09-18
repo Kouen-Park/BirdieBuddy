@@ -145,6 +145,10 @@
 .auth-required-wrap { display: grid; gap: 18px; }
 .auth-required-wrap .auth-required { max-width: none; margin: 0; }
 .member-demo { pointer-events: none; }
+.member-demo > .eyebrow { display: block; margin: 4px 0 10px; }
+.practice-preview { padding: clamp(24px, 4vw, 36px); }
+.practice-preview h2 { margin: 8px 0; font: 600 25px var(--font-display); }
+.practice-preview p { color: var(--ink-500); }
 @media (max-width: 600px) { .guest-preview-grid { grid-template-columns: 1fr; } }
 .space-top { margin-top: 14px; }
 .custom-tee-input { margin-top: 8px; }

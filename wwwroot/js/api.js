@@ -22,12 +22,12 @@ function renderLoginRequired() {
         '/statistics.html': {
             title: 'See how your game is moving.',
             description: 'Sign in to unlock your averages, trends and round breakdowns.',
-            demo: '<div class="stat-grid member-demo"><div class="card stat-card"><div class="stat-label">Completed rounds</div><div class="stat-value">12</div></div><div class="card stat-card"><div class="stat-label">Putts per hole</div><div class="stat-value">1.82</div></div><div class="card stat-card"><div class="stat-label">Average GIR %</div><div class="stat-value">42%</div></div></div>'
+            demo: '<div class="member-demo"><span class="eyebrow">Example</span><div class="stat-grid"><div class="card stat-card"><div class="stat-label">Completed rounds</div><div class="stat-value">12</div></div><div class="card stat-card"><div class="stat-label">Putts per hole</div><div class="stat-value">1.82</div></div><div class="card stat-card"><div class="stat-label">Average GIR %</div><div class="stat-value">42%</div></div></div></div>'
         },
         '/practice.html': {
             title: 'Build a practice plan around your game.',
             description: 'Sign in to see tailored practice priorities and keep a record of your drills.',
-            demo: '<div class="card practice-item member-demo"><span class="eyebrow">Example practice priority</span><h2>Turn good drives into lower scores</h2><p>Use your recent rounds to find the next small improvement.</p><strong>Practice plan and progress tracking unlock after sign in.</strong></div>'
+            demo: '<div class="card member-demo practice-preview"><span class="eyebrow">Example practice priority</span><h2>Turn good drives into lower scores</h2><p>Use recent rounds to find the next small improvement.</p><strong>Practice plan and progress tracking unlock after sign in.</strong></div>'
         }
     };
     const preview = previews[window.location.pathname] || {
