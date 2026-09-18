@@ -44,10 +44,8 @@ function renderLoginRequired() {
       <p>${preview.description}</p>
       <a class="btn btn-flag" href="/login.html?returnUrl=${encodeURIComponent(returnUrl)}">Sign in to continue</a>
     </div>${preview.demo}`;
-    Array.from(main.children).forEach(child => {
-        if (!child.classList.contains('page-header')) child.remove();
-    });
-    main.append(section);
+    const pageHeader = Array.from(main.children || []).find(child => child.classList?.contains('page-header'));
+    main.replaceChildren(...(pageHeader ? [pageHeader, section] : [section]));
     main.dataset.authRequired = 'true';
 }
 

@@ -111,6 +111,6 @@ test('protected pages show a sign-in container instead of redirecting on 401', a
   await assert.rejects(vm.runInContext('Api.get("/statistics/overview")', context), error => error.authRequired === true);
 
   assert.equal(main.dataset.authRequired, 'true');
-  assert.match(main.child.innerHTML, /This service requires you to sign in/);
+  assert.match(main.child.innerHTML, /See how your game is moving/);
   assert.match(main.child.innerHTML, /\/login\.html\?returnUrl=/);
 });
