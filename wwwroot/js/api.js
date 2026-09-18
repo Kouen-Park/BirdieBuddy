@@ -216,8 +216,8 @@ function renderNav(active) {
     </ul>
 
     <div class="sidebar-account" id="sidebar-account">
-      <div class="account-label">Signed in as</div>
-      <div class="account-name" id="current-user-name">Loading…</div>
+      <div class="account-label">Exploring as guest</div>
+      <div class="account-name" id="current-user-name">Guest</div>
       <button class="logout-button" id="logout-button" type="button">Log out</button>
     </div>
 
@@ -237,11 +237,8 @@ async function hydrateCurrentUser() {
     try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
         if (response.status === 401) {
-            if (isPublicBrowsePath()) {
-                renderGuestAccount();
-                return;
-            }
             renderLoginRequired();
+            renderGuestAccount();
             return;
         }
         if (!response.ok) throw new Error('Account connection unavailable.');

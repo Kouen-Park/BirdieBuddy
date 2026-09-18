@@ -463,6 +463,11 @@ select:focus-visible {
     font-size: 15px;
 }
 
+.practice-page-header p {
+    max-width: 960px;
+    line-height: 1.6;
+}
+
 /* ---------- Mobile navigation ---------- */
 
 .mobile-header {
