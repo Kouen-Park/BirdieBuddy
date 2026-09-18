@@ -8,28 +8,6 @@ let nextCursor = null;
 let requestId = 0;
 let searchTimer = null;
 
-function renderCoursesLoginRequired() {
-  const returnUrl = `${window.location.pathname}${window.location.search}`;
-  list.innerHTML = `
-    <div class="card auth-required course-auth-required" role="status" aria-labelledby="courses-auth-title">
-      <span class="eyebrow">Members only</span>
-      <h2 id="courses-auth-title">Sign in to view available courses.</h2>
-      <p>Sign in to choose a course when adding a round.</p>
-      <a class="btn btn-flag" href="/login.html?returnUrl=${encodeURIComponent(returnUrl)}">Sign in to continue</a>
-    </div>`;
-  loadMore.hidden = true;
-}
-
-async function requireCourseLogin() {
-  const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
-  if (response.status === 401) {
-    renderCoursesLoginRequired();
-    return false;
-  }
-  if (!response.ok) throw new Error('Account connection unavailable.');
-  return true;
-}
-
 function renderCourses() {
   const query = search.value.trim();
   if (!courses.length) {
@@ -49,7 +27,6 @@ async function loadCourses(reset = true) {
   }
   loadMore.disabled = true;
   try {
-    if (!(await requireCourseLogin())) return;
     const params = new URLSearchParams({ limit: '50' });
     if (search.value.trim()) params.set('search', search.value.trim());
     if (!reset && nextCursor) params.set('cursor', nextCursor);

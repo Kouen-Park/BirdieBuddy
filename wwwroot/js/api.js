@@ -119,13 +119,15 @@ function renderNav(active) {
             href: '/rounds.html',
             label: 'Rounds',
             key: 'rounds',
-            icon: '↗'
+            icon: '↗',
+            requiresAuth: true
         },
         {
             href: '/live-round.html',
             label: 'Start Round',
             key: 'add-round',
-            icon: '+'
+            icon: '+',
+            requiresAuth: true
         },
         {
             href: '/courses.html',
@@ -137,19 +139,22 @@ function renderNav(active) {
             href: '/statistics.html',
             label: 'Statistics',
             key: 'statistics',
-            icon: '◒'
+            icon: '◒',
+            requiresAuth: true
         },
         {
             href: '/practice.html',
             label: 'Practice',
             key: 'practice',
-            icon: '✧'
+            icon: '✧',
+            requiresAuth: true
         },
         {
             href: '/account.html',
             label: 'Account',
             key: 'account',
-            icon: '•'
+            icon: '•',
+            requiresAuth: true
         }
     ];
 
@@ -173,7 +178,7 @@ function renderNav(active) {
 
     <ul class="nav-list">
       ${items.map(item => `
-        <li>
+        <li${item.requiresAuth ? ' hidden data-requires-auth="true"' : ''}>
             <a
               href="${item.href}"
               class="${item.key === active ? 'active' : ''}"
@@ -217,6 +222,7 @@ async function hydrateCurrentUser() {
         if (!response.ok) throw new Error('Account connection unavailable.');
 
         const user = await response.json();
+        document.querySelectorAll('[data-requires-auth="true"]').forEach(item => { item.hidden = false; });
         const name = document.getElementById('current-user-name');
         if (name) name.textContent = user.displayName || user.email;
 
