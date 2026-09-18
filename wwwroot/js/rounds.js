@@ -5,6 +5,32 @@ const filters = document.getElementById('round-filters');
 let cursor = null;
 let rows = [];
 
+// Filter controls that should round-trip through the URL query string.
+const FILTER_FIELDS = ['filter-search', 'filter-course', 'filter-status', 'filter-holes', 'filter-from', 'filter-to'];
+
+// Restore filter values from the URL so a bookmarked/shared/refreshed view keeps its filters.
+function restoreFiltersFromUrl() {
+  const params = new URLSearchParams(location.search);
+  FILTER_FIELDS.forEach(id => {
+    const value = params.get(id);
+    if (value !== null) {
+      const el = document.getElementById(id);
+      if (el) el.value = value;
+    }
+  });
+}
+
+// Write the current filter values into the URL without adding a history entry per keystroke.
+function syncFiltersToUrl() {
+  const params = new URLSearchParams();
+  FILTER_FIELDS.forEach(id => {
+    const value = (document.getElementById(id).value || '').trim();
+    if (value) params.set(id, value);
+  });
+  const query = params.toString();
+  history.replaceState(null, '', query ? `?${query}` : location.pathname);
+}
+
 function queryString() {
   const values = {
     limit: 20,
@@ -58,9 +84,17 @@ function statusChip(status) {
   return '';
 }
 
-filters.addEventListener('submit', event => { event.preventDefault(); loadRounds(true); });
-Api.get('/courses').then(courses => {
-  const select = document.getElementById('filter-course');
-  courses.forEach(course => { const option = document.createElement('option'); option.value = course.id; option.textContent = course.name; select.append(option); });
-});
-loadRounds(true);
+filters.addEventListener('submit', event => { event.preventDefault(); syncFiltersToUrl(); loadRounds(true); });
+
+// Load course options first so a course filter carried in the URL can be restored
+// before the initial request is built (queryString reads the current DOM values).
+Api.get('/courses')
+  .then(courses => {
+    const select = document.getElementById('filter-course');
+    courses.forEach(course => { const option = document.createElement('option'); option.value = course.id; option.textContent = course.name; select.append(option); });
+  })
+  .catch(() => { /* filters still work without the course dropdown populated */ })
+  .finally(() => {
+    restoreFiltersFromUrl();
+    loadRounds(true);
+  });

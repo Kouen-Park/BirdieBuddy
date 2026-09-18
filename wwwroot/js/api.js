@@ -195,7 +195,7 @@ function renderNav(active) {
     </button>
 
     <div class="brand">
-      <span class="brand-mark">&#9873;</span>
+      <span class="brand-mark" aria-hidden="true">&#9873;</span>
       Birdie Buddy
     </div>
 
@@ -214,9 +214,9 @@ function renderNav(active) {
     </ul>
 
     <div class="sidebar-account" id="sidebar-account">
-      <div class="account-label">Signed in as</div>
+      <div class="account-label" id="account-label" hidden>Signed in as</div>
       <div class="account-name" id="current-user-name">Loading…</div>
-      <button class="logout-button" id="logout-button" type="button">Log out</button>
+      <button class="logout-button" id="logout-button" type="button" hidden>Log out</button>
     </div>
 
     <div class="sidebar-footer">
@@ -246,10 +246,13 @@ async function hydrateCurrentUser() {
 
         const user = await response.json();
         document.querySelectorAll('[data-requires-auth="true"]').forEach(item => { item.hidden = false; });
+        const label = document.getElementById('account-label');
+        if (label) label.hidden = false;
         const name = document.getElementById('current-user-name');
         if (name) name.textContent = user.displayName || user.email;
 
         const logoutButton = document.getElementById('logout-button');
+        if (logoutButton) logoutButton.hidden = false;
         logoutButton?.addEventListener('click', async () => {
             logoutButton.disabled = true;
             await Api.post('/auth/logout', {});
@@ -302,7 +305,7 @@ function setupMobileNavigation() {
       </button>
 
       <div class="mobile-brand">
-        <span class="brand-mark">&#9873;</span>
+        <span class="brand-mark" aria-hidden="true">&#9873;</span>
         Birdie Buddy
       </div>
     `;
