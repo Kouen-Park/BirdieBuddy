@@ -14,6 +14,7 @@
 
 - GitHub Actions `ios-tests` succeeds with Xcode 26.5 on an iOS Simulator.
 - The iOS test script dynamically selects the newest installed iPhone Simulator; do not pin CI to a model that may disappear from future Xcode images.
+- `scripts/test-ios.sh` retries `xcodebuild test` once on a runner-class exit status (69, 70, 74) after rebooting the simulator, because GitHub-hosted macOS runners intermittently fail to bring up the XCTest daemon. A build error or failing test (65) is never retried, and a retried run logs a CI warning so the flake stays visible. Set `BIRDIEBUDDY_IOS_TEST_ATTEMPTS=1` to disable the retry when investigating.
 - ASP.NET Core build, .NET tests, browser tests, PostgreSQL integration tests, and browser E2E remain green.
 - Release configuration archives with no signing, privacy-manifest, or asset-catalog warnings.
 
