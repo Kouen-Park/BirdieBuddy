@@ -156,12 +156,21 @@
 .filter-card { padding: 16px; }
 .round-filter { max-width: 320px; }
 .round-breakdown { margin-top: 16px; }
-.round-filters { display: grid; grid-template-columns: 1.4fr repeat(4, minmax(120px, 1fr)) auto; align-items: end; gap: 12px; margin-bottom: 20px; padding: 16px; }
-.round-filters .btn { min-height: 44px; }
-.filter-search { min-width: 14rem; }
-.load-more { display: block; margin: 18px auto 0; }
-.stats-filters { display: grid; grid-template-columns: 1.4fr repeat(3, minmax(120px,1fr)) auto; align-items: end; gap: 12px; margin-bottom: 22px; padding: 16px; }
+/* Derive the column count from the space available instead of declaring a fixed
+   one. The old `1.4fr repeat(4, minmax(120px, 1fr)) auto` demanded a minimum row
+   width that exceeded the card on every phone and on 601-900px, and because the
+   document is `overflow-x: clip` the overflowing controls could not be scrolled
+   to at all. `min(100%, 11rem)` keeps a track from ever exceeding the container,
+   so the row wraps instead of overflowing; 11rem leaves room for the ~167px
+   intrinsic width of input[type='date']. */
+.round-filters,
+.stats-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); align-items: end; gap: 12px; padding: 16px; }
+.round-filters { margin-bottom: 20px; }
+.stats-filters { margin-bottom: 22px; }
+.round-filters .btn,
 .stats-filters .btn { min-height: 44px; }
+.filter-search { min-width: 0; }
+.load-more { display: block; margin: 18px auto 0; }
 .trend-card { margin-top: 1rem; }
 .trend-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
 .trend-value { display: block; font: 700 1.35rem var(--font-mono, monospace); color: var(--ink, #102523); margin-top: .3rem; }
@@ -196,7 +205,14 @@ table caption { padding: 12px 18px; color: var(--ink-500); text-align: left; fon
 .danger-zone h2 { color: var(--bad); }
 .btn-danger { background: var(--bad); color: white; }
 .btn-danger:hover { background: #a93e37; }
-.forgot-password-link { justify-self: end; color: var(--fairway-dark); font-weight: 600; }
+.forgot-password-link {
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+    min-height: 44px;
+    color: var(--fairway-dark);
+    font-weight: 600;
+}
 .verification-prompt { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 @media (max-width: 600px) { .verification-prompt { align-items: stretch; flex-direction: column; } }
 
@@ -206,12 +222,7 @@ table caption { padding: 12px 18px; color: var(--ink-500); text-align: left; fon
   .practice-item { grid-template-columns: 44px 1fr; gap: 12px; }
   .practice-number { font-size: 22px; }
   .account-grid { grid-template-columns: 1fr; }
-  .round-filters { grid-template-columns: 1fr 1fr; }
-  .round-filters .field:first-child { grid-column: 1 / -1; }
-  .stats-filters { grid-template-columns: 1fr 1fr; }
-  .stats-filters .field:first-child { grid-column: 1 / -1; }
   .trend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .filter-search { min-width: 0; }
 }
 
 * {
@@ -1012,10 +1023,11 @@ table caption { text-align: left; padding: 16px; }
     text-transform: uppercase;
 }
 
+/* Match on "is a text-entry control" rather than an allow-list of types: the
+   allow-list missed email, password and type-less inputs, which then rendered at
+   30px instead of the 48px touch target. */
 .field select,
-.field input[type='date'],
-.field input[type='text'],
-.field input[type='search'] {
+.field input:not([type='checkbox']):not([type='radio']):not([type='hidden']) {
     width: 100%;
     min-height: 48px;
     padding: 11px 14px;
@@ -1029,22 +1041,18 @@ table caption { text-align: left; padding: 16px; }
 }
 
 .field select:hover,
-.field input[type='date']:hover,
-.field input[type='text']:hover,
-.field input[type='search']:hover {
+.field input:not([type='checkbox']):not([type='radio']):not([type='hidden']):hover {
     border-color: var(--fairway);
 }
 
 .field select:focus,
-.field input[type='date']:focus,
-.field input[type='text']:focus,
-.field input[type='search']:focus {
+.field input:not([type='checkbox']):not([type='radio']):not([type='hidden']):focus {
     border-color: var(--fairway);
     background: #fff;
     box-shadow: 0 0 0 4px rgba(44, 113, 104, 0.12);
 }
 
-.field input[type='search']::placeholder { color: var(--ink-500); opacity: 1; }
+.field input::placeholder { color: var(--ink-500); opacity: 1; }
 
 #custom-tee-input {
     display: none;
@@ -1280,8 +1288,10 @@ table caption { text-align: left; padding: 16px; }
         width: min(294px, 88vw);
         height: 100dvh;
         min-height: 0;
-        padding-bottom: max(24px, env(safe-area-inset-bottom));
         padding: 30px 18px 24px;
+        /* Must follow the shorthand, or the shorthand resets it back to 24px and
+           the drawer's bottom action sits under the iPhone home indicator. */
+        padding-bottom: max(24px, env(safe-area-inset-bottom));
         z-index: 1100;
         box-shadow: 12px 0 30px rgba(4, 27, 23, 0.24);
         transform: translateX(-100%);
@@ -1857,6 +1867,16 @@ tr.clickable {
 .auth-browse a:hover {
     color: var(--fairway-dark);
     text-decoration-color: currentColor;
+}
+
+/* Inline auth links sat at 18-30px tall. Give each its own 44px target without
+   changing the surrounding paragraph's flow. */
+.auth-switch a,
+.auth-browse a,
+.auth-brand {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
 }
 
 .auth-error {
