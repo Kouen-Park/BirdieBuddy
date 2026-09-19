@@ -113,8 +113,31 @@ actor APIClient {
         try await send(path: "/api/rounds", method: "GET", body: Optional<EmptyBody>.none, authenticated: true)
     }
 
-    func statistics() async throws -> OverviewStatistics {
-        try await send(path: "/api/statistics/overview", method: "GET", body: Optional<EmptyBody>.none, authenticated: true)
+    /// Cursor-paged rounds. `cursor` is the `nextCursor` from the previous page.
+    func roundsPage(cursor: Int?, limit: Int = 20, filter: RoundFilter = .none) async throws -> RoundPage {
+        var items = filter.queryItems
+        items.append(URLQueryItem(name: "limit", value: "\(limit)"))
+        if let cursor { items.append(URLQueryItem(name: "cursor", value: "\(cursor)")) }
+        return try await send(path: Self.path("/api/rounds/page", items), method: "GET",
+            body: Optional<EmptyBody>.none, authenticated: true)
+    }
+
+    func statistics(filter: RoundFilter = .none) async throws -> OverviewStatistics {
+        try await send(path: Self.path("/api/statistics/overview", filter.queryItems), method: "GET",
+            body: Optional<EmptyBody>.none, authenticated: true)
+    }
+
+    func roundStatistics(roundId: Int) async throws -> RoundStatistics {
+        try await send(path: "/api/statistics/round/\(roundId)", method: "GET",
+            body: Optional<EmptyBody>.none, authenticated: true)
+    }
+
+    /// Appends a query string, leaving the path unchanged when there is nothing to add.
+    private static func path(_ base: String, _ items: [URLQueryItem]) -> String {
+        guard !items.isEmpty else { return base }
+        var components = URLComponents()
+        components.queryItems = items
+        return base + "?" + (components.percentEncodedQuery ?? "")
     }
 
     func updateProfile(displayName: String) async throws -> CurrentUser {

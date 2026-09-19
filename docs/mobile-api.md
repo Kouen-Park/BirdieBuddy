@@ -81,9 +81,18 @@ The existing endpoints are used for feature data:
 |---|---|
 | Courses | `GET /api/courses`, `GET /api/courses/page`, `GET /api/courses/{id}`, `POST /api/courses`, `PUT /api/courses/{id}`, `DELETE /api/courses/{id}` |
 | Rounds | `GET/POST /api/rounds`, `POST /api/rounds/drafts`, `PUT /api/rounds/{id}/holes/{holeNumber}`, `POST /api/rounds/{id}/complete`, `POST /api/rounds/{id}/abandon`, `PUT /api/rounds/{id}`, `DELETE /api/rounds/{id}` |
-| Statistics | `GET /api/statistics/overview`, `GET /api/statistics/rounds/{roundId}` |
+| Statistics | `GET /api/statistics/overview`, `GET /api/statistics/round/{roundId}` |
 | Practice | `GET/POST /api/practice/sessions`, `POST /api/practice/sessions/{id}/complete` |
 | Account | Existing `/api/auth/me`, `/api/auth/profile`, `/api/auth/change-password`, `/api/auth/forgot-password`, `/api/auth/reset-password`, `/api/auth/send-verification`, `/api/auth/verify-email`, `/api/auth/export`, and `/api/auth/delete-account` |
+
+### Paging and filters
+
+`GET /api/rounds/page` and `GET /api/statistics/overview` accept the same filter
+query parameters: `courseId`, `from`, `to` (both `yyyy-MM-dd`), `holeCount` (9 or
+18), and `courseTeeId`. The round page additionally takes `limit` (1-100) and
+`cursor`, and answers `{ "items": [...], "nextCursor": <int|null> }`. A null
+`nextCursor` means the last page. `holeCount` outside 9 or 18, or `from` after
+`to`, is rejected with `400 statistics.invalid_filter`.
 
 ### Course ownership
 
