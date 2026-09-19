@@ -23,7 +23,7 @@ public class CourseService : ICourseService
         return await _context.Courses
             .Where(c => c.UserId == null || c.UserId == CurrentUserId)
             .OrderBy(c => c.Name)
-            .Select(c => new CourseSummaryDto(c.Id, c.Name, c.Location))
+            .Select(c => new CourseSummaryDto(c.Id, c.Name, c.Location, c.UserId != null))
             .ToListAsync();
     }
 
@@ -41,7 +41,7 @@ public class CourseService : ICourseService
         }
 
         var items = await courses.OrderBy(c => c.Id).Take(limit + 1)
-            .Select(c => new CourseSummaryDto(c.Id, c.Name, c.Location)).ToListAsync();
+            .Select(c => new CourseSummaryDto(c.Id, c.Name, c.Location, c.UserId != null)).ToListAsync();
         var hasMore = items.Count > limit;
         if (hasMore) items.RemoveAt(items.Count - 1);
         return new CoursePageDto(items, hasMore ? items[^1].Id : null);
@@ -135,7 +135,8 @@ public class CourseService : ICourseService
         // Keep the old flat Holes property populated with the first tee for
         // clients that have not yet adopted the CourseTee response.
         var firstHoles = tees.FirstOrDefault()?.Holes ?? new List<CourseHoleDto>();
-        return new CourseDto(course.Id, course.GolfNzClubId, course.Name, course.Location, tees, firstHoles);
+        return new CourseDto(course.Id, course.GolfNzClubId, course.Name, course.Location, tees, firstHoles,
+            course.UserId != null);
     }
 
     private static CourseTeeDto MapToTeeDto(CourseTee tee)

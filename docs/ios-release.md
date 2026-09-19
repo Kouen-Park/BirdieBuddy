@@ -3,9 +3,11 @@
 ## Project and signing
 
 - Open `ios/BirdieBuddyApp.xcodeproj` in Xcode 16 or later.
-- Select an Apple Developer Team for the `BirdieBuddyApp` target.
+- Put the Apple Developer Team ID in `ios/Signing.xcconfig` (`DEVELOPMENT_TEAM = …`). Both app build configurations read that file, so it is the only place to set it. Simulator builds and CI work with it empty.
 - Confirm or replace the bundle identifier `com.birdiebuddy.mobile` before the first App Store Connect record is created.
 - Verify the Release target's `API_BASE_URL` build setting points to the intended production HTTPS origin. Release configuration rejects HTTP and localhost endpoints; use a scheme environment override only for deliberate staging builds.
+- The app target is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`). Declaring iPad would require an iPad layout pass and iPad screenshots in App Store Connect.
+- Debug builds use `BirdieBuddyApp/Info-Debug.plist`, which holds the `NSAllowsLocalNetworking` exception for `http://localhost:5000`. Release builds use `BirdieBuddyApp/Info.plist`, which must stay free of App Transport Security exceptions. Add new keys to both files.
 - Increment `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` for each submitted build.
 
 ## Automated gates
@@ -17,12 +19,15 @@
 
 ## Physical iPhone gates
 
+- Create a brand-new account from the app's Create account screen and play a round on it.
 - Complete an 18-hole round with Wi-Fi disabled and intermittent cellular service.
 - Kill and relaunch during a draft; verify the outbox remains user- and round-scoped.
 - Let the access token expire during offline entry; verify the draft survives and synchronizes after reauthentication.
 - Create a server conflict and verify both “Use server value” and “Keep my value”.
 - Switch accounts and confirm another user's draft is never displayed or synchronized.
 - Check iPhone SE-sized layout, safe areas, keyboard avoidance, Dynamic Type, and VoiceOver.
+- Switch the device language to Korean and confirm every screen reads correctly; untranslated runtime error text is a known gap.
+- After any crash, confirm the Account screen's Diagnostics section lists a report on the next launch and that it can be shared.
 - Test background/foreground transitions, low-power mode, and Wi-Fi/cellular switching.
 
 Record each physical-device run with the following fields before internal TestFlight:
@@ -49,6 +54,7 @@ Record each physical-device run with the following fields before internal TestFl
 
 ## Operational release gate
 
+- The production API runs on an always-on instance. A plan that sleeps when idle is disqualifying: the first request of a round would time out on the tee.
 - Production SMTP verification/reset delivery succeeds.
 - Database backup restore rehearsal succeeds.
 - Readiness health check and external monitoring are active.

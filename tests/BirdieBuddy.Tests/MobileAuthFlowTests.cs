@@ -40,4 +40,35 @@ public sealed class MobileAuthFlowTests
         Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/mobile/auth/revoke", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/rounds")).StatusCode);
     }
+
+    [Fact]
+    public async Task MobileRegistrationIssuesTokensAndBearerWritesSkipAntiforgery()
+    {
+        await using var app = new BirdieBuddyApplicationFactory();
+        using var client = app.CreateClient();
+
+        var credentials = new { email = "mobile-signup@example.test", displayName = "Signup Golfer", password = "BirdiePass123" };
+        var registration = await client.PostAsJsonAsync("/api/mobile/auth/register", credentials);
+        Assert.Equal(HttpStatusCode.OK, registration.StatusCode);
+        var session = await registration.Content.ReadFromJsonAsync<JsonElement>();
+        var access = session.GetProperty("accessToken").GetString()!;
+        Assert.False(string.IsNullOrWhiteSpace(session.GetProperty("refreshToken").GetString()));
+        Assert.Equal("Signup Golfer", session.GetProperty("user").GetProperty("displayName").GetString());
+
+        // A bearer credential is never ambient, so an unsafe mobile request must not need
+        // an antiforgery token. Without this the whole native write path returns 400.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", access);
+        var profile = await client.PutAsJsonAsync("/api/auth/profile", new { displayName = "Renamed Golfer" });
+        Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
+
+        // A cookie-authenticated browser request still must present one.
+        using var browser = app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = true });
+        var csrf = await browser.GetFromJsonAsync<JsonElement>("/api/security/csrf");
+        browser.DefaultRequestHeaders.Add("X-CSRF-TOKEN", csrf.GetProperty("token").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await browser.PostAsJsonAsync("/api/auth/login",
+            new { email = credentials.email, password = credentials.password })).StatusCode);
+        browser.DefaultRequestHeaders.Remove("X-CSRF-TOKEN");
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await browser.PutAsJsonAsync("/api/auth/profile", new { displayName = "Forged Golfer" })).StatusCode);
+    }
 }

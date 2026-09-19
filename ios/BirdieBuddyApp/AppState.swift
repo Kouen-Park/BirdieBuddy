@@ -100,6 +100,20 @@ final class AppState: ObservableObject {
         catch { errorMessage = Self.message(for: error) }
     }
 
+    /// Returns the outcome so the caller can show the verification notice instead of
+    /// silently appearing to do nothing when the deployment requires a verified email.
+    func signUp(email: String, displayName: String, password: String) async -> RegistrationOutcome? {
+        errorMessage = nil
+        do {
+            let outcome = try await api.signUp(email: email, displayName: displayName, password: password)
+            if case .signedIn(let newUser) = outcome { user = newUser }
+            return outcome
+        } catch {
+            errorMessage = Self.message(for: error)
+            return nil
+        }
+    }
+
     func signOut() async {
         await api.signOut()
         user = nil
@@ -132,6 +146,62 @@ final class AppState: ObservableObject {
     func updateProfile(displayName: String) async -> Bool {
         do { user = try await api.updateProfile(displayName: displayName); return true }
         catch { errorMessage = Self.message(for: error); return false }
+    }
+
+    /// The server ends the session on success, so this signs the golfer out
+    /// locally too rather than leaving a token that will fail on next use.
+    func changePassword(currentPassword: String, newPassword: String) async -> Bool {
+        errorMessage = nil
+        do {
+            try await api.changePassword(currentPassword: currentPassword, newPassword: newPassword)
+            user = nil
+            roundSyncStatuses = [:]
+            return true
+        } catch {
+            errorMessage = Self.message(for: error)
+            return false
+        }
+    }
+
+    func sendVerificationEmail() async -> Bool {
+        do { try await api.sendVerificationEmail(); return true }
+        catch { errorMessage = Self.message(for: error); return false }
+    }
+
+    func verifyEmail(token: String) async -> Bool {
+        do {
+            try await api.verifyEmail(token: token)
+            if isSignedIn { await refreshUser() }
+            return true
+        } catch {
+            errorMessage = Self.message(for: error)
+            return false
+        }
+    }
+
+    func refreshUser() async {
+        guard isSignedIn else { return }
+        if let refreshed = try? await api.refreshCurrentUser() { user = refreshed }
+    }
+
+    /// Refuses while the round still has unsynchronized local writes: deleting it
+    /// server-side would leave those writes queued against a round that is gone.
+    func deleteRound(id: Int) async -> Bool {
+        errorMessage = nil
+        guard let userId = user?.id else { return false }
+        do {
+            let pending = try await roundPersistence.pending(userId: userId, roundId: id)
+            guard pending.isEmpty else {
+                errorMessage = "Sync this round's saved changes before deleting it."
+                return false
+            }
+            try await api.deleteRound(id: id)
+            roundSyncStatuses.removeValue(forKey: id)
+            return true
+        } catch {
+            errorMessage = Self.message(for: error)
+            return false
+        }
     }
 
     private func loadCoursesSilently() async {

@@ -5,6 +5,7 @@ struct CourseBrowserView: View {
     @State private var courses: [CourseSummary] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var isAddingCourse = false
 
     var body: some View {
         NavigationStack {
@@ -21,8 +22,12 @@ struct CourseBrowserView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(course.name).font(.headline)
                                 Text(course.location).font(.subheadline).foregroundStyle(.secondary)
+                                if course.isCustom {
+                                    Text("My course").font(.caption).foregroundStyle(.secondary)
+                                }
                             }
                             .padding(.vertical, 4)
+                            .accessibilityElement(children: .combine)
                         }
                     }
                     .navigationDestination(for: CourseSummary.self) { course in
@@ -32,8 +37,21 @@ struct CourseBrowserView: View {
             }
             .navigationTitle("Courses")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Sign out") { Task { await appState.signOut() } }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isAddingCourse = true
+                    } label: {
+                        Label("Add course", systemImage: "plus")
+                    }
+                    .accessibilityLabel("Add a custom course")
+                }
+            }
+            .sheet(isPresented: $isAddingCourse) {
+                CourseFormView(mode: .create) {
+                    Task { await loadCourses() }
                 }
             }
             .refreshable { await loadCourses() }

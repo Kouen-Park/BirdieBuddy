@@ -11,7 +11,10 @@ public static class ControllerRegistration
         // afterwards to remain the final value.
         var mvc = services.AddControllersWithViews(options =>
         {
-            options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+            // Browser cookie sessions still require the antiforgery token; requests
+            // authenticated by a mobile bearer token are exempt because that credential
+            // is never sent ambiently. See MobileAwareAntiforgeryFilter.
+            options.Filters.Add<MobileAwareAntiforgeryFilter>();
             options.Filters.Add(new AntiforgeryProblemDetailsFilter());
         });
 

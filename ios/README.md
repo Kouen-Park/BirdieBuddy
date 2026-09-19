@@ -1,6 +1,25 @@
 # BirdieBuddy iOS client
 
-The native client targets SwiftUI and consumes the additive mobile API described in [`../docs/mobile-api.md`](../docs/mobile-api.md). The current slice covers authentication, course browsing, draft creation, live hole entry, completion, local outbox sync/conflict review, round history/detail, overview statistics, practice sessions, profile editing, password reset request, data export, account deletion, and sign out. Production release work remains.
+The native client targets SwiftUI and consumes the additive mobile API described in [`../docs/mobile-api.md`](../docs/mobile-api.md). The current slice covers account creation, authentication, password change, email verification, password reset, course browsing, custom course create/edit/delete, draft creation, live hole entry, completion, local outbox sync/conflict review, round history/detail, round date/tee editing and deletion, overview statistics, practice sessions, profile editing, data export, account deletion, on-device crash diagnostics, and sign out. Production release work remains.
+
+## Deep links
+
+The app registers the `birdiebuddy` URL scheme and handles two links:
+
+- `birdiebuddy://verify-email?token=…`
+- `birdiebuddy://reset-password?token=…`
+
+Account emails currently point at the web pages (`verify-email.html`,
+`reset-password.html`) built from `Application:PublicBaseUrl`. Routing those
+emails to the app instead needs Universal Links, which require an
+`apple-app-site-association` file served from the API domain.
+
+## Configuration layout
+
+- `ios/Signing.xcconfig` holds `DEVELOPMENT_TEAM` for both app configurations. It is the only place to set the Apple Developer Team ID.
+- `BirdieBuddyApp/Info-Debug.plist` is the Debug property list and carries the `NSAllowsLocalNetworking` exception for `http://localhost:5000`. `BirdieBuddyApp/Info.plist` is the Release one and must stay free of App Transport Security exceptions. Add new keys to both.
+- The app target is iPhone-only. Adding iPad means committing to an iPad layout and iPad App Store screenshots.
+- `BirdieBuddyApp/Localizable.xcstrings` carries English source strings and Korean translations. SwiftUI string literals are localization keys, so adding UI text means adding a catalog entry. Error text produced at runtime as a `String` is not localized yet.
 
 ## Xcode setup
 
