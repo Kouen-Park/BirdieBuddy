@@ -2,49 +2,125 @@ import SwiftUI
 
 struct RoundHistoryView: View {
     @EnvironmentObject private var appState: AppState
+
     @State private var rounds: [RoundSummary] = []
+    @State private var courses: [CourseSummary] = []
+    @State private var selection = RoundFilterSelection()
+    @State private var nextCursor: Int?
+    @State private var hasMore = true
+    @State private var isLoadingPage = false
+    @State private var isReloading = false
     @State private var errorMessage: String?
-    @State private var isLoading = true
+
+    private static let pageSize = 20
 
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading { ProgressView("Loading rounds…") }
-                else if let errorMessage { ContentUnavailableView("Could not load rounds", systemImage: "wifi.exclamationmark", description: Text(errorMessage)) }
-                else if rounds.isEmpty { ContentUnavailableView("No completed rounds", systemImage: "flag") }
-                else {
-                    List(rounds) { round in
-                        NavigationLink {
-                            RoundDetailView(round: round)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(round.courseName).font(.headline)
-                                Text("\(round.date) · \(round.holesPlayed)/\(round.expectedHoles) holes · \(round.tee)")
-                                    .font(.subheadline).foregroundStyle(.secondary)
-                                Text("\(round.totalScore) (\(round.scoreToPar >= 0 ? "+" : "")\(round.scoreToPar))")
-                                    .font(.title3.bold())
-                                if let syncStatus = appState.roundSyncStatuses[round.id], syncStatus != .synced {
-                                    Label(syncStatus.label, systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
-                                        .font(.caption)
-                                        .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
-                                }
+            List {
+                Section("Filters") {
+                    RoundFilterControls(selection: $selection, courses: courses, isUpdating: isReloading)
+                }
+
+                if let errorMessage {
+                    Section {
+                        ContentUnavailableView("Could not load rounds", systemImage: "wifi.exclamationmark",
+                                               description: Text(errorMessage))
+                    }
+                } else if rounds.isEmpty && !isLoadingPage && !isReloading {
+                    Section {
+                        ContentUnavailableView(
+                            selection.asFilter.isActive ? "No rounds match these filters" : "No completed rounds",
+                            systemImage: "flag")
+                    }
+                } else {
+                    Section {
+                        ForEach(rounds) { round in
+                            NavigationLink {
+                                RoundDetailView(round: round)
+                            } label: {
+                                row(round)
                             }
-                            .padding(.vertical, 4)
-                            .accessibilityElement(children: .combine)
+                            .onAppear {
+                                // The last row coming into view is the paging trigger.
+                                if round.id == rounds.last?.id { Task { await loadNextPage() } }
+                            }
                         }
+                        if isLoadingPage {
+                            HStack {
+                                ProgressView().controlSize(.small)
+                                Text("Loading more…").foregroundStyle(.secondary)
+                            }
+                        }
+                    } header: {
+                        Text(hasMore ? "Rounds" : "Rounds (all loaded)")
                     }
                 }
             }
             .navigationTitle("Rounds")
-            .refreshable { await load() }
-            .task { await load(); await appState.refreshSyncStatuses() }
+            .refreshable { await reload() }
+            .task {
+                if courses.isEmpty { courses = (try? await appState.api.courses()) ?? [] }
+                if rounds.isEmpty { await reload() }
+                await appState.refreshSyncStatuses()
+            }
+            .onChange(of: selection) { _, _ in Task { await reload() } }
         }
     }
 
-    private func load() async {
-        isLoading = rounds.isEmpty; errorMessage = nil
-        do { rounds = try await appState.api.rounds() }
-        catch { errorMessage = AppState.message(for: error) }
-        isLoading = false
+    private func row(_ round: RoundSummary) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(round.courseName).font(.headline)
+            Text("\(round.date) · \(round.holesPlayed)/\(round.expectedHoles) holes · \(round.tee)")
+                .font(.subheadline).foregroundStyle(.secondary)
+            Text("\(round.totalScore) (\(StatisticsView.signedInt(round.scoreToPar)))")
+                .font(.title3.bold())
+            if let syncStatus = appState.roundSyncStatuses[round.id], syncStatus != .synced {
+                Label(syncStatus.label,
+                      systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
+                    .font(.caption)
+                    .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Paging
+
+    private func reload() async {
+        isReloading = true
+        errorMessage = nil
+        nextCursor = nil
+        hasMore = true
+        do {
+            let page = try await appState.api.roundsPage(cursor: nil, limit: Self.pageSize, filter: selection.asFilter)
+            rounds = page.items
+            nextCursor = page.nextCursor
+            hasMore = page.nextCursor != nil
+        } catch {
+            errorMessage = AppState.message(for: error)
+            rounds = []
+            hasMore = false
+        }
+        isReloading = false
+        await appState.refreshSyncStatuses()
+    }
+
+    private func loadNextPage() async {
+        guard hasMore, !isLoadingPage, !isReloading, let cursor = nextCursor else { return }
+        isLoadingPage = true
+        do {
+            let page = try await appState.api.roundsPage(cursor: cursor, limit: Self.pageSize, filter: selection.asFilter)
+            // Guard against a duplicate append if the trigger fires twice.
+            let existing = Set(rounds.map(\.id))
+            rounds.append(contentsOf: page.items.filter { !existing.contains($0.id) })
+            nextCursor = page.nextCursor
+            hasMore = page.nextCursor != nil
+        } catch {
+            // A failed page must not wipe the rounds already on screen.
+            errorMessage = AppState.message(for: error)
+            hasMore = false
+        }
+        isLoadingPage = false
     }
 }

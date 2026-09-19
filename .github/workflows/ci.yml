@@ -1,7 +1,20 @@
 name: CI
+
+# A branch with an open pull request used to run this workflow twice — once for
+# `push` and once for `pull_request` — producing eight checks where four are
+# meaningful and doubling exposure to runner flakiness. Feature branches are
+# covered by the pull_request event; push only guards the default branch.
 on:
   push:
+    branches: [master]
   pull_request:
+
+# Supersede an in-flight run when new commits arrive, except on master, where
+# every merge deserves its own recorded result.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
   postgres-integration:
     runs-on: ubuntu-latest

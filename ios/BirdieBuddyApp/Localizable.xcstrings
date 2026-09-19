@@ -1,6 +1,105 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "1 year" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "1년" } } }
+    },
+    "18 holes" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "18홀" } } }
+    },
+    "30 days" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "30일" } } }
+    },
+    "9 holes" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "9홀" } } }
+    },
+    "9 holes vs 18 holes" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "9홀 vs 18홀" } } }
+    },
+    "90 days" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "90일" } } }
+    },
+    "All" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체" } } }
+    },
+    "All time" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "전체 기간" } } }
+    },
+    "Back nine" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "후반 9홀" } } }
+    },
+    "By par type" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "파별 성적" } } }
+    },
+    "Edit" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "수정" } } }
+    },
+    "Fairways hit" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "페어웨이 안착률" } } }
+    },
+    "Filters" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "필터" } } }
+    },
+    "Front nine" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "전반 9홀" } } }
+    },
+    "GIR %" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "GIR %" } } }
+    },
+    "Last 10 to par" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "최근 10라운드 파 대비" } } }
+    },
+    "Last 5 to par" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "최근 5라운드 파 대비" } } }
+    },
+    "Loading more…" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "더 불러오는 중…" } } }
+    },
+    "No holes played" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "플레이한 홀 없음" } } }
+    },
+    "No rounds match these filters" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "필터에 맞는 라운드가 없습니다" } } }
+    },
+    "Par 3" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "파3" } } }
+    },
+    "Par 4" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "파4" } } }
+    },
+    "Par 5" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "파5" } } }
+    },
+    "Penalties" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "벌타" } } }
+    },
+    "Period" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "기간" } } }
+    },
+    "Putts per hole" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "홀당 퍼팅" } } }
+    },
+    "Round length" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "라운드 길이" } } }
+    },
+    "Rounds (all loaded)" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "라운드 (전체 불러옴)" } } }
+    },
+    "Score spread" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "스코어 분포" } } }
+    },
+    "Summary" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "라운드 요약" } } }
+    },
+    "Total" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "합계" } } }
+    },
+    "Trends" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "추세" } } }
+    },
+    "What to work on" : {
+      "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "개선할 부분" } } }
+    },
     "A course used by a recorded round cannot be deleted." : {
       "localizations" : { "ko" : { "stringUnit" : { "state" : "translated", "value" : "기록된 라운드가 사용 중인 코스는 삭제할 수 없습니다." } } }
     },
