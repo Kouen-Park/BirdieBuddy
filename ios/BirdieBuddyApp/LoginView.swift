@@ -24,8 +24,10 @@ struct LoginView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.emailAddress)
+                        .accessibilityLabel("Email address")
                     SecureField("Password", text: $password)
                         .textContentType(.password)
+                        .accessibilityLabel("Password")
                 }
 
                 if let errorMessage = appState.errorMessage {
@@ -50,6 +52,17 @@ struct LoginView: View {
                         }
                     }
                     .disabled(isSubmitting || email.isEmpty || password.isEmpty)
+                    .accessibilityLabel("Sign in")
+                }
+
+                Section {
+                    NavigationLink {
+                        SignUpView()
+                    } label: {
+                        Text("New here? Create an account")
+                    }
+                    .disabled(isSubmitting)
+                    .accessibilityLabel("Create an account")
                 }
             }
             .navigationTitle("Welcome back")

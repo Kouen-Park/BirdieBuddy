@@ -1,0 +1,12 @@
+// Signing configuration for the BirdieBuddyApp target.
+//
+// Put your Apple Developer Team ID on the line below — the 10-character string shown
+// in the Apple Developer portal under Membership details, e.g. DEVELOPMENT_TEAM = A1B2C3D4E5.
+// Archiving, TestFlight upload, and running on a physical iPhone all require it.
+// Simulator builds and CI do not, so leaving it empty keeps `scripts/test-ios.sh` green.
+//
+// Keep it here rather than in project.pbxproj: one line to change, and no team
+// identifier scattered through the project file.
+
+DEVELOPMENT_TEAM =
+CODE_SIGN_STYLE = Automatic

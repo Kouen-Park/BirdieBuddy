@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Release Info.plist. It deliberately carries no NSAppTransportSecurity exception:
-  Release builds must reach the API over HTTPS. The Debug counterpart is
-  Info-Debug.plist, which is selected by the Debug configuration's INFOPLIST_FILE.
-  Keep the two files in step when adding a key.
+  Debug Info.plist. Identical to Info.plist except for the App Transport Security
+  exception that allows the local development server on http://localhost:5000.
+  That exception must never ship, so it lives only here.
 -->
 <plist version="1.0">
 <dict>
@@ -42,6 +41,11 @@
             </array>
         </dict>
     </array>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+    </dict>
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>

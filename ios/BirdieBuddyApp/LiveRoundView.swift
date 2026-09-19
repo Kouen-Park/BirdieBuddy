@@ -74,30 +74,43 @@ struct LiveRoundView: View {
         Form {
             Section {
                 Text("Hole \(holeNumber) of \(draft.expectedHoles)").font(.title2.bold())
+                    .accessibilityAddTraits(.isHeader)
                 if syncStatus != .synced {
                     Label(syncStatus.label, systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
                         .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
+                        .accessibilityLabel("Sync state: \(syncStatus.label)")
                 }
-                Text(status).foregroundStyle(.secondary)
+                Text(LocalizedStringKey(status)).foregroundStyle(.secondary)
+                    .accessibilityLabel(status.isEmpty ? "No save status yet" : "Save status: \(status)")
             }
             Section("Score") {
                 Stepper("Score: \(score)", value: $score, in: 1...20)
+                    .accessibilityLabel("Score")
+                    .accessibilityValue("\(score) strokes")
                 Stepper("Putts: \(putts)", value: $putts, in: 0...10)
+                    .accessibilityLabel("Putts")
+                    .accessibilityValue("\(putts)")
                 Toggle("Green in regulation", isOn: $gir)
                 Toggle("Fairway hit", isOn: $fairway)
                 Stepper("Penalty: \(penalty)", value: $penalty, in: 0...20)
+                    .accessibilityLabel("Penalty strokes")
+                    .accessibilityValue("\(penalty)")
             }
             if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
             Section {
                 Button(isSaving ? "Saving…" : "Save hole") { Task { await saveHole() } }
                     .disabled(isSaving || conflict != nil)
+                    .accessibilityLabel("Save hole \(holeNumber)")
+                    .accessibilityHint("Saves on this device first, then syncs when online")
                 HStack {
                     Button("Previous") { move(-1) }.disabled(holeIndex == 0 || isSaving || conflict != nil)
+                        .accessibilityLabel("Previous hole")
                     Spacer()
                     Button(holeNumber == draft.expectedHoles ? "Finish round" : "Next hole") {
                         Task { await advance() }
                     }
                     .disabled(isSaving || conflict != nil)
+                    .accessibilityLabel(holeNumber == draft.expectedHoles ? "Finish round" : "Save and go to hole \(holeNumber + 1)")
                 }
             }
         }
@@ -296,7 +309,9 @@ struct ConflictReviewView: View {
                     LabeledContent("GIR", value: conflict.server?.gir == true ? "Yes" : "No")
                 }
                 Button("Use server value", action: onUseServer)
+                    .accessibilityLabel("Use the server value for hole \(conflict.holeNumber)")
                 Button("Keep my value", action: onKeepLocal)
+                    .accessibilityLabel("Keep this device's value for hole \(conflict.holeNumber)")
             }
             .navigationTitle("Resolve conflict")
         }

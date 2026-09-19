@@ -4,6 +4,28 @@ This is the initial contract for the SwiftUI client. It is additive: browser coo
 
 ## Authentication
 
+### `POST /api/mobile/auth/register`
+
+Request:
+
+```json
+{"email":"golfer@example.com","displayName":"Test Golfer","password":"BirdiePass123"}
+```
+
+The password must be 8-128 characters and contain at least one letter and one digit; the
+display name must be 2-80 characters.
+
+Response `200` is a session with the same shape as `POST /api/mobile/auth/session`, so a
+new account is signed in without a second request. When the deployment sets
+`Authentication:RequireVerifiedEmail`, the response is `202` and carries no tokens:
+
+```json
+{"requiresEmailVerification":true,"email":"golfer@example.com"}
+```
+
+A verification email is sent in both cases. A duplicate address returns the usual
+`problem+json` error rather than a session.
+
 ### `POST /api/mobile/auth/session`
 
 Request:
@@ -44,15 +66,41 @@ Requires `Authorization: Bearer <accessToken>`. Invalidates all active mobile to
 
 Send the access token in the `Authorization` header. The native client should refresh once on `401`, retry the original idempotent or revision-guarded request once, and then transition to signed-out if refresh fails.
 
+### Antiforgery
+
+A mobile client sends **no** `X-CSRF-TOKEN` header. Unsafe requests (`POST`, `PUT`,
+`PATCH`, `DELETE`) authenticated by a valid mobile access token are exempt from
+antiforgery validation, because a bearer credential is never attached ambiently by a
+browser and therefore cannot be forged from another origin. Browser cookie sessions are
+unaffected and still require the token — see `Infrastructure/MobileAwareAntiforgeryFilter.cs`.
+A request with no valid bearer token is treated as a browser request and still needs one.
+
 The existing endpoints are used for feature data:
 
 | Capability | Routes |
 |---|---|
-| Courses | `GET /api/courses`, `GET /api/courses/page`, `GET /api/courses/{id}` |
-| Rounds | `GET/POST /api/rounds`, `POST /api/rounds/drafts`, `PUT /api/rounds/{id}/holes/{holeNumber}`, `POST /api/rounds/{id}/complete`, `POST /api/rounds/{id}/abandon` |
+| Courses | `GET /api/courses`, `GET /api/courses/page`, `GET /api/courses/{id}`, `POST /api/courses`, `PUT /api/courses/{id}`, `DELETE /api/courses/{id}` |
+| Rounds | `GET/POST /api/rounds`, `POST /api/rounds/drafts`, `PUT /api/rounds/{id}/holes/{holeNumber}`, `POST /api/rounds/{id}/complete`, `POST /api/rounds/{id}/abandon`, `PUT /api/rounds/{id}`, `DELETE /api/rounds/{id}` |
 | Statistics | `GET /api/statistics/overview`, `GET /api/statistics/rounds/{roundId}` |
 | Practice | `GET/POST /api/practice/sessions`, `POST /api/practice/sessions/{id}/complete` |
-| Account | Existing `/api/auth/profile`, `/api/auth/change-password`, `/api/auth/export`, and `/api/auth/delete-account` |
+| Account | Existing `/api/auth/me`, `/api/auth/profile`, `/api/auth/change-password`, `/api/auth/forgot-password`, `/api/auth/reset-password`, `/api/auth/send-verification`, `/api/auth/verify-email`, `/api/auth/export`, and `/api/auth/delete-account` |
+
+### Course ownership
+
+`CourseSummaryDto` and `CourseDto` carry a `custom` boolean: `true` for a course
+this user created, `false` for a shared imported course. Only a custom course can
+be updated or deleted — the service scopes both by owner — so a client must use
+this field rather than offering an action the server will refuse with `404`.
+
+A custom course requires exactly 18 holes with unique numbers 1-18 on creation.
+`PUT /api/courses/{id}` accepts name and location only; there is no endpoint to
+add or edit tees, so imported tee data cannot be modified from a client.
+
+### Password change
+
+`POST /api/auth/change-password` ends the caller's session on success. A mobile
+client must discard its stored tokens and sign in again with the new password
+rather than reusing the access token it already holds.
 
 ## Error contract
 

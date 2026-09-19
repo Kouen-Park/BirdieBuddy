@@ -48,6 +48,26 @@ actor APIClient {
         return result.user
     }
 
+    func signUp(email: String, displayName: String, password: String) async throws -> RegistrationOutcome {
+        let (data, response) = try await perform(
+            path: "/api/mobile/auth/register",
+            method: "POST",
+            body: MobileRegistrationRequest(email: email, displayName: displayName, password: password),
+            authenticated: false)
+        guard (200..<300).contains(response.statusCode) else { throw try decodeProblem(data) }
+
+        // A deployment that requires email verification answers 202 without tokens.
+        if let pending = try? JSONDecoder.birdieBuddy.decode(PendingVerification.self, from: data),
+           pending.requiresEmailVerification {
+            return .verificationRequired(email: pending.email)
+        }
+
+        let result = try JSONDecoder.birdieBuddy.decode(MobileSession.self, from: data)
+        try keychain.save(result)
+        session = result
+        return .signedIn(result.user)
+    }
+
     func signOut() async {
         _ = try? await sendEmpty(path: "/api/mobile/auth/revoke", method: "POST")
         await invalidateSession(notify: false)
@@ -61,9 +81,20 @@ actor APIClient {
         try await send(path: "/api/courses/\(id)", method: "GET", body: Optional<EmptyBody>.none, authenticated: false)
     }
 
+    /// The server's `DateOnly` wire format. UTC-independent: a round's date is a
+    /// calendar day, not an instant.
+    static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
     func startDraft(courseId: Int, teeId: Int?, date: Date = .now) async throws -> RoundDraft {
-        let formatter = DateFormatter(); formatter.calendar = Calendar(identifier: .gregorian); formatter.dateFormat = "yyyy-MM-dd"
-        return try await send(path: "/api/rounds/drafts", method: "POST", body: RoundStartRequest(courseId: courseId, date: formatter.string(from: date), courseTeeId: teeId, tee: nil), authenticated: true)
+        try await send(path: "/api/rounds/drafts", method: "POST",
+            body: RoundStartRequest(courseId: courseId, date: Self.dayFormatter.string(from: date), courseTeeId: teeId, tee: nil),
+            authenticated: true)
     }
 
     func round(id: Int) async throws -> RoundDetail {
@@ -102,8 +133,80 @@ actor APIClient {
         try await send(path: "/api/practice/sessions/\(id)/complete", method: "POST", body: PracticeCompletionRequest(result: result, notes: notes), authenticated: true)
     }
 
-    func requestPasswordReset() async throws {
-        try await sendEmpty(path: "/api/auth/forgot-password", method: "POST", body: PasswordResetRequest(email: session?.user.email ?? ""), authenticated: false)
+    func requestPasswordReset(email: String? = nil) async throws {
+        let address = email ?? session?.user.email ?? ""
+        try await sendEmpty(path: "/api/auth/forgot-password", method: "POST",
+            body: PasswordResetRequest(email: address), authenticated: false)
+    }
+
+    /// Completes a reset from an emailed token. Anonymous: the token is the proof.
+    func resetPassword(token: String, newPassword: String) async throws {
+        try await sendEmpty(path: "/api/auth/reset-password", method: "POST",
+            body: ResetPasswordRequest(token: token, newPassword: newPassword), authenticated: false)
+    }
+
+    /// A successful change invalidates the server-side session, so the local
+    /// tokens are dropped and the golfer signs in again with the new password.
+    func changePassword(currentPassword: String, newPassword: String) async throws {
+        try await sendEmpty(path: "/api/auth/change-password", method: "POST",
+            body: ChangePasswordRequest(currentPassword: currentPassword, newPassword: newPassword),
+            authenticated: true)
+        await invalidateSession(notify: false)
+    }
+
+    func sendVerificationEmail() async throws {
+        try await sendEmpty(path: "/api/auth/send-verification", method: "POST")
+    }
+
+    func verifyEmail(token: String) async throws {
+        try await sendEmpty(path: "/api/auth/verify-email", method: "POST",
+            body: VerifyEmailRequest(token: token), authenticated: false)
+    }
+
+    /// Re-reads the profile and persists it, so a freshly verified email is
+    /// reflected without making the golfer sign out and back in.
+    func refreshCurrentUser() async throws -> CurrentUser {
+        let user: CurrentUser = try await send(path: "/api/auth/me", method: "GET",
+            body: Optional<EmptyBody>.none, authenticated: true)
+        if let current = session {
+            let updated = MobileSession(
+                accessToken: current.accessToken,
+                refreshToken: current.refreshToken,
+                accessTokenExpiresAt: current.accessTokenExpiresAt,
+                refreshTokenExpiresAt: current.refreshTokenExpiresAt,
+                user: user)
+            try keychain.save(updated)
+            session = updated
+        }
+        return user
+    }
+
+    func createCourse(name: String, location: String, holes: [CourseHoleCreateRequest]) async throws -> CourseDetail {
+        try await send(path: "/api/courses", method: "POST",
+            body: CourseCreateRequest(name: name, location: location, holes: holes), authenticated: true)
+    }
+
+    func updateCourse(id: Int, name: String, location: String) async throws {
+        try await sendEmpty(path: "/api/courses/\(id)", method: "PUT",
+            body: CourseUpdateRequest(name: name, location: location), authenticated: true)
+    }
+
+    func deleteCourse(id: Int) async throws {
+        try await sendEmpty(path: "/api/courses/\(id)", method: "DELETE")
+    }
+
+    func updateRound(id: Int, date: Date, courseTeeId: Int?, tee: String?, expectedUpdatedAt: Date?) async throws {
+        try await sendEmpty(path: "/api/rounds/\(id)", method: "PUT",
+            body: RoundUpdateRequest(
+                date: Self.dayFormatter.string(from: date),
+                courseTeeId: courseTeeId,
+                tee: tee,
+                expectedUpdatedAt: expectedUpdatedAt),
+            authenticated: true)
+    }
+
+    func deleteRound(id: Int) async throws {
+        try await sendEmpty(path: "/api/rounds/\(id)", method: "DELETE")
     }
 
     func exportData() async throws -> Data {

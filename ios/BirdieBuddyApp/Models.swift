@@ -24,6 +24,24 @@ struct MobileRefreshRequest: Encodable {
     let refreshToken: String
 }
 
+struct MobileRegistrationRequest: Encodable {
+    let email: String
+    let displayName: String
+    let password: String
+}
+
+/// `POST /api/mobile/auth/register` answers `200` with a token session, or `202` with
+/// this body when the deployment requires a verified email before first sign-in.
+struct PendingVerification: Decodable, Equatable {
+    let requiresEmailVerification: Bool
+    let email: String
+}
+
+enum RegistrationOutcome: Equatable {
+    case signedIn(CurrentUser)
+    case verificationRequired(email: String)
+}
+
 struct ApiProblem: Decodable, Error {
     let status: Int?
     let title: String?
@@ -36,6 +54,11 @@ struct CourseSummary: Codable, Identifiable, Equatable, Hashable {
     let id: Int
     let name: String
     let location: String
+    /// True only for a course this user created. Shared imported courses cannot
+    /// be edited or deleted, so the UI must not offer those actions for them.
+    let custom: Bool?
+
+    var isCustom: Bool { custom ?? false }
 }
 
 struct CourseDetail: Codable, Identifiable, Equatable {
@@ -44,6 +67,9 @@ struct CourseDetail: Codable, Identifiable, Equatable {
     let location: String
     let tees: [CourseTee]
     let holes: [CourseHole]
+    let custom: Bool?
+
+    var isCustom: Bool { custom ?? false }
 }
 
 struct CourseTee: Codable, Identifiable, Equatable {
@@ -127,6 +153,43 @@ struct PracticeCompletionRequest: Encodable {
 
 struct PasswordResetRequest: Encodable { let email: String }
 struct DeleteAccountRequest: Encodable { let password: String; let confirmation: String }
+
+struct ChangePasswordRequest: Encodable {
+    let currentPassword: String
+    let newPassword: String
+}
+
+struct VerifyEmailRequest: Encodable { let token: String }
+
+struct ResetPasswordRequest: Encodable {
+    let token: String
+    let newPassword: String
+}
+
+/// The server requires exactly 18 holes for a custom course.
+struct CourseHoleCreateRequest: Encodable {
+    let holeNumber: Int
+    let par: Int
+    let distance: Int
+}
+
+struct CourseCreateRequest: Encodable {
+    let name: String
+    let location: String
+    let holes: [CourseHoleCreateRequest]
+}
+
+struct CourseUpdateRequest: Encodable {
+    let name: String
+    let location: String
+}
+
+struct RoundUpdateRequest: Encodable {
+    let date: String
+    let courseTeeId: Int?
+    let tee: String?
+    let expectedUpdatedAt: Date?
+}
 
 struct Hole: Codable, Identifiable, Equatable {
     let id: Int
