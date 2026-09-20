@@ -108,14 +108,26 @@ struct RoundDetailView: View {
                 let par = holes.reduce(0) { $0 + $1.par }
                 let score = holes.reduce(0) { $0 + $1.score }
                 let putts = holes.reduce(0) { $0 + $1.putts }
-                HStack {
-                    Text("Total").font(.subheadline.bold())
-                    Spacer()
-                    Text("Par \(par)").foregroundStyle(.secondary)
-                    Text("\(score)").font(.subheadline.bold())
-                    Text("\(putts) putts").foregroundStyle(.secondary)
+                // Four values on one line do not fit a narrow phone at larger type
+                // sizes, so the totals wrap into a block instead of truncating.
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        Text("Total").font(.subheadline.bold())
+                        Spacer()
+                        Text("Par \(par)").foregroundStyle(.secondary)
+                        Text("\(score)").font(.subheadline.bold())
+                        Text("\(putts) putts").foregroundStyle(.secondary)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Total").font(.subheadline.bold())
+                        Text("Par \(par) · \(score) · \(putts) putts")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Total")
+                .accessibilityValue("par \(par), score \(score), \(putts) putts")
             } header: {
                 Text(title)
             }
@@ -227,8 +239,21 @@ struct RoundDetailView: View {
 
 /// One scorecard line. Kept narrow enough for an iPhone SE: par and score are
 /// numbers, everything else is a compact badge.
-private struct HoleRow: View {
+///
+/// Internal rather than private so `ScorecardLayoutTests` can assert that the
+/// accessibility-size branch stays in place.
+struct HoleRow: View {
     let hole: Hole
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    // Column widths must grow with the type size, or the numbers clip at larger
+    // settings. @ScaledMetric handles the non-accessibility range; the
+    // accessibility range gets a different layout entirely.
+    @ScaledMetric(relativeTo: .subheadline) private var holeWidth: CGFloat = 22
+    @ScaledMetric(relativeTo: .caption) private var parWidth: CGFloat = 46
+    @ScaledMetric(relativeTo: .body) private var scoreWidth: CGFloat = 26
+    @ScaledMetric(relativeTo: .caption) private var toParWidth: CGFloat = 26
 
     private var toPar: Int { hole.score - hole.par }
 
@@ -246,25 +271,73 @@ private struct HoleRow: View {
     }
 
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                stackedLayout
+            } else {
+                compactRow
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Hole \(hole.holeNumber), par \(hole.par)")
+        .accessibilityValue(accessibilitySummary)
+    }
+
+    /// One line per hole. Sized for a 375pt-wide iPhone at the default and larger
+    /// non-accessibility type sizes.
+    private var compactRow: some View {
         HStack(spacing: 10) {
             Text("\(hole.holeNumber)")
                 .font(.subheadline.monospacedDigit())
-                .frame(width: 22, alignment: .leading)
+                .frame(minWidth: holeWidth, alignment: .leading)
             Text("Par \(hole.par)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .frame(width: 46, alignment: .leading)
+                .lineLimit(1)
+                .frame(minWidth: parWidth, alignment: .leading)
             Text("\(hole.score)")
                 .font(.body.bold().monospacedDigit())
-                .frame(width: 26, alignment: .trailing)
+                .frame(minWidth: scoreWidth, alignment: .trailing)
             Text(toParLabel)
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(toParColour)
-                .frame(width: 26, alignment: .leading)
+                .frame(minWidth: toParWidth, alignment: .leading)
             Spacer(minLength: 0)
-            Text("\(hole.putts)p")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+            badges
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+    }
+
+    /// At accessibility type sizes a single row cannot hold seven values, so the
+    /// hole becomes a two-line block instead of clipping.
+    private var stackedLayout: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Hole \(hole.holeNumber) · Par \(hole.par)")
+                .font(.subheadline.bold())
+            HStack(spacing: 10) {
+                Text("\(hole.score)")
+                    .font(.body.bold().monospacedDigit())
+                Text(toParLabel)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(toParColour)
+                Text("\(hole.putts) putts")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            badges
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var badges: some View {
+        HStack(spacing: 8) {
+            if !dynamicTypeSize.isAccessibilitySize {
+                Text("\(hole.putts)p")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
             if hole.gir {
                 Image(systemName: "target").font(.caption).foregroundStyle(.green)
             }
@@ -277,9 +350,6 @@ private struct HoleRow: View {
                     .foregroundStyle(.orange)
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Hole \(hole.holeNumber), par \(hole.par)")
-        .accessibilityValue(accessibilitySummary)
     }
 
     private var accessibilitySummary: String {
