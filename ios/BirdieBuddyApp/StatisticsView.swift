@@ -182,6 +182,9 @@ private struct TrendChart: View {
     let title: LocalizedStringKey
     let points: [TrendPoint]
 
+    // A fixed-height chart looks stranded beside text that has doubled in size.
+    @ScaledMetric(relativeTo: .body) private var chartHeight: CGFloat = 140
+
     var body: some View {
         let plotted = points.compactMap { point -> (Date, Double)? in
             guard let day = point.day else { return nil }
@@ -194,12 +197,15 @@ private struct TrendChart: View {
                 Chart {
                     ForEach(Array(plotted.enumerated()), id: \.offset) { _, entry in
                         LineMark(x: .value("Date", entry.0), y: .value("Value", entry.1))
+                        // Per-point labels let VoiceOver swipe through the series
+                        // instead of hearing only "chart, 12 rounds plotted".
                         PointMark(x: .value("Date", entry.0), y: .value("Value", entry.1))
+                            .accessibilityLabel(entry.0.formatted(date: .abbreviated, time: .omitted))
+                            .accessibilityValue(StatisticsView.number(entry.1, digits: 2))
                     }
                 }
-                .frame(height: 140)
+                .frame(height: min(chartHeight, 220))
                 .accessibilityLabel(title)
-                .accessibilityValue("\(plotted.count) rounds plotted")
             }
             .padding(.vertical, 4)
         }

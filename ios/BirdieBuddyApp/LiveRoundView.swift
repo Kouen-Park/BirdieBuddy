@@ -102,15 +102,18 @@ struct LiveRoundView: View {
                     .disabled(isSaving || conflict != nil)
                     .accessibilityLabel("Save hole \(holeNumber)")
                     .accessibilityHint("Saves on this device first, then syncs when online")
-                HStack {
-                    Button("Previous") { move(-1) }.disabled(holeIndex == 0 || isSaving || conflict != nil)
-                        .accessibilityLabel("Previous hole")
-                    Spacer()
-                    Button(holeNumber == draft.expectedHoles ? "Finish round" : "Next hole") {
-                        Task { await advance() }
+                // Two buttons side by side stop fitting a narrow phone once the
+                // labels grow, so they stack rather than truncate mid-round.
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        previousHoleButton
+                        Spacer()
+                        advanceButton
                     }
-                    .disabled(isSaving || conflict != nil)
-                    .accessibilityLabel(holeNumber == draft.expectedHoles ? "Finish round" : "Save and go to hole \(holeNumber + 1)")
+                    VStack(alignment: .leading, spacing: 12) {
+                        previousHoleButton
+                        advanceButton
+                    }
                 }
             }
         }
@@ -128,6 +131,20 @@ struct LiveRoundView: View {
             })
             .interactiveDismissDisabled()
         }
+    }
+
+    private var previousHoleButton: some View {
+        Button("Previous") { move(-1) }
+            .disabled(holeIndex == 0 || isSaving || conflict != nil)
+            .accessibilityLabel("Previous hole")
+    }
+
+    private var advanceButton: some View {
+        Button(holeNumber == draft.expectedHoles ? "Finish round" : "Next hole") {
+            Task { await advance() }
+        }
+        .disabled(isSaving || conflict != nil)
+        .accessibilityLabel(holeNumber == draft.expectedHoles ? "Finish round" : "Save and go to hole \(holeNumber + 1)")
     }
 
     private func loadCurrentHole() {

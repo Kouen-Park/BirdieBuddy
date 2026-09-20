@@ -27,6 +27,7 @@
 - Create a server conflict and verify both “Use server value” and “Keep my value”.
 - Switch accounts and confirm another user's draft is never displayed or synchronized.
 - Check iPhone SE-sized layout, safe areas, keyboard avoidance, Dynamic Type, and VoiceOver.
+- `ScorecardLayoutTests` already renders the scorecard row at every Dynamic Type size against an iPhone SE content width, so the device pass should concentrate on what a renderer cannot judge: safe areas, keyboard avoidance, VoiceOver focus order, and gloved-hand tap targets.
 - Switch the device language to Korean and confirm every screen reads correctly; untranslated runtime error text is a known gap.
 - After any crash, confirm the Account screen's Diagnostics section lists a report on the next launch and that it can be shared.
 - Test background/foreground transitions, low-power mode, and Wi-Fi/cellular switching.
