@@ -304,6 +304,10 @@ actor RoundPersistenceStore: ModelActor {
 struct SyncReport: Sendable {
     var savedHoles: [Hole] = []
     var conflictRoundIds: Set<Int> = []
+    /// Why a write was permanently rejected, keyed by hole number. Without this a
+    /// 4xx left the round in "action required" with no reason anywhere in the UI,
+    /// which is how a par-3 fairway rejection looked like a dead button.
+    var attentionReasons: [Int: String] = [:]
 }
 
 actor SyncCoordinator {
@@ -346,6 +350,8 @@ actor SyncCoordinator {
                 break
             } catch let problem as ApiProblem where (400..<500).contains(problem.status ?? 0) {
                 try? await persistence.setState(userId: userId, id: write.id, state: .requiresAttention)
+                report.attentionReasons[write.holeNumber] =
+                    problem.detail ?? problem.title ?? "The server rejected this hole."
             } catch {
                 try? await persistence.setState(userId: userId, id: write.id, state: .queued)
             }

@@ -56,6 +56,10 @@ struct LiveRoundView: View {
     @State private var errorMessage: String?
     @State private var isSaving = false
     @State private var conflict: ConflictState?
+    /// Par per hole number, from the round's tee. The draft carries no hole rows
+    /// until they are saved, so without this the app assumed par 4 everywhere —
+    /// and then sent a fairway value the server rejects on a par 3.
+    @State private var coursePars: [Int: Int] = [:]
 
     init(draft: RoundDraft) {
         _snapshot = State(initialValue: MutableRoundSnapshot(draft: draft))
@@ -66,9 +70,14 @@ struct LiveRoundView: View {
     private var draft: RoundDraft { snapshot.draft }
     private var currentHole: Hole? { snapshot.hole(number: holeNumber) }
     private var expectedServerHole: Hole? { serverHoles[holeNumber] }
-    private var expectedPar: Int { currentHole?.par ?? 4 }
+    private var expectedPar: Int { currentHole?.par ?? coursePars[holeNumber] ?? 4 }
+    private var isPar3: Bool { expectedPar == 3 }
     private var userId: Int? { appState.user?.id }
     private var syncStatus: RoundSyncStatus { appState.roundSyncStatuses[draft.id] ?? .synced }
+
+    /// The server refuses putts + penalties above the score, so block the request
+    /// here rather than letting it fail after the golfer has moved on.
+    private var strokeBreakdownIsValid: Bool { putts + penalty <= score }
 
     var body: some View {
         Form {
@@ -84,6 +93,7 @@ struct LiveRoundView: View {
                     .accessibilityLabel(status.isEmpty ? "No save status yet" : "Save status: \(status)")
             }
             Section("Score") {
+                LabeledContent("Par", value: "\(expectedPar)")
                 Stepper("Score: \(score)", value: $score, in: 1...20)
                     .accessibilityLabel("Score")
                     .accessibilityValue("\(score) strokes")
@@ -91,15 +101,28 @@ struct LiveRoundView: View {
                     .accessibilityLabel("Putts")
                     .accessibilityValue("\(putts)")
                 Toggle("Green in regulation", isOn: $gir)
-                Toggle("Fairway hit", isOn: $fairway)
+                if isPar3 {
+                    // The server rejects a fairway value on a par 3, and a par 3 has
+                    // no fairway to hit, so the control is not offered.
+                    Text("Fairway does not apply on a par 3")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Toggle("Fairway hit", isOn: $fairway)
+                }
                 Stepper("Penalty: \(penalty)", value: $penalty, in: 0...20)
                     .accessibilityLabel("Penalty strokes")
                     .accessibilityValue("\(penalty)")
+                if !strokeBreakdownIsValid {
+                    Label("Putts and penalties cannot exceed the score.", systemImage: "exclamationmark.triangle")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
             }
             if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
             Section {
                 Button(isSaving ? "Saving…" : "Save hole") { Task { await saveHole() } }
-                    .disabled(isSaving || conflict != nil)
+                    .disabled(isSaving || conflict != nil || !strokeBreakdownIsValid)
                     .accessibilityLabel("Save hole \(holeNumber)")
                     .accessibilityHint("Saves on this device first, then syncs when online")
                 // Two buttons side by side stop fitting a narrow phone once the
@@ -159,7 +182,9 @@ struct LiveRoundView: View {
     private func saveHole(force: Bool = false) async -> HoleSaveOutcome {
         isSaving = true; errorMessage = nil
         defer { isSaving = false }
-        let request = HoleUpsertRequest(par: expectedPar, score: score, putts: putts, gir: gir, fairwayHit: fairway, penalty: penalty,
+        // fairwayHit must be absent on a par 3: the server rejects a value there.
+        let request = HoleUpsertRequest(par: expectedPar, score: score, putts: putts, gir: gir,
+            fairwayHit: isPar3 ? nil : fairway, penalty: penalty,
             checkExpected: !force, expectedHole: force ? nil : expectedServerHole)
         guard let userId else {
             errorMessage = "Sign in again before saving this round."
@@ -188,12 +213,28 @@ struct LiveRoundView: View {
         let report = await appState.syncPending(trigger: .manualSave, roundId: draft.id)
         report.savedHoles.forEach { applyServerHole($0) }
         await loadPersistedConflict()
-        switch syncStatus {
-        case .synced: status = "Saved to server"; return .serverSaved
-        case .reviewRequired: status = "Review required"; return .conflict
-        case .savedOnDevice, .syncing: status = "Saved on device — will sync when online"; return .queuedOffline
-        case .attentionRequired: status = "Saved on device — action required"; return .failed
+
+        // Judge THIS hole, not the round. Round-level status made one permanently
+        // rejected hole block navigation on every other hole of the round.
+        let outstanding = (try? await appState.roundPersistence.pending(userId: userId, roundId: draft.id))?
+            .filter { $0.holeNumber == holeNumber } ?? []
+
+        if outstanding.isEmpty {
+            status = "Saved to server"
+            return .serverSaved
         }
+        if outstanding.contains(where: { $0.state == .conflict }) || syncStatus == .reviewRequired {
+            status = "Review required"
+            return .conflict
+        }
+        if outstanding.contains(where: { $0.state == .requiresAttention }) {
+            status = "Saved on device — action required"
+            errorMessage = report.attentionReasons[holeNumber]
+                ?? "The server rejected this hole. Check the values and save again."
+            return .failed
+        }
+        status = "Saved on device — will sync when online"
+        return .queuedOffline
     }
 
     private func advance() async {
@@ -237,9 +278,20 @@ struct LiveRoundView: View {
     }
 
     private func restoreConflictAndSync() async {
+        await loadCoursePars()
         let report = await appState.syncPending(trigger: .liveRound, roundId: draft.id)
         report.savedHoles.forEach { applyServerHole($0) }
         await loadPersistedConflict()
+    }
+
+    /// Reads par per hole from the round's tee. Best effort: without it the app
+    /// falls back to par 4, which is only a display and default-score guess.
+    private func loadCoursePars() async {
+        guard coursePars.isEmpty, let course = try? await appState.api.course(id: draft.courseId) else { return }
+        let tee = course.tees.first { $0.id == draft.courseTeeId } ?? course.tees.first
+        let holes = tee?.holes.isEmpty == false ? tee!.holes : course.holes
+        coursePars = Dictionary(holes.map { ($0.holeNumber, $0.par) }, uniquingKeysWith: { first, _ in first })
+        loadCurrentHole()
     }
 
     private func loadPersistedConflict() async {
