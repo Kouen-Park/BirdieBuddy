@@ -1,42 +1,12 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Action required" : {
+    "Saved round" : {
       "localizations" : {
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "조치 필요"
-          }
-        }
-      }
-    },
-    "Saved on device" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "기기에 저장됨"
-          }
-        }
-      }
-    },
-    "Synced" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "동기화됨"
-          }
-        }
-      }
-    },
-    "Syncing" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "동기화 중"
+            "value" : "저장된 라운드"
           }
         }
       }
@@ -215,6 +185,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "계정 도구"
+          }
+        }
+      }
+    },
+    "Action required" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "조치 필요"
           }
         }
       }
@@ -1697,6 +1678,17 @@
     "Save status: %@" : {
 
     },
+    "Saved on device" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기에 저장됨"
+          }
+        }
+      }
+    },
     "Saved on device — action required" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1930,6 +1922,28 @@
     },
     "Sync state: %@" : {
 
+    },
+    "Synced" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동기화됨"
+          }
+        }
+      }
+    },
+    "Syncing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동기화 중"
+          }
+        }
+      }
     },
     "Tee" : {
       "localizations" : {

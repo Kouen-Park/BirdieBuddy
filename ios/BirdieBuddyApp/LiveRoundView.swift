@@ -143,7 +143,9 @@ struct LiveRoundView: View {
                 advanceButton
             }
         }
-        .navigationTitle("Live round")
+        // The screen stops being a live round the moment the server accepts
+        // completion, so it should stop calling itself one.
+        .navigationTitle(isRoundComplete ? "Saved round" : "Live round")
         .onAppear { loadCurrentHole() }
         .task { await restoreConflictAndSync() }
         .onChange(of: holeIndex) { _, _ in loadCurrentHole() }
