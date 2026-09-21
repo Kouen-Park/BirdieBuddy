@@ -122,6 +122,16 @@ actor APIClient {
             body: Optional<EmptyBody>.none, authenticated: true)
     }
 
+    /// The round still in progress, if any. Same contract the web client uses for
+    /// its resume banner: the round list itself returns completed rounds, so a
+    /// draft is only reachable by asking for that status explicitly.
+    func activeDraft() async throws -> RoundSummary? {
+        let items = [URLQueryItem(name: "status", value: "Draft"), URLQueryItem(name: "limit", value: "1")]
+        let page: RoundPage = try await send(path: Self.path("/api/rounds/page", items), method: "GET",
+            body: Optional<EmptyBody>.none, authenticated: true)
+        return page.items.first
+    }
+
     func statistics(filter: RoundFilter = .none) async throws -> OverviewStatistics {
         try await send(path: Self.path("/api/statistics/overview", filter.queryItems), method: "GET",
             body: Optional<EmptyBody>.none, authenticated: true)

@@ -1,6 +1,66 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Continue this round" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이어서 기록하기"
+          }
+        }
+      }
+    },
+    "Could not open this round" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 라운드를 열 수 없습니다"
+          }
+        }
+      }
+    },
+    "In progress" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "진행 중"
+          }
+        }
+      }
+    },
+    "Opening round…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라운드를 여는 중…"
+          }
+        }
+      }
+    },
+    "Round in progress" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "진행 중인 라운드"
+          }
+        }
+      }
+    },
+    "%lld of %lld holes saved" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld/%2$lld홀 저장됨"
+          }
+        }
+      }
+    },
     "Saved round" : {
       "localizations" : {
         "ko" : {

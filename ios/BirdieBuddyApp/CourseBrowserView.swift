@@ -9,7 +9,13 @@ struct CourseBrowserView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            // Above the Group on purpose: when the course list fails to load — which
+            // is exactly the offline case after an interrupted round — the Group is
+            // replaced entirely, and the way back into that round must not vanish
+            // with it.
+            VStack(spacing: 0) {
+                ResumeRoundBanner()
+                Group {
                 if isLoading {
                     ProgressView("Loading courses…")
                 } else if let errorMessage {
@@ -33,6 +39,7 @@ struct CourseBrowserView: View {
                     .navigationDestination(for: CourseSummary.self) { course in
                         CourseDetailView(course: course)
                     }
+                }
                 }
             }
             .navigationTitle("Courses")

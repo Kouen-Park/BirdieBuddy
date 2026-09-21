@@ -32,6 +32,8 @@
 		C0000000000000000000001D /* CourseFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001D /* CourseFormView.swift */; };
 		C0000000000000000000001E /* PasswordResetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001E /* PasswordResetView.swift */; };
 		C0000000000000000000001F /* RoundFilterControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001F /* RoundFilterControls.swift */; };
+		C0000000000000000000002F /* ResumeRoundBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002F /* ResumeRoundBanner.swift */; };
+		C0000000000000000000003F /* LiveRoundLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003F /* LiveRoundLoader.swift */; };
 		C00000000000000000000020 /* ScorecardLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000020 /* ScorecardLayoutTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -74,6 +76,8 @@
 		A0000000000000000000001D /* CourseFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseFormView.swift; sourceTree = "<group>"; };
 		A0000000000000000000001E /* PasswordResetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetView.swift; sourceTree = "<group>"; };
 		A0000000000000000000001F /* RoundFilterControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundFilterControls.swift; sourceTree = "<group>"; };
+		A0000000000000000000002F /* ResumeRoundBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResumeRoundBanner.swift; sourceTree = "<group>"; };
+		A0000000000000000000003F /* LiveRoundLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRoundLoader.swift; sourceTree = "<group>"; };
 		A00000000000000000000020 /* ScorecardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScorecardLayoutTests.swift; sourceTree = "<group>"; };
 		B00000000000000000000001 /* BirdieBuddyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BirdieBuddyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B00000000000000000000002 /* BirdieBuddyAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BirdieBuddyAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -136,6 +140,8 @@
 				A0000000000000000000001D /* CourseFormView.swift */,
 				A0000000000000000000001E /* PasswordResetView.swift */,
 				A0000000000000000000001F /* RoundFilterControls.swift */,
+				A0000000000000000000002F /* ResumeRoundBanner.swift */,
+				A0000000000000000000003F /* LiveRoundLoader.swift */,
 			);
 			path = BirdieBuddyApp;
 			sourceTree = "<group>";
@@ -281,6 +287,8 @@
 				C0000000000000000000001D /* CourseFormView.swift in Sources */,
 				C0000000000000000000001E /* PasswordResetView.swift in Sources */,
 				C0000000000000000000001F /* RoundFilterControls.swift in Sources */,
+				C0000000000000000000002F /* ResumeRoundBanner.swift in Sources */,
+				C0000000000000000000003F /* LiveRoundLoader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
