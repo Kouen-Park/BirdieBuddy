@@ -1,6 +1,46 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Fairway does not apply on a par 3" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "파 3 홀에서는 페어웨이를 기록하지 않습니다"
+          }
+        }
+      }
+    },
+    "Par" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "파"
+          }
+        }
+      }
+    },
+    "Putts and penalties cannot exceed the score." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "퍼팅과 벌타의 합이 스코어를 넘을 수 없습니다."
+          }
+        }
+      }
+    },
+    "The server rejected this hole. Check the values and save again." : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서버가 이 홀을 거부했습니다. 값을 확인하고 다시 저장하세요."
+          }
+        }
+      }
+    },
     "%@ · %lld (%@)" : {
       "localizations" : {
         "en" : {
