@@ -23,7 +23,7 @@ emails to the app instead needs Universal Links, which require an
 
 ## Xcode setup
 
-Open `BirdieBuddyApp.xcodeproj` in Xcode 16 or later. It contains the iOS 17 app target, a shared scheme, and the `BirdieBuddyAppTests` unit-test target. Debug builds default to `http://localhost:5000`; Release builds use the target's production HTTPS `API_BASE_URL` build setting. Override it with a scheme environment variable for another local or staging server. Release configuration refuses HTTP and localhost endpoints. The source intentionally has no third-party dependency.
+Open `BirdieBuddyApp.xcodeproj` in Xcode 16 or later. It contains the iOS 17 app target, a shared scheme, and the `BirdieBuddyAppTests` unit-test target. Both Debug and Release builds point `API_BASE_URL` at the deployed HTTPS origin, so an app launched from the device's home screen reaches the same server as one launched from Xcode. A scheme environment variable of the same name overrides it for a local or staging server — but note it only applies to processes Xcode launches, so it is the wrong tool for on-device testing that involves force-quitting and relaunching the app. For local API work, point `API_BASE_URL` at `http://localhost:5000`; Debug accepts `http` only for localhost, and Release refuses `http` and localhost outright.
 
 Run the tests from Xcode or with:
 
