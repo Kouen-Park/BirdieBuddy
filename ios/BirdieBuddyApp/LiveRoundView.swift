@@ -85,7 +85,10 @@ struct LiveRoundView: View {
                 Text("Hole \(holeNumber) of \(draft.expectedHoles)").font(.title2.bold())
                     .accessibilityAddTraits(.isHeader)
                 if syncStatus != .synced {
-                    Label(syncStatus.label, systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
+                    // LocalizedStringKey, not the raw String: a String argument skips
+                    // the catalog, which is why this line stayed English on a Korean
+                    // device while the line below it was translated.
+                    Label(LocalizedStringKey(syncStatus.label), systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
                         .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
                         .accessibilityLabel("Sync state: \(syncStatus.label)")
                 }
@@ -125,19 +128,13 @@ struct LiveRoundView: View {
                     .disabled(isSaving || conflict != nil || !strokeBreakdownIsValid)
                     .accessibilityLabel("Save hole \(holeNumber)")
                     .accessibilityHint("Saves on this device first, then syncs when online")
-                // Two buttons side by side stop fitting a narrow phone once the
-                // labels grow, so they stack rather than truncate mid-round.
-                ViewThatFits(in: .horizontal) {
-                    HStack {
-                        previousHoleButton
-                        Spacer()
-                        advanceButton
-                    }
-                    VStack(alignment: .leading, spacing: 12) {
-                        previousHoleButton
-                        advanceButton
-                    }
-                }
+                // One button per row. Two buttons in a single Form row make the row
+                // route its tap to the first ENABLED one, so on hole 2 onwards a tap
+                // meant for Next was consumed by Previous and the round jumped back
+                // to hole 1. On hole 1 Previous is disabled, which is the only
+                // reason advancing appeared to work there.
+                previousHoleButton
+                advanceButton
             }
         }
         .navigationTitle("Live round")
