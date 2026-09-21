@@ -1,76 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Continue this round" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이어서 기록하기"
-          }
-        }
-      }
-    },
-    "Could not open this round" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "이 라운드를 열 수 없습니다"
-          }
-        }
-      }
-    },
-    "In progress" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "진행 중"
-          }
-        }
-      }
-    },
-    "Opening round…" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "라운드를 여는 중…"
-          }
-        }
-      }
-    },
-    "Round in progress" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "진행 중인 라운드"
-          }
-        }
-      }
-    },
-    "%lld of %lld holes saved" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld/%2$lld홀 저장됨"
-          }
-        }
-      }
-    },
-    "Saved round" : {
-      "localizations" : {
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "저장된 라운드"
-          }
-        }
-      }
-    },
     "%@ · %lld (%@)" : {
       "localizations" : {
         "en" : {
@@ -123,6 +53,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld holes · avg %2$@ · %3$@ to par"
+          }
+        }
+      }
+    },
+    "%lld of %lld holes saved" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld/%2$lld홀 저장됨"
           }
         }
       }
@@ -426,6 +366,16 @@
         }
       }
     },
+    "Continue this round" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이어서 기록하기"
+          }
+        }
+      }
+    },
     "Could not load course" : {
       "localizations" : {
         "ko" : {
@@ -472,6 +422,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "통계를 불러올 수 없습니다"
+          }
+        }
+      }
+    },
+    "Could not open this round" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 라운드를 열 수 없습니다"
           }
         }
       }
@@ -1281,6 +1241,16 @@
         }
       }
     },
+    "Opening round…" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라운드를 여는 중…"
+          }
+        }
+      }
+    },
     "Overview" : {
       "localizations" : {
         "ko" : {
@@ -1559,6 +1529,16 @@
         }
       }
     },
+    "Reopens the round you have not finished" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아직 끝내지 않은 라운드를 다시 엽니다"
+          }
+        }
+      }
+    },
     "Request password reset email" : {
       "localizations" : {
         "ko" : {
@@ -1634,6 +1614,16 @@
     },
     "Round date" : {
 
+    },
+    "Round in progress" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "진행 중인 라운드"
+          }
+        }
+      }
     },
     "Round length" : {
       "localizations" : {
@@ -1767,6 +1757,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "기기에 저장됨 — 연결되면 동기화됩니다"
+          }
+        }
+      }
+    },
+    "Saved round" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장된 라운드"
           }
         }
       }
