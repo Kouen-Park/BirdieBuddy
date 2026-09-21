@@ -104,7 +104,7 @@ struct RoundDraft: Codable, Identifiable, Equatable {
 
 typealias RoundDetail = RoundDraft
 
-struct RoundSummary: Codable, Identifiable, Equatable {
+struct RoundSummary: Codable, Identifiable, Equatable, Hashable {
     let id: Int
     let courseId: Int
     let courseName: String

@@ -63,6 +63,8 @@ struct LiveRoundView: View {
     /// Set once the server accepts completion. The round stops accepting hole
     /// writes at that moment, so the controls must stop offering them.
     @State private var isRoundComplete = false
+    /// Set alongside completion; presenting it pushes the round summary.
+    @State private var completedRound: RoundSummary?
 
     init(draft: RoundDraft) {
         _snapshot = State(initialValue: MutableRoundSnapshot(draft: draft))
@@ -146,6 +148,7 @@ struct LiveRoundView: View {
         // The screen stops being a live round the moment the server accepts
         // completion, so it should stop calling itself one.
         .navigationTitle(isRoundComplete ? "Saved round" : "Live round")
+        .navigationDestination(item: $completedRound) { RoundDetailView(round: $0) }
         .onAppear { loadCurrentHole() }
         .task { await restoreConflictAndSync() }
         .onChange(of: holeIndex) { _, _ in loadCurrentHole() }
@@ -182,6 +185,25 @@ struct LiveRoundView: View {
     }
 
     private func move(_ delta: Int) { holeIndex = min(max(0, holeIndex + delta), draft.expectedHoles - 1) }
+
+    /// Built from the round the completion call just returned, so the summary opens
+    /// without a second request — worth avoiding while the API is slow. The totals
+    /// use the server's own definitions (sum of scores, and sum of score minus
+    /// par), and RoundDetailView reloads the authoritative detail itself.
+    private func summary(for finished: RoundDraft) -> RoundSummary {
+        RoundSummary(
+            id: finished.id,
+            courseId: finished.courseId,
+            courseName: finished.courseName,
+            date: finished.date,
+            tee: finished.tee,
+            totalScore: finished.holes.reduce(0) { $0 + $1.score },
+            scoreToPar: finished.holes.reduce(0) { $0 + $1.score - $1.par },
+            status: finished.status,
+            holesPlayed: finished.holes.count,
+            expectedHoles: finished.expectedHoles
+        )
+    }
 
     @discardableResult
     private func saveHole(force: Bool = false) async -> HoleSaveOutcome {
@@ -269,13 +291,14 @@ struct LiveRoundView: View {
                 status = "Sync all saved holes before finishing"
                 return
             }
-            _ = try await appState.api.complete(roundId: draft.id)
+            let finished = try await appState.api.complete(roundId: draft.id)
             // The server now refuses live hole edits on this round. Without this
             // flag a second press re-queued hole 18 into a completed round, the
             // server answered 400 "Only a draft round can be edited live", and that
             // write stayed stuck as "action required" for good.
             isRoundComplete = true
             status = "Round complete"
+            completedRound = summary(for: finished)
         } catch {
             errorMessage = AppState.message(for: error)
         }
