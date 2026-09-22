@@ -9,3 +9,6 @@ node_modules/
 **/xcuserdata/
 *.xcuserstate
 **/*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+
+# JetBrains IDE (Rider / IntelliJ) — per-developer, not part of the project
+.idea/
