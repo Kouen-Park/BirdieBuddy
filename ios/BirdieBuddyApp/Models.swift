@@ -104,7 +104,7 @@ struct RoundDraft: Codable, Identifiable, Equatable {
 
 typealias RoundDetail = RoundDraft
 
-struct RoundSummary: Codable, Identifiable, Equatable {
+struct RoundSummary: Codable, Identifiable, Equatable, Hashable {
     let id: Int
     let courseId: Int
     let courseName: String
@@ -115,6 +115,10 @@ struct RoundSummary: Codable, Identifiable, Equatable {
     let status: String
     let holesPlayed: Int
     let expectedHoles: Int
+
+    /// The server reports an unfinished round as "Draft". Clients must branch on
+    /// this: a draft belongs in live scoring, a finished round in the summary.
+    var isDraft: Bool { status.caseInsensitiveCompare("Draft") == .orderedSame }
 }
 
 struct ParTypeStats: Codable, Equatable {

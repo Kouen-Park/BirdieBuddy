@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 
 enum SyncRecordState: String, Codable, CaseIterable {
@@ -304,12 +305,20 @@ actor RoundPersistenceStore: ModelActor {
 struct SyncReport: Sendable {
     var savedHoles: [Hole] = []
     var conflictRoundIds: Set<Int> = []
+    /// Why a write was permanently rejected, keyed by hole number. Without this a
+    /// 4xx left the round in "action required" with no reason anywhere in the UI,
+    /// which is how a par-3 fairway rejection looked like a dead button.
+    var attentionReasons: [Int: String] = [:]
 }
 
 actor SyncCoordinator {
     private let persistence: RoundPersistenceStore
     private let api: APIClient
     private var activeUsers: Set<Int> = []
+    /// Diagnostics for hole sync. Values are marked public because a golf score is
+    /// not sensitive and a redacted log cannot tell us which rule the server
+    /// rejected — which is exactly what a device-only failure needs.
+    private let log = Logger(subsystem: "com.birdiebuddy.mobile", category: "sync")
 
     init(persistence: RoundPersistenceStore, api: APIClient) {
         self.persistence = persistence
@@ -327,26 +336,50 @@ actor SyncCoordinator {
             do {
                 try await persistence.setState(userId: userId, id: write.id, state: .syncing)
                 let request = try JSONDecoder.birdieBuddy.decode(HoleUpsertRequest.self, from: write.payload)
+                log.notice("""
+                    PUT hole \(write.holeNumber, privacy: .public) round \(write.roundId, privacy: .public) \
+                    par=\(request.par.map(String.init) ?? "nil", privacy: .public) score=\(request.score, privacy: .public) \
+                    putts=\(request.putts, privacy: .public) gir=\(request.gir, privacy: .public) \
+                    fairway=\(request.fairwayHit.map(String.init) ?? "nil", privacy: .public) \
+                    penalty=\(request.penalty, privacy: .public) \
+                    checkExpected=\(request.checkExpected, privacy: .public) \
+                    expectedHole=\(request.expectedHole == nil ? "nil" : "present", privacy: .public)
+                    """)
                 let saved = try await api.saveHole(roundId: write.roundId, holeNumber: write.holeNumber, request: request)
                 try await persistence.acknowledge(userId: userId, id: write.id)
                 report.savedHoles.append(saved)
+                log.notice("OK hole \(write.holeNumber, privacy: .public)")
             } catch let problem as ApiProblem where problem.status == 409 {
+                log.error("CONFLICT 409 hole \(write.holeNumber, privacy: .public)")
                 let latest = try? await api.round(id: write.roundId)
                 try? await persistence.saveConflict(userId: userId, write: write,
                     serverHole: latest?.holes.first { $0.holeNumber == write.holeNumber })
                 blockedRounds.insert(write.roundId)
                 report.conflictRoundIds.insert(write.roundId)
             } catch let problem as ApiProblem where problem.status == 401 || problem.status == 403 {
+                log.error("AUTH \(problem.status ?? 0, privacy: .public) hole \(write.holeNumber, privacy: .public)")
                 try? await persistence.setState(userId: userId, id: write.id, state: .queued)
                 break
             } catch let problem as ApiProblem where problem.status == 408 || problem.status == 429 || (problem.status ?? 0) >= 500 {
+                log.error("RETRYABLE \(problem.status ?? 0, privacy: .public) hole \(write.holeNumber, privacy: .public)")
                 try? await persistence.setState(userId: userId, id: write.id, state: .queued)
-            } catch is URLError {
+            } catch let error as URLError {
+                log.error("NETWORK \(error.code.rawValue, privacy: .public) hole \(write.holeNumber, privacy: .public)")
                 try? await persistence.setState(userId: userId, id: write.id, state: .queued)
                 break
             } catch let problem as ApiProblem where (400..<500).contains(problem.status ?? 0) {
+                let reason = problem.detail ?? problem.title ?? "The server rejected this hole."
+                log.error("""
+                    REJECTED \(problem.status ?? 0, privacy: .public) hole \
+                    \(write.holeNumber, privacy: .public): \(reason, privacy: .public)
+                    """)
                 try? await persistence.setState(userId: userId, id: write.id, state: .requiresAttention)
+                report.attentionReasons[write.holeNumber] = reason
             } catch {
+                log.error("""
+                    UNKNOWN hole \(write.holeNumber, privacy: .public): \
+                    \(String(describing: error), privacy: .public)
+                    """)
                 try? await persistence.setState(userId: userId, id: write.id, state: .queued)
             }
         }
