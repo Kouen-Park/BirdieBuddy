@@ -179,6 +179,7 @@ struct StatisticsView: View {
 /// A compact line chart for one trend series. Swift Charts ships with the SDK, so
 /// this adds no third-party dependency.
 private struct TrendChart: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: LocalizedStringKey
     let points: [TrendPoint]
 
@@ -204,8 +205,20 @@ private struct TrendChart: View {
                             .accessibilityValue(StatisticsView.number(entry.1, digits: 2))
                     }
                 }
+                .chartXAxis(dynamicTypeSize.isAccessibilitySize ? .hidden : .automatic)
                 .frame(height: min(chartHeight, 220))
                 .accessibilityLabel(title)
+                .accessibilityHidden(dynamicTypeSize.isAccessibilitySize)
+                if dynamicTypeSize.isAccessibilitySize {
+                    ForEach(Array(plotted.enumerated()), id: \.offset) { _, entry in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.0.formatted(date: .abbreviated, time: .omitted))
+                            Text(StatisticsView.number(entry.1, digits: 2))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
             }
             .padding(.vertical, 4)
         }
