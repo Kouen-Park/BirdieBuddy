@@ -39,6 +39,21 @@ public sealed class RoundServiceTests
     }
 
     [Fact]
+    public async Task EditingAnEarlierHoleDoesNotRewindRoundProgress()
+    {
+        await using var db = CreateDatabase();
+        var (course, tee) = SeedCourse(db);
+        var service = new RoundService(db, new TestUser(7));
+        var (draft, _) = await service.StartAsync(new(course.Id, new DateOnly(2026, 9, 3), tee.Id, null));
+
+        await service.UpsertHoleAsync(draft!.Id, 4, new(4, 5, 2, false, false, 0));
+        await service.UpsertHoleAsync(draft.Id, 2, new(4, 4, 2, true, true, 0));
+        await service.AddHoleAsync(draft.Id, new(1, 4, 4, 2, true, true, 0));
+
+        Assert.Equal(4, (await service.GetByIdAsync(draft.Id))!.CurrentHole);
+    }
+
+    [Fact]
     public async Task RoundOwnership_PreventsAnotherUserFromReadingDraft()
     {
         await using var db = CreateDatabase();

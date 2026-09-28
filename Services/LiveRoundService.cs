@@ -89,7 +89,7 @@ public sealed class LiveRoundService : ILiveRoundService
         hole.GIR = dto.GIR;
         hole.FairwayHit = par == 3 ? null : dto.FairwayHit;
         hole.Penalty = dto.Penalty;
-        round.CurrentHole = holeNumber;
+        round.CurrentHole = Math.Max(round.CurrentHole, holeNumber);
         round.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return ServiceResult<HoleDto>.Success(RoundRules.MapToHoleDto(hole));
@@ -130,7 +130,7 @@ public sealed class LiveRoundService : ILiveRoundService
             Penalty = dto.Penalty
         };
         _context.Holes.Add(hole);
-        round.CurrentHole = dto.HoleNumber;
+        round.CurrentHole = Math.Max(round.CurrentHole, dto.HoleNumber);
         round.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return ServiceResult<HoleDto>.Success(RoundRules.MapToHoleDto(hole));
