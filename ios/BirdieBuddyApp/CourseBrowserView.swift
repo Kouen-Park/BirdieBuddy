@@ -9,11 +9,23 @@ struct CourseBrowserView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            // Above the Group on purpose: when the course list fails to load — which
+            // is exactly the offline case after an interrupted round — the Group is
+            // replaced entirely, and the way back into that round must not vanish
+            // with it.
+            VStack(spacing: 0) {
+                ResumeRoundBanner()
+                Group {
                 if isLoading {
                     ProgressView("Loading courses…")
                 } else if let errorMessage {
-                    ContentUnavailableView("Could not load courses", systemImage: "wifi.exclamationmark", description: Text(errorMessage))
+                    ContentUnavailableView {
+                        Label("Could not load courses", systemImage: "wifi.exclamationmark")
+                    } description: {
+                        Text(errorMessage)
+                    } actions: {
+                        Button("Retry") { Task { await loadCourses() } }
+                    }
                 } else if courses.isEmpty {
                     ContentUnavailableView("No courses yet", systemImage: "flag", description: Text("Course data will appear here when it is available."))
                 } else {
@@ -33,6 +45,7 @@ struct CourseBrowserView: View {
                     .navigationDestination(for: CourseSummary.self) { course in
                         CourseDetailView(course: course)
                     }
+                }
                 }
             }
             .navigationTitle("Courses")

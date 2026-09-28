@@ -1,126 +1,438 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {};
+	classes = {
+	};
 	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C00000000000000000000001 = {isa = PBXBuildFile; fileRef = A00000000000000000000001; };
-		C00000000000000000000002 = {isa = PBXBuildFile; fileRef = A00000000000000000000002; };
-		C00000000000000000000003 = {isa = PBXBuildFile; fileRef = A00000000000000000000003; };
-		C00000000000000000000004 = {isa = PBXBuildFile; fileRef = A00000000000000000000004; };
-		C00000000000000000000005 = {isa = PBXBuildFile; fileRef = A00000000000000000000005; };
-		C00000000000000000000006 = {isa = PBXBuildFile; fileRef = A00000000000000000000006; };
-		C00000000000000000000007 = {isa = PBXBuildFile; fileRef = A00000000000000000000007; };
-		C00000000000000000000008 = {isa = PBXBuildFile; fileRef = A00000000000000000000008; };
-		C00000000000000000000009 = {isa = PBXBuildFile; fileRef = A00000000000000000000009; };
-		C0000000000000000000000A = {isa = PBXBuildFile; fileRef = A0000000000000000000000A; };
-		C0000000000000000000000B = {isa = PBXBuildFile; fileRef = A0000000000000000000000B; };
-		C0000000000000000000000C = {isa = PBXBuildFile; fileRef = A0000000000000000000000C; };
-		C0000000000000000000000D = {isa = PBXBuildFile; fileRef = A0000000000000000000000D; };
-		C0000000000000000000000E = {isa = PBXBuildFile; fileRef = A0000000000000000000000E; };
-		C0000000000000000000000F = {isa = PBXBuildFile; fileRef = A0000000000000000000000F; };
-		C00000000000000000000010 = {isa = PBXBuildFile; fileRef = A00000000000000000000010; };
-		C00000000000000000000012 = {isa = PBXBuildFile; fileRef = A00000000000000000000012; };
-		C00000000000000000000016 = {isa = PBXBuildFile; fileRef = A00000000000000000000016; };
-		C00000000000000000000017 = {isa = PBXBuildFile; fileRef = A00000000000000000000017; };
-		C00000000000000000000018 = {isa = PBXBuildFile; fileRef = A00000000000000000000018; };
-		C00000000000000000000019 = {isa = PBXBuildFile; fileRef = A00000000000000000000019; };
-		C0000000000000000000001D = {isa = PBXBuildFile; fileRef = A0000000000000000000001D; };
-		C0000000000000000000001E = {isa = PBXBuildFile; fileRef = A0000000000000000000001E; };
-		C0000000000000000000001F = {isa = PBXBuildFile; fileRef = A0000000000000000000001F; };
-		C00000000000000000000020 = {isa = PBXBuildFile; fileRef = A00000000000000000000020; };
-		C0000000000000000000001B = {isa = PBXBuildFile; fileRef = A0000000000000000000001B; };
+		C00000000000000000000001 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000001 /* APIClient.swift */; };
+		C00000000000000000000002 /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000002 /* AccountView.swift */; };
+		C00000000000000000000003 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* AppState.swift */; };
+		C00000000000000000000004 /* BirdieBuddyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000004 /* BirdieBuddyApp.swift */; };
+		C00000000000000000000005 /* ConnectivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000005 /* ConnectivityMonitor.swift */; };
+		C00000000000000000000006 /* CourseBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000006 /* CourseBrowserView.swift */; };
+		C00000000000000000000007 /* CourseDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000007 /* CourseDetailView.swift */; };
+		C00000000000000000000008 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000008 /* KeychainStore.swift */; };
+		C00000000000000000000009 /* LiveRoundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000009 /* LiveRoundView.swift */; };
+		C0000000000000000000000A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000A /* LoginView.swift */; };
+		C0000000000000000000000B /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000B /* Models.swift */; };
+		C0000000000000000000000C /* PracticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000C /* PracticeView.swift */; };
+		C0000000000000000000000D /* RoundDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000D /* RoundDetailView.swift */; };
+		C0000000000000000000000E /* RoundDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000E /* RoundDraftStore.swift */; };
+		C0000000000000000000000F /* RoundHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000F /* RoundHistoryView.swift */; };
+		C00000000000000000000010 /* StatisticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000010 /* StatisticsView.swift */; };
+		C00000000000000000000012 /* BirdieBuddyAppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000012 /* BirdieBuddyAppTests.swift */; };
+		C00000000000000000000016 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000016 /* Assets.xcassets */; };
+		C00000000000000000000017 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000017 /* PrivacyInfo.xcprivacy */; };
+		C00000000000000000000018 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* SignUpView.swift */; };
+		C00000000000000000000019 /* CrashDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000019 /* CrashDiagnostics.swift */; };
+		C0000000000000000000001B /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001B /* Localizable.xcstrings */; };
+		C0000000000000000000001D /* CourseFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001D /* CourseFormView.swift */; };
+		C0000000000000000000001E /* PasswordResetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001E /* PasswordResetView.swift */; };
+		C0000000000000000000001F /* RoundFilterControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000001F /* RoundFilterControls.swift */; };
+		C0000000000000000000002F /* ResumeRoundBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002F /* ResumeRoundBanner.swift */; };
+		C0000000000000000000003F /* LiveRoundLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003F /* LiveRoundLoader.swift */; };
+		C00000000000000000000020 /* ScorecardLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000020 /* ScorecardLayoutTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		F00000000000000000000001 = {isa = PBXContainerItemProxy; containerPortal = E00000000000000000000001; proxyType = 1; remoteGlobalIDString = E00000000000000000000002; remoteInfo = BirdieBuddyApp; };
+		F00000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E00000000000000000000002;
+			remoteInfo = BirdieBuddyApp;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A00000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		A00000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
-		A00000000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
-		A00000000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BirdieBuddyApp.swift; sourceTree = "<group>"; };
-		A00000000000000000000005 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityMonitor.swift; sourceTree = "<group>"; };
-		A00000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseBrowserView.swift; sourceTree = "<group>"; };
-		A00000000000000000000007 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseDetailView.swift; sourceTree = "<group>"; };
-		A00000000000000000000008 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
-		A00000000000000000000009 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRoundView.swift; sourceTree = "<group>"; };
-		A0000000000000000000000A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
-		A0000000000000000000000B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		A0000000000000000000000C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
-		A0000000000000000000000D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundDetailView.swift; sourceTree = "<group>"; };
-		A0000000000000000000000E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundDraftStore.swift; sourceTree = "<group>"; };
-		A0000000000000000000000F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundHistoryView.swift; sourceTree = "<group>"; };
-		A00000000000000000000010 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsView.swift; sourceTree = "<group>"; };
-		A00000000000000000000011 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A00000000000000000000012 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BirdieBuddyAppTests.swift; sourceTree = "<group>"; };
-		A00000000000000000000020 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScorecardLayoutTests.swift; sourceTree = "<group>"; };
-		A00000000000000000000016 = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A00000000000000000000017 = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		A00000000000000000000018 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
-		A00000000000000000000019 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashDiagnostics.swift; sourceTree = "<group>"; };
-		A0000000000000000000001A = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Debug.plist"; sourceTree = "<group>"; };
-		A0000000000000000000001B = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		A0000000000000000000001C = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
-		A0000000000000000000001D = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseFormView.swift; sourceTree = "<group>"; };
-		A0000000000000000000001E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetView.swift; sourceTree = "<group>"; };
-		A0000000000000000000001F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundFilterControls.swift; sourceTree = "<group>"; };
-		B00000000000000000000001 = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BirdieBuddyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B00000000000000000000002 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BirdieBuddyAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000001 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		A00000000000000000000002 /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
+		A00000000000000000000003 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		A00000000000000000000004 /* BirdieBuddyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BirdieBuddyApp.swift; sourceTree = "<group>"; };
+		A00000000000000000000005 /* ConnectivityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityMonitor.swift; sourceTree = "<group>"; };
+		A00000000000000000000006 /* CourseBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseBrowserView.swift; sourceTree = "<group>"; };
+		A00000000000000000000007 /* CourseDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseDetailView.swift; sourceTree = "<group>"; };
+		A00000000000000000000008 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		A00000000000000000000009 /* LiveRoundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRoundView.swift; sourceTree = "<group>"; };
+		A0000000000000000000000A /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		A0000000000000000000000B /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		A0000000000000000000000C /* PracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
+		A0000000000000000000000D /* RoundDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundDetailView.swift; sourceTree = "<group>"; };
+		A0000000000000000000000E /* RoundDraftStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundDraftStore.swift; sourceTree = "<group>"; };
+		A0000000000000000000000F /* RoundHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundHistoryView.swift; sourceTree = "<group>"; };
+		A00000000000000000000010 /* StatisticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsView.swift; sourceTree = "<group>"; };
+		A00000000000000000000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A00000000000000000000012 /* BirdieBuddyAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BirdieBuddyAppTests.swift; sourceTree = "<group>"; };
+		A00000000000000000000016 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A00000000000000000000017 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A00000000000000000000018 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
+		A00000000000000000000019 /* CrashDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashDiagnostics.swift; sourceTree = "<group>"; };
+		A0000000000000000000001A /* Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Debug.plist"; sourceTree = "<group>"; };
+		A0000000000000000000001B /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		A0000000000000000000001C /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		A0000000000000000000001D /* CourseFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseFormView.swift; sourceTree = "<group>"; };
+		A0000000000000000000001E /* PasswordResetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetView.swift; sourceTree = "<group>"; };
+		A0000000000000000000001F /* RoundFilterControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundFilterControls.swift; sourceTree = "<group>"; };
+		A0000000000000000000002F /* ResumeRoundBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResumeRoundBanner.swift; sourceTree = "<group>"; };
+		A0000000000000000000003F /* LiveRoundLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRoundLoader.swift; sourceTree = "<group>"; };
+		A00000000000000000000020 /* ScorecardLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScorecardLayoutTests.swift; sourceTree = "<group>"; };
+		B00000000000000000000001 /* BirdieBuddyApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BirdieBuddyApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B00000000000000000000002 /* BirdieBuddyAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BirdieBuddyAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		D00000000000000000000001 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		D00000000000000000000002 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D00000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		D00000000000000000000010 = {isa = PBXGroup; children = (A0000000000000000000001C, D00000000000000000000011, D00000000000000000000012, D00000000000000000000013); sourceTree = "<group>"; };
-		D00000000000000000000011 = {isa = PBXGroup; children = (A00000000000000000000001,A00000000000000000000002,A00000000000000000000003,A00000000000000000000004,A00000000000000000000005,A00000000000000000000006,A00000000000000000000007,A00000000000000000000008,A00000000000000000000009,A0000000000000000000000A,A0000000000000000000000B,A0000000000000000000000C,A0000000000000000000000D,A0000000000000000000000E,A0000000000000000000000F,A00000000000000000000010,A00000000000000000000011,A00000000000000000000016,A00000000000000000000017,A00000000000000000000018,A00000000000000000000019,A0000000000000000000001A,A0000000000000000000001B,A0000000000000000000001D,A0000000000000000000001E,A0000000000000000000001F); path = BirdieBuddyApp; sourceTree = "<group>"; };
-		D00000000000000000000012 = {isa = PBXGroup; children = (A00000000000000000000012,A00000000000000000000020); path = BirdieBuddyAppTests; sourceTree = "<group>"; };
-		D00000000000000000000013 = {isa = PBXGroup; children = (B00000000000000000000001,B00000000000000000000002); name = Products; sourceTree = "<group>"; };
+		D00000000000000000000010 = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000001C /* Signing.xcconfig */,
+				D00000000000000000000011 /* BirdieBuddyApp */,
+				D00000000000000000000012 /* BirdieBuddyAppTests */,
+				D00000000000000000000013 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D00000000000000000000011 /* BirdieBuddyApp */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000001 /* APIClient.swift */,
+				A00000000000000000000002 /* AccountView.swift */,
+				A00000000000000000000003 /* AppState.swift */,
+				A00000000000000000000004 /* BirdieBuddyApp.swift */,
+				A00000000000000000000005 /* ConnectivityMonitor.swift */,
+				A00000000000000000000006 /* CourseBrowserView.swift */,
+				A00000000000000000000007 /* CourseDetailView.swift */,
+				A00000000000000000000008 /* KeychainStore.swift */,
+				A00000000000000000000009 /* LiveRoundView.swift */,
+				A0000000000000000000000A /* LoginView.swift */,
+				A0000000000000000000000B /* Models.swift */,
+				A0000000000000000000000C /* PracticeView.swift */,
+				A0000000000000000000000D /* RoundDetailView.swift */,
+				A0000000000000000000000E /* RoundDraftStore.swift */,
+				A0000000000000000000000F /* RoundHistoryView.swift */,
+				A00000000000000000000010 /* StatisticsView.swift */,
+				A00000000000000000000011 /* Info.plist */,
+				A00000000000000000000016 /* Assets.xcassets */,
+				A00000000000000000000017 /* PrivacyInfo.xcprivacy */,
+				A00000000000000000000018 /* SignUpView.swift */,
+				A00000000000000000000019 /* CrashDiagnostics.swift */,
+				A0000000000000000000001A /* Info-Debug.plist */,
+				A0000000000000000000001B /* Localizable.xcstrings */,
+				A0000000000000000000001D /* CourseFormView.swift */,
+				A0000000000000000000001E /* PasswordResetView.swift */,
+				A0000000000000000000001F /* RoundFilterControls.swift */,
+				A0000000000000000000002F /* ResumeRoundBanner.swift */,
+				A0000000000000000000003F /* LiveRoundLoader.swift */,
+			);
+			path = BirdieBuddyApp;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000012 /* BirdieBuddyAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000012 /* BirdieBuddyAppTests.swift */,
+				A00000000000000000000020 /* ScorecardLayoutTests.swift */,
+			);
+			path = BirdieBuddyAppTests;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000013 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B00000000000000000000001 /* BirdieBuddyApp.app */,
+				B00000000000000000000002 /* BirdieBuddyAppTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		E00000000000000000000002 = {isa = PBXNativeTarget; buildConfigurationList = F00000000000000000000010; buildPhases = (D00000000000000000000020,D00000000000000000000001,D00000000000000000000030); buildRules = (); dependencies = (); name = BirdieBuddyApp; productName = BirdieBuddyApp; productReference = B00000000000000000000001; productType = "com.apple.product-type.application"; };
-		E00000000000000000000003 = {isa = PBXNativeTarget; buildConfigurationList = F00000000000000000000011; buildPhases = (D00000000000000000000021,D00000000000000000000002,D00000000000000000000031); buildRules = (); dependencies = (F00000000000000000000002); name = BirdieBuddyAppTests; productName = BirdieBuddyAppTests; productReference = B00000000000000000000002; productType = "com.apple.product-type.bundle.unit-test"; };
+		E00000000000000000000002 /* BirdieBuddyApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F00000000000000000000010 /* Build configuration list for PBXNativeTarget "BirdieBuddyApp" */;
+			buildPhases = (
+				D00000000000000000000020 /* Sources */,
+				D00000000000000000000001 /* Frameworks */,
+				D00000000000000000000030 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BirdieBuddyApp;
+			productName = BirdieBuddyApp;
+			productReference = B00000000000000000000001 /* BirdieBuddyApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		E00000000000000000000003 /* BirdieBuddyAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F00000000000000000000011 /* Build configuration list for PBXNativeTarget "BirdieBuddyAppTests" */;
+			buildPhases = (
+				D00000000000000000000021 /* Sources */,
+				D00000000000000000000002 /* Frameworks */,
+				D00000000000000000000031 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F00000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = BirdieBuddyAppTests;
+			productName = BirdieBuddyAppTests;
+			productReference = B00000000000000000000002 /* BirdieBuddyAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		E00000000000000000000001 = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; TargetAttributes = {E00000000000000000000002 = {CreatedOnToolsVersion = 16.0; }; E00000000000000000000003 = {CreatedOnToolsVersion = 16.0; TestTargetID = E00000000000000000000002; }; }; }; buildConfigurationList = F00000000000000000000012; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base, ko); mainGroup = D00000000000000000000010; productRefGroup = D00000000000000000000013; projectDirPath = ""; projectRoot = ""; targets = (E00000000000000000000002,E00000000000000000000003); };
+		E00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					E00000000000000000000002 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					E00000000000000000000003 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = E00000000000000000000002;
+					};
+				};
+			};
+			buildConfigurationList = F00000000000000000000012 /* Build configuration list for PBXProject "BirdieBuddyApp" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				ko,
+			);
+			mainGroup = D00000000000000000000010;
+			productRefGroup = D00000000000000000000013 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E00000000000000000000002 /* BirdieBuddyApp */,
+				E00000000000000000000003 /* BirdieBuddyAppTests */,
+			);
+		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		D00000000000000000000030 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (C00000000000000000000016,C00000000000000000000017,C0000000000000000000001B); runOnlyForDeploymentPostprocessing = 0; };
-		D00000000000000000000031 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		D00000000000000000000030 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C00000000000000000000016 /* Assets.xcassets in Resources */,
+				C00000000000000000000017 /* PrivacyInfo.xcprivacy in Resources */,
+				C0000000000000000000001B /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000031 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		D00000000000000000000020 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C00000000000000000000001,C00000000000000000000002,C00000000000000000000003,C00000000000000000000004,C00000000000000000000005,C00000000000000000000006,C00000000000000000000007,C00000000000000000000008,C00000000000000000000009,C0000000000000000000000A,C0000000000000000000000B,C0000000000000000000000C,C0000000000000000000000D,C0000000000000000000000E,C0000000000000000000000F,C00000000000000000000010,C00000000000000000000018,C00000000000000000000019,C0000000000000000000001D,C0000000000000000000001E,C0000000000000000000001F); runOnlyForDeploymentPostprocessing = 0; };
-		D00000000000000000000021 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C00000000000000000000012,C00000000000000000000020); runOnlyForDeploymentPostprocessing = 0; };
+		D00000000000000000000020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C00000000000000000000001 /* APIClient.swift in Sources */,
+				C00000000000000000000002 /* AccountView.swift in Sources */,
+				C00000000000000000000003 /* AppState.swift in Sources */,
+				C00000000000000000000004 /* BirdieBuddyApp.swift in Sources */,
+				C00000000000000000000005 /* ConnectivityMonitor.swift in Sources */,
+				C00000000000000000000006 /* CourseBrowserView.swift in Sources */,
+				C00000000000000000000007 /* CourseDetailView.swift in Sources */,
+				C00000000000000000000008 /* KeychainStore.swift in Sources */,
+				C00000000000000000000009 /* LiveRoundView.swift in Sources */,
+				C0000000000000000000000A /* LoginView.swift in Sources */,
+				C0000000000000000000000B /* Models.swift in Sources */,
+				C0000000000000000000000C /* PracticeView.swift in Sources */,
+				C0000000000000000000000D /* RoundDetailView.swift in Sources */,
+				C0000000000000000000000E /* RoundDraftStore.swift in Sources */,
+				C0000000000000000000000F /* RoundHistoryView.swift in Sources */,
+				C00000000000000000000010 /* StatisticsView.swift in Sources */,
+				C00000000000000000000018 /* SignUpView.swift in Sources */,
+				C00000000000000000000019 /* CrashDiagnostics.swift in Sources */,
+				C0000000000000000000001D /* CourseFormView.swift in Sources */,
+				C0000000000000000000001E /* PasswordResetView.swift in Sources */,
+				C0000000000000000000001F /* RoundFilterControls.swift in Sources */,
+				C0000000000000000000002F /* ResumeRoundBanner.swift in Sources */,
+				C0000000000000000000003F /* LiveRoundLoader.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00000000000000000000021 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C00000000000000000000012 /* BirdieBuddyAppTests.swift in Sources */,
+				C00000000000000000000020 /* ScorecardLayoutTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		F00000000000000000000002 = {isa = PBXTargetDependency; target = E00000000000000000000002; targetProxy = F00000000000000000000001; };
+		F00000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E00000000000000000000002 /* BirdieBuddyApp */;
+			targetProxy = F00000000000000000000001 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		F00000000000000000000020 = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Debug; };
-		F00000000000000000000021 = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Release; };
-		F00000000000000000000022 = {isa = XCBuildConfiguration; baseConfigurationReference = A0000000000000000000001C; buildSettings = {API_BASE_URL = "http://localhost:5000"; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; ENABLE_TESTABILITY = YES; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = "BirdieBuddyApp/Info-Debug.plist"; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = com.birdiebuddy.mobile; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = 1; }; name = Debug; };
-		F00000000000000000000023 = {isa = XCBuildConfiguration; baseConfigurationReference = A0000000000000000000001C; buildSettings = {API_BASE_URL = "https://birdiebuddy.onrender.com"; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = BirdieBuddyApp/Info.plist; MARKETING_VERSION = 1.0; PRODUCT_BUNDLE_IDENTIFIER = com.birdiebuddy.mobile; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; TARGETED_DEVICE_FAMILY = 1; }; name = Release; };
-		F00000000000000000000024 = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.birdiebuddy.mobile.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BirdieBuddyApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BirdieBuddyApp"; }; name = Debug; };
-		F00000000000000000000025 = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.birdiebuddy.mobile.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BirdieBuddyApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BirdieBuddyApp"; }; name = Release; };
+		F00000000000000000000020 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		F00000000000000000000021 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		F00000000000000000000022 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A0000000000000000000001C /* Signing.xcconfig */;
+			buildSettings = {
+				API_BASE_URL = "https://birdiebuddy.onrender.com";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UBCF6ZD695;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "BirdieBuddyApp/Info-Debug.plist";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.birdiebuddy.mobile;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		F00000000000000000000023 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A0000000000000000000001C /* Signing.xcconfig */;
+			buildSettings = {
+				API_BASE_URL = "https://birdiebuddy.onrender.com";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UBCF6ZD695;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BirdieBuddyApp/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.birdiebuddy.mobile;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		F00000000000000000000024 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.birdiebuddy.mobile.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BirdieBuddyApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BirdieBuddyApp";
+			};
+			name = Debug;
+		};
+		F00000000000000000000025 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.birdiebuddy.mobile.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BirdieBuddyApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BirdieBuddyApp";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		F00000000000000000000010 = {isa = XCConfigurationList; buildConfigurations = (F00000000000000000000022,F00000000000000000000023); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		F00000000000000000000011 = {isa = XCConfigurationList; buildConfigurations = (F00000000000000000000024,F00000000000000000000025); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		F00000000000000000000012 = {isa = XCConfigurationList; buildConfigurations = (F00000000000000000000020,F00000000000000000000021); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		F00000000000000000000010 /* Build configuration list for PBXNativeTarget "BirdieBuddyApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F00000000000000000000022 /* Debug */,
+				F00000000000000000000023 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F00000000000000000000011 /* Build configuration list for PBXNativeTarget "BirdieBuddyAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F00000000000000000000024 /* Debug */,
+				F00000000000000000000025 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F00000000000000000000012 /* Build configuration list for PBXProject "BirdieBuddyApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F00000000000000000000020 /* Debug */,
+				F00000000000000000000021 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 	};
-	rootObject = E00000000000000000000001;
+	rootObject = E00000000000000000000001 /* Project object */;
 }

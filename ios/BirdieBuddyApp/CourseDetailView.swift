@@ -31,7 +31,13 @@ struct CourseDetailView: View {
                     Section {
                         Button("Start round") {
                             Task {
-                                do { draft = try await appState.api.startDraft(courseId: course.id, teeId: selectedTeeId) }
+                                do {
+                                    let started = try await appState.api.startDraft(courseId: course.id, teeId: selectedTeeId)
+                                    if let userId = appState.user?.id {
+                                        try await appState.roundPersistence.cacheDraft(userId: userId, draft: started)
+                                    }
+                                    draft = started
+                                }
                                 catch { errorMessage = AppState.message(for: error) }
                             }
                         }

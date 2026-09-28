@@ -2,6 +2,33 @@ import XCTest
 @testable import BirdieBuddyApp
 
 final class BirdieBuddyAppTests: XCTestCase {
+    func testResumedRoundOpensFirstUnsavedHole() {
+        let draft = RoundDraft(id: 10, courseId: 3, courseName: "Test", date: "2026-09-29",
+            courseTeeId: 4, tee: "Blue", holes: [makeHole(number: 1, score: 4),
+                makeHole(number: 2, score: 5), makeHole(number: 4, score: 4)],
+            status: "Draft", currentHole: 4, expectedHoles: 18, updatedAt: nil)
+        XCTAssertEqual(LiveRoundView.resumeHoleIndex(for: draft), 2)
+    }
+
+    func testCachedDraftSurvivesRelaunchAndStaysWithItsOwner() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let draft = RoundDraft(id: 10, courseId: 3, courseName: "Test", date: "2026-09-29",
+            courseTeeId: 4, tee: "Blue", holes: [makeHole(number: 1, score: 4)],
+            status: "Draft", currentHole: 1, expectedHoles: 18, updatedAt: nil)
+        let first = try RoundPersistenceStore(directoryURL: directory, inMemory: true)
+        try await first.cacheDraft(userId: 7, draft: draft)
+
+        let relaunched = try RoundPersistenceStore(directoryURL: directory, inMemory: true)
+        let restored = try await relaunched.cachedDraft(userId: 7, roundId: 10)
+        let otherAccount = try await relaunched.latestCachedDraft(userId: 8)
+        XCTAssertEqual(restored, draft)
+        XCTAssertNil(otherAccount)
+        try await relaunched.deleteUserData(userId: 7)
+        let deleted = try await relaunched.cachedDraft(userId: 7, roundId: 10)
+        XCTAssertNil(deleted)
+    }
+
     override func tearDown() {
         MockURLProtocol.requestHandler = nil
         super.tearDown()

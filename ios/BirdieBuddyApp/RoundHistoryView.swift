@@ -16,7 +16,11 @@ struct RoundHistoryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            // Above the List: this screen shows completed rounds, so the round still
+            // in progress is not among them and had no way to be reached or resumed.
+            VStack(spacing: 0) {
+                ResumeRoundBanner()
+                List {
                 Section("Filters") {
                     RoundFilterControls(selection: $selection, courses: courses, isUpdating: isReloading)
                 }
@@ -36,7 +40,16 @@ struct RoundHistoryView: View {
                     Section {
                         ForEach(rounds) { round in
                             NavigationLink {
-                                RoundDetailView(round: round)
+                                // A draft is still being played, and the server does
+                                // include it in this list. Sending it to the
+                                // read-only summary is what made an interrupted
+                                // round impossible to continue; the web client
+                                // branches on status here for the same reason.
+                                if round.isDraft {
+                                    LiveRoundLoader(roundId: round.id)
+                                } else {
+                                    RoundDetailView(round: round)
+                                }
                             } label: {
                                 row(round)
                             }
@@ -64,18 +77,26 @@ struct RoundHistoryView: View {
                 await appState.refreshSyncStatuses()
             }
             .onChange(of: selection) { _, _ in Task { await reload() } }
+            }
         }
     }
 
     private func row(_ round: RoundSummary) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(round.courseName).font(.headline)
+            if round.isDraft {
+                Text("In progress")
+                    .font(.caption.bold())
+                    .foregroundStyle(.orange)
+            }
             Text("\(round.date) · \(round.holesPlayed)/\(round.expectedHoles) holes · \(round.tee)")
                 .font(.subheadline).foregroundStyle(.secondary)
             Text("\(round.totalScore) (\(StatisticsView.signedInt(round.scoreToPar)))")
                 .font(.title3.bold())
             if let syncStatus = appState.roundSyncStatuses[round.id], syncStatus != .synced {
-                Label(syncStatus.label,
+                // LocalizedStringKey, not the raw String: a String argument skips the
+                // catalog and the badge renders in English on a localized device.
+                Label(LocalizedStringKey(syncStatus.label),
                       systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
                     .font(.caption)
                     .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
