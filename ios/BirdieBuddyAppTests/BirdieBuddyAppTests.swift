@@ -2,6 +2,14 @@ import XCTest
 @testable import BirdieBuddyApp
 
 final class BirdieBuddyAppTests: XCTestCase {
+    func testResumedRoundOpensFirstUnsavedHole() {
+        let draft = RoundDraft(id: 10, courseId: 3, courseName: "Test", date: "2026-09-29",
+            courseTeeId: 4, tee: "Blue", holes: [makeHole(number: 1, score: 4),
+                makeHole(number: 2, score: 5), makeHole(number: 4, score: 4)],
+            status: "Draft", currentHole: 4, expectedHoles: 18, updatedAt: nil)
+        XCTAssertEqual(LiveRoundView.resumeHoleIndex(for: draft), 2)
+    }
+
     override func tearDown() {
         MockURLProtocol.requestHandler = nil
         super.tearDown()

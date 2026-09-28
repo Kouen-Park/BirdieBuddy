@@ -69,6 +69,13 @@ struct LiveRoundView: View {
     init(draft: RoundDraft) {
         _snapshot = State(initialValue: MutableRoundSnapshot(draft: draft))
         _serverHoles = State(initialValue: Dictionary(uniqueKeysWithValues: draft.holes.map { ($0.holeNumber, $0) }))
+        _holeIndex = State(initialValue: Self.resumeHoleIndex(for: draft))
+    }
+
+    static func resumeHoleIndex(for draft: RoundDraft) -> Int {
+        let saved = Set(draft.holes.map(\.holeNumber))
+        let firstUnsaved = (1...max(draft.expectedHoles, 1)).first { !saved.contains($0) }
+        return max(0, min((firstUnsaved ?? draft.currentHole) - 1, draft.expectedHoles - 1))
     }
 
     /// Used until the tee's pars arrive, and as the last resort if they never do.
