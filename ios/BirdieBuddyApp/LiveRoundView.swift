@@ -238,6 +238,7 @@ struct LiveRoundView: View {
             )
             try await appState.roundPersistence.enqueue(userId: userId, write: write)
             applyLocalRequest(request, holeNumber: holeNumber)
+            try await appState.roundPersistence.cacheDraft(userId: userId, draft: draft)
             await appState.refreshSyncStatuses()
         } catch {
             errorMessage = "Could not save this input on the device."
@@ -246,6 +247,7 @@ struct LiveRoundView: View {
         }
         let report = await appState.syncPending(trigger: .manualSave, roundId: draft.id)
         report.savedHoles.forEach { applyServerHole($0) }
+        try? await appState.roundPersistence.cacheDraft(userId: userId, draft: draft)
         await loadPersistedConflict()
 
         // Judge THIS hole, not the round. Round-level status made one permanently
@@ -305,6 +307,7 @@ struct LiveRoundView: View {
             // write stayed stuck as "action required" for good.
             isRoundComplete = true
             status = "Round complete"
+            try? await appState.roundPersistence.removeCachedDraft(userId: userId, roundId: draft.id)
             completedRound = summary(for: finished)
         } catch {
             errorMessage = AppState.message(for: error)
@@ -334,6 +337,7 @@ struct LiveRoundView: View {
         await loadCoursePars()
         let report = await appState.syncPending(trigger: .liveRound, roundId: draft.id)
         report.savedHoles.forEach { applyServerHole($0) }
+        if let userId { try? await appState.roundPersistence.cacheDraft(userId: userId, draft: draft) }
         await loadPersistedConflict()
     }
 

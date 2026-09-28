@@ -20,17 +20,41 @@ struct LiveRoundLoader: View {
             if let draft {
                 LiveRoundView(draft: draft)
             } else if let errorMessage {
-                ContentUnavailableView("Could not open this round", systemImage: "exclamationmark.triangle",
-                                       description: Text(errorMessage))
+                ContentUnavailableView {
+                    Label("Could not open this round", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(errorMessage)
+                } actions: {
+                    Button("Retry") { Task { await load() } }
+                }
             } else {
                 ProgressView("Opening round…")
             }
         }
-        .task {
-            guard draft == nil else { return }
-            do {
-                draft = try await appState.api.round(id: roundId)
-            } catch {
+        .task { await load() }
+    }
+
+    private func load() async {
+        guard draft == nil else { return }
+        errorMessage = nil
+        if let userId = appState.user?.id,
+           let pending = try? await appState.roundPersistence.pending(userId: userId, roundId: roundId),
+           !pending.isEmpty,
+           let cached = try? await appState.roundPersistence.cachedDraft(userId: userId, roundId: roundId) {
+            draft = cached
+            return
+        }
+        do {
+            let loaded = try await appState.api.round(id: roundId)
+            if let userId = appState.user?.id {
+                try await appState.roundPersistence.cacheDraft(userId: userId, draft: loaded)
+            }
+            draft = loaded
+        } catch {
+            if let userId = appState.user?.id,
+               let cached = try? await appState.roundPersistence.cachedDraft(userId: userId, roundId: roundId) {
+                draft = cached
+            } else {
                 errorMessage = AppState.message(for: error)
             }
         }

@@ -13,6 +13,7 @@ struct ResumeRoundBanner: View {
     @EnvironmentObject private var appState: AppState
 
     @State private var draft: RoundSummary?
+    @State private var loadFailed = false
 
     var body: some View {
         Group {
@@ -43,16 +44,31 @@ struct ResumeRoundBanner: View {
                     .accessibilityHint("Reopens the round you have not finished")
                 }
                 Divider()
+            } else if loadFailed {
+                Button("Retry loading round") { Task { await load() } }
             }
         }
-        .task { await load() }
+        .task(id: appState.user?.id) { await load() }
     }
 
     private func load() async {
-        // Best effort. Offline this finds nothing: only the round's pending writes
-        // are cached on the device, not the round itself, so resuming without a
-        // connection needs local draft persistence that this does not add.
-        draft = try? await appState.api.activeDraft()
+        guard let userId = appState.user?.id else { draft = nil; return }
+        loadFailed = false
+        do {
+            draft = try await appState.api.activeDraft()
+        } catch {
+            if let cached = try? await appState.roundPersistence.latestCachedDraft(userId: userId) {
+                draft = RoundSummary(id: cached.id, courseId: cached.courseId,
+                    courseName: cached.courseName, date: cached.date, tee: cached.tee,
+                    totalScore: cached.holes.reduce(0) { $0 + $1.score },
+                    scoreToPar: cached.holes.reduce(0) { $0 + $1.score - $1.par },
+                    status: cached.status, holesPlayed: cached.holes.count,
+                    expectedHoles: cached.expectedHoles)
+            } else {
+                draft = nil
+                loadFailed = true
+            }
+        }
         await appState.refreshSyncStatuses()
     }
 }

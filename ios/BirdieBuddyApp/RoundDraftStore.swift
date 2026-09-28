@@ -146,6 +146,40 @@ actor RoundPersistenceStore: ModelActor {
     private let legacyDirectoryURL: URL
     private var migratedUsers: Set<Int> = []
 
+    private func draftURL(userId: Int, roundId: Int) -> URL {
+        legacyDirectoryURL.appendingPathComponent("round-draft-\(userId)-\(roundId).json")
+    }
+
+    func cacheDraft(userId: Int, draft: RoundDraft) throws {
+        try fileManager.createDirectory(at: legacyDirectoryURL, withIntermediateDirectories: true)
+        try JSONEncoder.birdieBuddy.encode(draft).write(to: draftURL(userId: userId, roundId: draft.id), options: .atomic)
+    }
+
+    func cachedDraft(userId: Int, roundId: Int) throws -> RoundDraft? {
+        let url = draftURL(userId: userId, roundId: roundId)
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        return try JSONDecoder.birdieBuddy.decode(RoundDraft.self, from: Data(contentsOf: url))
+    }
+
+    func latestCachedDraft(userId: Int) throws -> RoundDraft? {
+        guard fileManager.fileExists(atPath: legacyDirectoryURL.path) else { return nil }
+        let prefix = "round-draft-\(userId)-"
+        let urls = try fileManager.contentsOfDirectory(at: legacyDirectoryURL,
+            includingPropertiesForKeys: [.contentModificationDateKey])
+            .filter { $0.lastPathComponent.hasPrefix(prefix) && $0.pathExtension == "json" }
+        let latest = try urls.max {
+            try $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate ?? .distantPast <
+                $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate ?? .distantPast
+        }
+        guard let latest else { return nil }
+        return try JSONDecoder.birdieBuddy.decode(RoundDraft.self, from: Data(contentsOf: latest))
+    }
+
+    func removeCachedDraft(userId: Int, roundId: Int) throws {
+        let url = draftURL(userId: userId, roundId: roundId)
+        if fileManager.fileExists(atPath: url.path) { try fileManager.removeItem(at: url) }
+    }
+
     init(directoryURL: URL? = nil, inMemory: Bool = false, fileManager: FileManager = .default) throws {
         self.fileManager = fileManager
         let root = directoryURL ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -263,6 +297,11 @@ actor RoundPersistenceStore: ModelActor {
         try records(userId: userId).forEach(modelContext.delete)
         try conflictRecords(userId: userId).forEach(modelContext.delete)
         try modelContext.save()
+        let prefix = "round-draft-\(userId)-"
+        for url in try fileManager.contentsOfDirectory(at: legacyDirectoryURL, includingPropertiesForKeys: nil)
+        where url.lastPathComponent.hasPrefix(prefix) && url.pathExtension == "json" {
+            try fileManager.removeItem(at: url)
+        }
     }
 
     private func prepare(userId: Int) throws {
