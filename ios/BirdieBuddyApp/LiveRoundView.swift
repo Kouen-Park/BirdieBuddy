@@ -105,10 +105,8 @@ struct LiveRoundView: View {
                     // device while the line below it was translated.
                     Label(LocalizedStringKey(syncStatus.label), systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
                         .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
-                        .accessibilityLabel("Sync state: \(syncStatus.label)")
                 }
                 Text(LocalizedStringKey(status)).foregroundStyle(.secondary)
-                    .accessibilityLabel(status.isEmpty ? "No save status yet" : "Save status: \(status)")
             }
             Section("Score") {
                 LabeledContent("Par", value: "\(expectedPar)")

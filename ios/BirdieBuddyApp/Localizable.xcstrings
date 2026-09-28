@@ -952,7 +952,14 @@
       }
     },
     "Keep this device's value for hole %lld" : {
-
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld번 홀에서 이 기기의 값 유지"
+          }
+        }
+      }
     },
     "Keep your round moving, even when the course connection does not." : {
       "localizations" : {
@@ -1209,7 +1216,14 @@
       }
     },
     "No save status yet" : {
-
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "아직 저장 내역 없음"
+          }
+        }
+      }
     },
     "OK" : {
       "localizations" : {
@@ -1710,7 +1724,14 @@
       }
     },
     "Save hole %lld" : {
-
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld번 홀 저장"
+          }
+        }
+      }
     },
     "Save profile" : {
       "localizations" : {
@@ -1726,7 +1747,14 @@
 
     },
     "Save status: %@" : {
-
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장 상태: %@"
+          }
+        }
+      }
     },
     "Saved on device" : {
       "extractionState" : "stale",
@@ -1783,7 +1811,14 @@
       }
     },
     "Saves on this device first, then syncs when online" : {
-
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "먼저 이 기기에 저장하고 온라인일 때 동기화합니다"
+          }
+        }
+      }
     },
     "Saving…" : {
       "localizations" : {
@@ -1981,7 +2016,14 @@
       }
     },
     "Sync state: %@" : {
-
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동기화 상태: %@"
+          }
+        }
+      }
     },
     "Synced" : {
       "extractionState" : "stale",
@@ -2111,7 +2153,14 @@
       }
     },
     "Use the server value for hole %lld" : {
-
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld번 홀에서 서버 값 사용"
+          }
+        }
+      }
     },
     "Using server value" : {
       "extractionState" : "stale",
