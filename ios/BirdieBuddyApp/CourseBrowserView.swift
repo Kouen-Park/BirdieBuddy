@@ -19,7 +19,13 @@ struct CourseBrowserView: View {
                 if isLoading {
                     ProgressView("Loading courses…")
                 } else if let errorMessage {
-                    ContentUnavailableView("Could not load courses", systemImage: "wifi.exclamationmark", description: Text(errorMessage))
+                    ContentUnavailableView {
+                        Label("Could not load courses", systemImage: "wifi.exclamationmark")
+                    } description: {
+                        Text(errorMessage)
+                    } actions: {
+                        Button("Retry") { Task { await loadCourses() } }
+                    }
                 } else if courses.isEmpty {
                     ContentUnavailableView("No courses yet", systemImage: "flag", description: Text("Course data will appear here when it is available."))
                 } else {

@@ -1593,6 +1593,26 @@
         }
       }
     },
+    "Retry" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 시도"
+          }
+        }
+      }
+    },
+    "Retry loading round" : {
+      "localizations" : {
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "라운드 다시 불러오기"
+          }
+        }
+      }
+    },
     "Review required" : {
       "extractionState" : "stale",
       "localizations" : {
