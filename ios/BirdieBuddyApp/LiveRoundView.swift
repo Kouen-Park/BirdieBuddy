@@ -398,9 +398,12 @@ struct LiveRoundView: View {
             let revision = Int(Date.timeIntervalSinceReferenceDate * 1000)
             guard try await appState.roundPersistence.keepLocalValue(userId: userId, conflictId: conflict.id, revision: revision) != nil else { return }
             applyLocalRequest(conflict.local, holeNumber: conflict.holeNumber)
+            try? await appState.roundPersistence.cacheDraft(userId: userId, draft: draft)
             self.conflict = nil
             let report = await appState.syncPending(trigger: .conflictResolution, roundId: draft.id)
             report.savedHoles.forEach { applyServerHole($0) }
+            try? await appState.roundPersistence.cacheDraft(userId: userId, draft: draft)
+            if holeNumber == conflict.holeNumber { loadCurrentHole() }
             status = appState.roundSyncStatuses[draft.id] == .synced ? "Kept this device's value" : "Saved on device — will sync when online"
             await loadPersistedConflict()
         } catch {
