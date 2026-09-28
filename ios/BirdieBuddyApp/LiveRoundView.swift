@@ -139,10 +139,6 @@ struct LiveRoundView: View {
             }
             if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
             Section {
-                Button(isSaving ? "Saving…" : "Save hole") { Task { await saveHole() } }
-                    .disabled(isSaving || conflict != nil || !strokeBreakdownIsValid || isRoundComplete)
-                    .accessibilityLabel("Save hole \(holeNumber)")
-                    .accessibilityHint("Saves on this device first, then syncs when online")
                 // One button per row. Two buttons in a single Form row make the row
                 // route its tap to the first ENABLED one, so on hole 2 onwards a tap
                 // meant for Next was consumed by Previous and the round jumped back
@@ -151,6 +147,18 @@ struct LiveRoundView: View {
                 previousHoleButton
                 advanceButton
             }
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button(isSaving ? "Saving…" : "Save hole") { Task { await saveHole() } }
+                .disabled(isSaving || conflict != nil || !strokeBreakdownIsValid || isRoundComplete)
+                .accessibilityLabel("Save hole \(holeNumber)")
+                .accessibilityHint("Saves on this device first, then syncs when online")
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.regularMaterial)
         }
         // The screen stops being a live round the moment the server accepts
         // completion, so it should stop calling itself one.
