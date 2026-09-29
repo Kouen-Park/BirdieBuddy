@@ -54,6 +54,12 @@
             "state" : "new",
             "value" : "%1$lld holes · avg %2$@ · %3$@ to par"
           }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld홀 · 평균 %2$@ · 파 대비 %3$@"
+          }
         }
       }
     },
