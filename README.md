@@ -74,7 +74,7 @@ The product is ready for active iOS development and internal testing, but it is 
 
 The bird-on-tee artwork shown above is available as [four 1024 × 1024 SVG layers](design/app-icon/icon-composer/) for Apple Icon Composer, with a [flat preview and import notes](design/app-icon/README.md). It uses the app's `night`, `paper`, and `mint` color tokens. Liquid Glass effects and appearance variants are intentionally left for Icon Composer.
 
-The iOS target still bundles the [existing `AppIcon.appiconset`](ios/BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/); the new layered artwork has not yet been imported into the Xcode project or shipped as the installed app icon.
+The iOS target now bundles a flat 1024 × 1024 export of this design in [`AppIcon.appiconset`](ios/BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/). The separate SVG layers have not yet been imported into Icon Composer, so the installed icon does not use layered Liquid Glass rendering yet.
 
 ## Architecture
 
@@ -205,7 +205,7 @@ CI additionally runs PostgreSQL integration tests, full browser E2E, migration S
 |---|---|
 | `ios/BirdieBuddyApp/` | SwiftUI application, networking, authentication, local persistence, and features |
 | `ios/BirdieBuddyAppTests/` | Native model and outbox tests |
-| `design/app-icon/` | Layered Icon Composer source artwork and flat preview; not yet the bundled iOS icon |
+| `design/app-icon/` | Layered Icon Composer source artwork and flat preview for the bundled iOS icon |
 | `Controllers/` | HTTP endpoints and status-code mapping |
 | `Services/` | Authentication, courses, rounds, statistics, practice, and imports |
 | `DTOs/` | Validated public request and response contracts |
@@ -240,7 +240,7 @@ CI additionally runs PostgreSQL integration tests, full browser E2E, migration S
 ### 4. Prepare production and App Store release
 
 - Separate development, staging, and production API configuration.
-- Import the layered icon artwork into Icon Composer, check its appearance variants, and replace the bundled icon asset for release.
+- Import the layered icon artwork into Icon Composer, check its appearance variants, and replace the current flat icon asset for release.
 - Finish SMTP verification, backup restore rehearsal, monitoring, crash reporting, and migration rollout procedures.
 - Prepare privacy policy, terms, App Privacy answers, screenshots, reviewer credentials, and store metadata.
 - Complete external TestFlight before App Store submission.

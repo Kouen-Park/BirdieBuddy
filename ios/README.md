@@ -25,7 +25,7 @@ emails to the app instead needs Universal Links, which require an
 
 `BirdieBuddyApp/BirdieTheme.swift` mirrors the palette, card treatment, and type roles in `wwwroot/css/styles.css`. The app bundles the same Outfit, Space Grotesk, and DM Mono font files in `BirdieBuddyApp/Fonts/`, along with their licenses. The signed-in screens keep native tab navigation and accessibility controls while using the web app's field-note headers, light canvas, paper cards, dark green actions, and score accents. Add new shared colors to both token sets instead of introducing screen-specific near matches.
 
-The [bird-on-tee icon artwork](../design/app-icon/README.md) is stored as four separate SVG layers for Apple Icon Composer. It is source artwork only: the app still uses `BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` until an Icon Composer export is added to the Xcode project.
+The [bird-on-tee icon artwork](../design/app-icon/README.md) is stored as four separate SVG layers for Apple Icon Composer. The app currently bundles a flat export in `BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`. Layered Liquid Glass rendering requires importing the SVG layers into Icon Composer and adding its export to the Xcode project.
 
 ## Xcode setup
 
