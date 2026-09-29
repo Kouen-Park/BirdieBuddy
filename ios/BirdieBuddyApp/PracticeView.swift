@@ -12,6 +12,8 @@ struct PracticeView: View {
     var body: some View {
         NavigationStack {
             List {
+                BirdiePageHeader("Practice")
+                    .listRowBackground(Color.clear)
                 Section("Start practice") {
                     TextField("Focus", text: $focus)
                     TextField("Drill", text: $drill)
@@ -27,22 +29,36 @@ struct PracticeView: View {
                         }
                     }
                     .disabled(isStarting || focus.trimmingCharacters(in: .whitespaces).isEmpty || drill.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .buttonStyle(.borderedProminent)
+                    .tint(BirdieTheme.fairwayDark)
                 }
                 if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
                 Section("Recent sessions") {
                     ForEach(sessions) { session in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(session.drillTitle).font(.headline)
+                        HStack(alignment: .top, spacing: 14) {
+                            Text("\(sessions.firstIndex(where: { $0.id == session.id }).map { $0 + 1 } ?? 1)")
+                                .font(BirdieTheme.mono(24))
+                                .foregroundStyle(BirdieTheme.sun)
+                            VStack(alignment: .leading, spacing: 4) {
+                            Text(session.drillTitle)
+                                .font(BirdieTheme.display(20))
+                                .foregroundStyle(BirdieTheme.ink)
                             Text("\(session.focusCode) · \(session.minutes) minutes")
-                                .font(.subheadline).foregroundStyle(.secondary)
+                                .font(BirdieTheme.body(13)).foregroundStyle(BirdieTheme.muted)
                             Text(session.completedAt == nil ? "In progress" : "Completed")
-                                .font(.caption).foregroundStyle(session.completedAt == nil ? .orange : .green)
+                                .font(BirdieTheme.body(11, weight: .semibold))
+                                .foregroundStyle(session.completedAt == nil ? BirdieTheme.flag : BirdieTheme.fairway)
+                            }
                         }
-                        .padding(.vertical, 4)
+                        .birdieCard()
+                        .accessibilityElement(children: .combine)
+                        .listRowBackground(Color.clear)
                     }
                 }
             }
-            .navigationTitle("Practice")
+            .birdieListStyle()
+            .navigationTitle("Birdie Buddy")
+            .navigationBarTitleDisplayMode(.inline)
             .refreshable { await load() }
             .task { await load() }
         }

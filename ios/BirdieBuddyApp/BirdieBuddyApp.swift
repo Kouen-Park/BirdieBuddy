@@ -8,6 +8,9 @@ struct BirdieBuddyApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(appState)
+                .font(BirdieTheme.body())
+                .tint(BirdieTheme.fairwayDark)
+                .preferredColorScheme(.light)
         }
     }
 }
@@ -102,5 +105,7 @@ struct MainTabView: View {
             AccountView()
                 .tabItem { Label("Account", systemImage: "person.crop.circle") }
         }
+        .toolbarBackground(BirdieTheme.paper, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }

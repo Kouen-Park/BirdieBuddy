@@ -3,6 +3,7 @@ import SwiftUI
 
 struct StatisticsView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var statistics: OverviewStatistics?
     @State private var courses: [CourseSummary] = []
@@ -15,6 +16,8 @@ struct StatisticsView: View {
     var body: some View {
         NavigationStack {
             List {
+                BirdiePageHeader("Statistics")
+                    .listRowBackground(Color.clear)
                 filterSection
 
                 if let statistics {
@@ -39,7 +42,9 @@ struct StatisticsView: View {
                     Section { ProgressView("Loading statistics…") }
                 }
             }
-            .navigationTitle("Statistics")
+            .birdieListStyle()
+            .navigationTitle("Birdie Buddy")
+            .navigationBarTitleDisplayMode(.inline)
             .refreshable { await load() }
             .task {
                 if courses.isEmpty { courses = (try? await appState.api.courses()) ?? [] }
@@ -59,14 +64,21 @@ struct StatisticsView: View {
 
     private func overviewSection(_ statistics: OverviewStatistics) -> some View {
         Section("Overview") {
-            LabeledContent("Rounds played", value: "\(statistics.roundsPlayed)")
-            LabeledContent("Average score", value: Self.number(statistics.averageScore))
-            LabeledContent("Best score", value: "\(statistics.bestScore)")
-            LabeledContent("Average putts", value: Self.number(statistics.averagePutts))
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10),
+                                     count: dynamicTypeSize.isAccessibilitySize ? 1 : 2), spacing: 10) {
+                BirdieMetricCard(label: "Rounds played", value: "\(statistics.roundsPlayed)")
+                BirdieMetricCard(label: "Average score", value: Self.number(statistics.averageScore), accent: BirdieTheme.sun)
+                BirdieMetricCard(label: "Best score", value: "\(statistics.bestScore)", accent: BirdieTheme.flag)
+                BirdieMetricCard(label: "Average putts", value: Self.number(statistics.averagePutts), accent: BirdieTheme.sky)
+                BirdieMetricCard(label: "GIR", value: Self.percent(statistics.averageGirPercentage), accent: BirdieTheme.iris)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
             if let perHole = statistics.averagePuttsPerHole, perHole > 0 {
                 LabeledContent("Putts per hole", value: Self.number(perHole, digits: 2))
             }
-            LabeledContent("GIR", value: Self.percent(statistics.averageGirPercentage))
             if let fairway = statistics.averageFairwayPercentage {
                 LabeledContent("Fairways hit", value: Self.percent(fairway))
             }
@@ -106,9 +118,9 @@ struct StatisticsView: View {
 
         if !score.isEmpty || !putts.isEmpty || !gir.isEmpty {
             Section("Trends") {
-                TrendChart(title: "Score", points: score)
-                TrendChart(title: "Putts", points: putts)
-                TrendChart(title: "GIR %", points: gir)
+                TrendChart(title: "Score", points: score, accent: BirdieTheme.fairway)
+                TrendChart(title: "Putts", points: putts, accent: BirdieTheme.chartPutts)
+                TrendChart(title: "GIR %", points: gir, accent: BirdieTheme.sun)
             }
         }
     }
@@ -182,6 +194,7 @@ private struct TrendChart: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: LocalizedStringKey
     let points: [TrendPoint]
+    let accent: Color
 
     // A fixed-height chart looks stranded beside text that has doubled in size.
     @ScaledMetric(relativeTo: .body) private var chartHeight: CGFloat = 140
@@ -198,9 +211,11 @@ private struct TrendChart: View {
                 Chart {
                     ForEach(Array(plotted.enumerated()), id: \.offset) { _, entry in
                         LineMark(x: .value("Date", entry.0), y: .value("Value", entry.1))
+                            .foregroundStyle(accent)
                         // Per-point labels let VoiceOver swipe through the series
                         // instead of hearing only "chart, 12 rounds plotted".
                         PointMark(x: .value("Date", entry.0), y: .value("Value", entry.1))
+                            .foregroundStyle(accent)
                             .accessibilityLabel(entry.0.formatted(date: .abbreviated, time: .omitted))
                             .accessibilityValue(StatisticsView.number(entry.1, digits: 2))
                     }

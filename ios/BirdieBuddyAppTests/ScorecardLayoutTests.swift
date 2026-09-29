@@ -61,4 +61,16 @@ final class ScorecardLayoutTests: XCTestCase {
                 "HoleRow demanded more than the narrow content width at \(size).")
         }
     }
+
+    func testWebStyleCounterFitsNarrowPhoneAtLargestText() {
+        let counter = BirdieCounter(label: "Penalty strokes", value: .constant(10), range: 0...20, compact: true)
+            .environment(\.dynamicTypeSize, .accessibility5)
+            .frame(width: narrowContentWidth)
+        let renderer = ImageRenderer(content: counter)
+        renderer.scale = 1
+        let size = renderer.uiImage?.size ?? .zero
+
+        XCTAssertEqual(size.width, narrowContentWidth, accuracy: 1)
+        XCTAssertGreaterThan(size.height, 44)
+    }
 }

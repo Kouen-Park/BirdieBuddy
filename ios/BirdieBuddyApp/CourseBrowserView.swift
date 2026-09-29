@@ -6,53 +6,91 @@ struct CourseBrowserView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var isAddingCourse = false
+    @State private var searchText = ""
+
+    private var filteredCourses: [CourseSummary] {
+        guard !searchText.isEmpty else { return courses }
+        return courses.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+                || $0.location.localizedCaseInsensitiveContains(searchText)
+        }
+    }
 
     var body: some View {
         NavigationStack {
-            // Above the Group on purpose: when the course list fails to load — which
-            // is exactly the offline case after an interrupted round — the Group is
-            // replaced entirely, and the way back into that round must not vanish
-            // with it.
             VStack(spacing: 0) {
+                // Remains visible when the server cannot load the course list.
                 ResumeRoundBanner()
-                Group {
-                if isLoading {
-                    ProgressView("Loading courses…")
-                } else if let errorMessage {
-                    ContentUnavailableView {
-                        Label("Could not load courses", systemImage: "wifi.exclamationmark")
-                    } description: {
-                        Text(errorMessage)
-                    } actions: {
-                        Button("Retry") { Task { await loadCourses() } }
-                    }
-                } else if courses.isEmpty {
-                    ContentUnavailableView("No courses yet", systemImage: "flag", description: Text("Course data will appear here when it is available."))
-                } else {
-                    List(courses) { course in
-                        NavigationLink(value: course) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(course.name).font(.headline)
-                                Text(course.location).font(.subheadline).foregroundStyle(.secondary)
-                                if course.isCustom {
-                                    Text("My course").font(.caption).foregroundStyle(.secondary)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        BirdiePageHeader("Courses", subtitle: "Courses you can select when adding a round.")
+                        HStack {
+                            Image(systemName: "magnifyingglass").foregroundStyle(BirdieTheme.muted)
+                            TextField("Search by course or location", text: $searchText)
+                                .textInputAutocapitalization(.never)
+                        }
+                        .birdieCard(padding: 16)
+
+                        Text("Available courses")
+                            .font(BirdieTheme.display(21))
+                            .foregroundStyle(BirdieTheme.ink)
+                        if isLoading {
+                            ProgressView("Loading courses…").frame(maxWidth: .infinity)
+                        } else if let errorMessage {
+                            ContentUnavailableView {
+                                Label("Could not load courses", systemImage: "wifi.exclamationmark")
+                            } description: {
+                                Text(errorMessage)
+                            } actions: {
+                                Button("Retry") { Task { await loadCourses() } }
+                            }
+                        } else if filteredCourses.isEmpty {
+                            ContentUnavailableView(courses.isEmpty ? "No courses yet" : "No courses match your search",
+                                systemImage: "flag")
+                        } else {
+                            LazyVStack(spacing: 12) {
+                                ForEach(filteredCourses) { course in
+                                    NavigationLink(value: course) {
+                                        HStack(spacing: 14) {
+                                            Image(systemName: "flag.fill")
+                                                .foregroundStyle(BirdieTheme.fairwayDark)
+                                                .frame(width: 42, height: 42)
+                                                .background(BirdieTheme.mint, in: RoundedRectangle(cornerRadius: 12))
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(course.name)
+                                                    .font(BirdieTheme.body(17, weight: .semibold))
+                                                    .foregroundStyle(BirdieTheme.ink)
+                                                Text(course.location)
+                                                    .font(BirdieTheme.body(13))
+                                                    .foregroundStyle(BirdieTheme.muted)
+                                                if course.isCustom {
+                                                    Text("My course")
+                                                        .font(BirdieTheme.mono(10))
+                                                        .foregroundStyle(BirdieTheme.fairwayDark)
+                                                }
+                                            }
+                                            Spacer(minLength: 0)
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption.bold())
+                                                .foregroundStyle(BirdieTheme.muted)
+                                        }
+                                        .birdieCard()
+                                        .accessibilityElement(children: .combine)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            .padding(.vertical, 4)
-                            .accessibilityElement(children: .combine)
                         }
                     }
-                    .navigationDestination(for: CourseSummary.self) { course in
-                        CourseDetailView(course: course)
-                    }
+                    .padding(16)
                 }
-                }
+                .refreshable { await loadCourses() }
             }
-            .navigationTitle("Courses")
+            .background(BirdieTheme.canvas)
+            .navigationDestination(for: CourseSummary.self) { course in CourseDetailView(course: course) }
+            .navigationTitle("Birdie Buddy")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Sign out") { Task { await appState.signOut() } }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         isAddingCourse = true
@@ -67,7 +105,6 @@ struct CourseBrowserView: View {
                     Task { await loadCourses() }
                 }
             }
-            .refreshable { await loadCourses() }
             .task { await loadCourses() }
         }
     }

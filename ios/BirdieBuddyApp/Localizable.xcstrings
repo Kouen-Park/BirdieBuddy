@@ -2247,6 +2247,46 @@
           }
         }
       }
+    },
+    "BIRDIE BUDDY / FIELD NOTES" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "Birdie Buddy / 필드 노트" } }
+      }
+    },
+    "Courses you can select when adding a round." : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "라운드에 사용할 코스를 선택하세요." } }
+      }
+    },
+    "Search by course or location" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "코스 또는 지역 검색" } }
+      }
+    },
+    "Available courses" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "이용 가능한 코스" } }
+      }
+    },
+    "No courses match your search" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "검색 결과가 없습니다" } }
+      }
+    },
+    "Keep your profile, password and data up to date." : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "프로필과 비밀번호, 계정 데이터를 관리하세요." } }
+      }
+    },
+    "Total score" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "총 타수" } }
+      }
+    },
+    "Fairway" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "페어웨이" } }
+      }
     }
   },
   "version" : "1.0"

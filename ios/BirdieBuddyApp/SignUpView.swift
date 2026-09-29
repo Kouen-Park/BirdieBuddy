@@ -36,6 +36,8 @@ struct SignUpView: View {
 
     var body: some View {
         Form {
+            BirdiePageHeader("Create account")
+                .listRowBackground(Color.clear)
             Section("Your details") {
                 TextField("Email", text: $email)
                     .textContentType(.username)
@@ -85,9 +87,14 @@ struct SignUpView: View {
                 }
                 .disabled(!canSubmit)
                 .accessibilityLabel("Create account")
+                .buttonStyle(.borderedProminent)
+                .tint(BirdieTheme.fairwayDark)
             }
         }
-        .navigationTitle("Create account")
+        .birdieListStyle()
+        .navigationTitle("Birdie Buddy")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .interactiveDismissDisabled(isSubmitting)
     }
 

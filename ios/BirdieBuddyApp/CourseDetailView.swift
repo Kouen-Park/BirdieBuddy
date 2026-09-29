@@ -21,6 +21,19 @@ struct CourseDetailView: View {
                 ProgressView("Loading course…")
             } else if let detail {
                 Form {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("BIRDIE BUDDY / FIELD NOTES")
+                            .font(BirdieTheme.mono(10))
+                            .tracking(2)
+                            .foregroundStyle(BirdieTheme.fairway)
+                        Text(detail.name)
+                            .font(BirdieTheme.display(29))
+                            .foregroundStyle(BirdieTheme.ink)
+                        Text(detail.location)
+                            .font(BirdieTheme.body(14))
+                            .foregroundStyle(BirdieTheme.muted)
+                    }
+                    .listRowBackground(Color.clear)
                     Section("Course") {
                         LabeledContent("Location", value: detail.location)
                         Picker("Tee", selection: $selectedTeeId) {
@@ -42,6 +55,8 @@ struct CourseDetailView: View {
                             }
                         }
                         .disabled(selectedTeeId == nil)
+                        .buttonStyle(.borderedProminent)
+                        .tint(BirdieTheme.fairwayDark)
                     }
 
                     if detail.isCustom {
@@ -54,11 +69,13 @@ struct CourseDetailView: View {
                         }
                     }
                 }
+                .birdieListStyle()
             } else {
                 ContentUnavailableView("Could not load course", systemImage: "wifi.exclamationmark", description: Text(errorMessage ?? "Try again."))
             }
         }
-        .navigationTitle(detail?.name ?? course.name)
+        .navigationTitle("Course")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isEditing) {
             CourseFormView(
                 mode: .edit(courseId: course.id),

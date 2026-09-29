@@ -53,6 +53,8 @@ struct CourseFormView: View {
     var body: some View {
         NavigationStack {
             Form {
+                BirdiePageHeader(isCreating ? "New course" : "Edit course")
+                    .listRowBackground(Color.clear)
                 Section("Course") {
                     TextField("Course name", text: $name)
                         .accessibilityLabel("Course name")
@@ -94,7 +96,9 @@ struct CourseFormView: View {
                     }
                 }
             }
-            .navigationTitle(isCreating ? "New course" : "Edit course")
+            .birdieListStyle()
+            .navigationTitle("Birdie Buddy")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.disabled(isSaving)

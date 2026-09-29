@@ -24,6 +24,18 @@
     <string>1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>UIAppFonts</key>
+    <array>
+        <string>Fonts/outfit-400.ttf</string>
+        <string>Fonts/outfit-500.ttf</string>
+        <string>Fonts/outfit-600.ttf</string>
+        <string>Fonts/outfit-700.ttf</string>
+        <string>Fonts/space-grotesk-500.ttf</string>
+        <string>Fonts/space-grotesk-600.ttf</string>
+        <string>Fonts/space-grotesk-700.ttf</string>
+        <string>Fonts/dm-mono-400.ttf</string>
+        <string>Fonts/dm-mono-500.ttf</string>
+    </array>
     <key>UILaunchScreen</key>
     <dict>
         <key>UIColorName</key>

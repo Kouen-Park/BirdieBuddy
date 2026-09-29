@@ -3,6 +3,7 @@ import SwiftUI
 struct RoundDetailView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let round: RoundSummary
 
@@ -36,6 +37,20 @@ struct RoundDetailView: View {
         Group {
             if let detail {
                 List {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("BIRDIE BUDDY / FIELD NOTES")
+                            .font(BirdieTheme.mono(10))
+                            .tracking(2)
+                            .foregroundStyle(BirdieTheme.fairway)
+                        Text(round.courseName)
+                            .font(BirdieTheme.display(30))
+                            .foregroundStyle(BirdieTheme.ink)
+                        Text("\(detail.date) · \(detail.tee)")
+                            .font(BirdieTheme.body(14))
+                            .foregroundStyle(BirdieTheme.muted)
+                    }
+                    .listRowBackground(Color.clear)
+                    .accessibilityElement(children: .combine)
                     summarySection(detail)
                     scorecardSection("Front nine", holes: frontNine)
                     scorecardSection("Back nine", holes: backNine)
@@ -44,6 +59,7 @@ struct RoundDetailView: View {
                     messageSections
                     deleteSection
                 }
+                .birdieListStyle()
             } else if let errorMessage {
                 ContentUnavailableView("Could not load round", systemImage: "exclamationmark.triangle",
                                        description: Text(errorMessage))
@@ -51,7 +67,8 @@ struct RoundDetailView: View {
                 ProgressView("Loading round…")
             }
         }
-        .navigationTitle(round.courseName)
+        .navigationTitle("Round")
+        .navigationBarTitleDisplayMode(.inline)
         .alert("Delete this round?", isPresented: $isConfirmingDelete) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) { Task { await deleteRound() } }
@@ -65,21 +82,25 @@ struct RoundDetailView: View {
 
     private func summarySection(_ detail: RoundDetail) -> some View {
         Section("Summary") {
-            LabeledContent("Score") {
-                Text("\(round.totalScore) (\(StatisticsView.signedInt(round.scoreToPar)))")
-                    .font(.headline)
-            }
-            LabeledContent("Date", value: detail.date)
-            LabeledContent("Tee", value: detail.tee)
-            LabeledContent("Holes", value: "\(holes.count) of \(detail.expectedHoles)")
-
-            if let statistics {
-                LabeledContent("Putts", value: "\(statistics.totalPutts)")
-                LabeledContent("Putts per hole", value: StatisticsView.number(statistics.averagePuttsPerHole, digits: 2))
-                LabeledContent("GIR", value: StatisticsView.percent(statistics.girPercentage))
-                if let fairway = statistics.fairwayPercentage {
-                    LabeledContent("Fairways hit", value: StatisticsView.percent(fairway))
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10),
+                                     count: dynamicTypeSize.isAccessibilitySize ? 1 : 2), spacing: 10) {
+                BirdieMetricCard(label: "Total score", value: "\(round.totalScore)")
+                BirdieMetricCard(label: "To par", value: StatisticsView.signedInt(round.scoreToPar), accent: BirdieTheme.sun)
+                BirdieMetricCard(label: "Holes", value: "\(holes.count)/\(detail.expectedHoles)", accent: BirdieTheme.fairway)
+                if let statistics {
+                    BirdieMetricCard(label: "Putts", value: "\(statistics.totalPutts)", accent: BirdieTheme.sky)
+                    BirdieMetricCard(label: "GIR", value: StatisticsView.percent(statistics.girPercentage), accent: BirdieTheme.iris)
+                    if let fairway = statistics.fairwayPercentage {
+                        BirdieMetricCard(label: "Fairways hit", value: StatisticsView.percent(fairway), accent: BirdieTheme.flag)
+                    }
                 }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            if let statistics {
+                LabeledContent("Putts per hole", value: StatisticsView.number(statistics.averagePuttsPerHole, digits: 2))
                 LabeledContent("Penalties", value: "\(statistics.totalPenalties)")
                 scoreSpread(statistics)
             }
@@ -264,9 +285,9 @@ struct HoleRow: View {
 
     private var toParColour: Color {
         switch toPar {
-        case ..<0: return .red
-        case 0: return .primary
-        default: return .secondary
+        case ..<0: return BirdieTheme.fairway
+        case 0: return BirdieTheme.ink
+        default: return BirdieTheme.flag
         }
     }
 
@@ -288,18 +309,22 @@ struct HoleRow: View {
     private var compactRow: some View {
         HStack(spacing: 10) {
             Text("\(hole.holeNumber)")
-                .font(.subheadline.monospacedDigit())
+                .font(BirdieTheme.mono(13))
                 .frame(minWidth: holeWidth, alignment: .leading)
             Text("Par \(hole.par)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(BirdieTheme.body(11))
+                .foregroundStyle(BirdieTheme.muted)
                 .lineLimit(1)
                 .frame(minWidth: parWidth, alignment: .leading)
             Text("\(hole.score)")
-                .font(.body.bold().monospacedDigit())
+                .font(BirdieTheme.mono(15))
+                .foregroundStyle(toParColour)
                 .frame(minWidth: scoreWidth, alignment: .trailing)
+                .padding(4)
+                .overlay(RoundedRectangle(cornerRadius: toPar < 0 ? 14 : 4)
+                    .stroke(toPar == 0 ? Color.clear : toParColour, lineWidth: 1.5))
             Text(toParLabel)
-                .font(.caption.monospacedDigit())
+                .font(BirdieTheme.mono(11))
                 .foregroundStyle(toParColour)
                 .frame(minWidth: toParWidth, alignment: .leading)
             Spacer(minLength: 0)
@@ -314,16 +339,17 @@ struct HoleRow: View {
     private var stackedLayout: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Hole \(hole.holeNumber) · Par \(hole.par)")
-                .font(.subheadline.bold())
+                .font(BirdieTheme.body(15, weight: .semibold))
             HStack(spacing: 10) {
                 Text("\(hole.score)")
-                    .font(.body.bold().monospacedDigit())
+                    .font(BirdieTheme.mono(17))
+                    .foregroundStyle(toParColour)
                 Text(toParLabel)
-                    .font(.subheadline.monospacedDigit())
+                    .font(BirdieTheme.mono(13))
                     .foregroundStyle(toParColour)
                 Text("\(hole.putts) putts")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(BirdieTheme.body(13))
+                    .foregroundStyle(BirdieTheme.muted)
             }
             badges
         }
@@ -335,19 +361,19 @@ struct HoleRow: View {
         HStack(spacing: 8) {
             if !dynamicTypeSize.isAccessibilitySize {
                 Text("\(hole.putts)p")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .font(BirdieTheme.mono(11))
+                    .foregroundStyle(BirdieTheme.muted)
             }
             if hole.gir {
-                Image(systemName: "target").font(.caption).foregroundStyle(.green)
+                Image(systemName: "target").font(.caption).foregroundStyle(BirdieTheme.fairway)
             }
             if hole.fairwayHit == true {
-                Image(systemName: "arrow.up.forward").font(.caption).foregroundStyle(.green)
+                Image(systemName: "arrow.up.forward").font(.caption).foregroundStyle(BirdieTheme.fairway)
             }
             if hole.penalty > 0 {
                 Text("+\(hole.penalty)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.orange)
+                    .font(BirdieTheme.mono(11))
+                    .foregroundStyle(BirdieTheme.flag)
             }
         }
     }

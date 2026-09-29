@@ -24,6 +24,8 @@ struct PasswordResetView: View {
     var body: some View {
         NavigationStack {
             Form {
+                BirdiePageHeader("Reset password")
+                    .listRowBackground(Color.clear)
                 if didReset {
                     Section {
                         Label("Password updated. Sign in with your new password.",
@@ -54,10 +56,14 @@ struct PasswordResetView: View {
                         }
                         .disabled(isSubmitting || !passwordIsValid)
                         .accessibilityLabel("Set new password")
+                        .buttonStyle(.borderedProminent)
+                        .tint(BirdieTheme.fairwayDark)
                     }
                 }
             }
-            .navigationTitle("Reset password")
+            .birdieListStyle()
+            .navigationTitle("Birdie Buddy")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }.disabled(isSubmitting)
