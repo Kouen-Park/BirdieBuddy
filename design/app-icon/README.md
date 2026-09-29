@@ -2,6 +2,8 @@
 
 The four SVG files in `icon-composer/` are independent, full-size 1024 × 1024 layers, numbered from back to front. Import them into Apple Icon Composer in filename order. The flat composite in `birdiebuddy-icon-preview.svg` is a preview, not an Icon Composer export.
 
+This artwork is not yet the app icon bundled by `ios/BirdieBuddyApp.xcodeproj`; that target still uses `Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`.
+
 | Layer | Brand token | Color |
 | --- | --- | --- |
 | Background | `night` | `#0E211F` |

@@ -1,7 +1,7 @@
 # BirdieBuddy
 
 <p align="center">
-  <img src="ios/BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png" alt="BirdieBuddy app icon" width="132" />
+  <img src="design/app-icon/birdiebuddy-icon-preview.png" alt="BirdieBuddy layered app icon artwork preview" width="132" />
 </p>
 
 <p align="center">
@@ -70,6 +70,12 @@ The product is ready for active iOS development and internal testing, but it is 
 
 > These web screenshots use deterministic local fixtures. Native iPhone screenshots will replace or complement them after the first TestFlight design pass.
 
+## App icon artwork
+
+The bird-on-tee artwork shown above is available as [four 1024 × 1024 SVG layers](design/app-icon/icon-composer/) for Apple Icon Composer, with a [flat preview and import notes](design/app-icon/README.md). It uses the app's `night`, `paper`, and `mint` color tokens. Liquid Glass effects and appearance variants are intentionally left for Icon Composer.
+
+The iOS target still bundles the [existing `AppIcon.appiconset`](ios/BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/); the new layered artwork has not yet been imported into the Xcode project or shipped as the installed app icon.
+
 ## Architecture
 
 The backend remains a modular monolith. Both clients share the same PostgreSQL source of truth while using authentication and local persistence appropriate to their platform.
@@ -127,7 +133,7 @@ input changes
 
 | Layer | Technology |
 |---|---|
-| Native client | SwiftUI, Swift concurrency, URLSession, Keychain, file-backed actor outbox |
+| Native client | SwiftUI, Swift concurrency, URLSession, Keychain, SwiftData-backed actor outbox |
 | Web client | Semantic HTML, CSS, vanilla JavaScript, Service Worker, Web Locks, Chart.js |
 | Backend | ASP.NET Core 10, C# controllers and scoped services |
 | Data | EF Core 10, Npgsql, PostgreSQL 16 |
@@ -163,7 +169,7 @@ Open the HTTPS URL printed by ASP.NET Core. Swagger is available at `/swagger` i
 - An iOS 17+ simulator or device
 - A running BirdieBuddy API
 
-Open `ios/BirdieBuddyApp.xcodeproj`. Debug builds default to `http://localhost:5000`, while Release builds use the production HTTPS origin configured by the target's `API_BASE_URL` build setting. A scheme environment variable with the same name can override either value for local or staging runs. Release configuration rejects HTTP and localhost endpoints. The native client intentionally has no third-party dependencies.
+Open `ios/BirdieBuddyApp.xcodeproj`. Both Debug and Release builds currently point `API_BASE_URL` at the deployed HTTPS origin. A scheme environment variable with the same name can override it for an Xcode-launched local or staging run; for a build that must keep its endpoint after a force-quit and relaunch, change the target's `API_BASE_URL` build setting. Debug accepts `http://localhost:5000` for local development, while Release rejects HTTP and localhost endpoints. The native client intentionally has no third-party dependencies.
 
 Run its test suite from Xcode or the command line:
 
@@ -199,6 +205,7 @@ CI additionally runs PostgreSQL integration tests, full browser E2E, migration S
 |---|---|
 | `ios/BirdieBuddyApp/` | SwiftUI application, networking, authentication, local persistence, and features |
 | `ios/BirdieBuddyAppTests/` | Native model and outbox tests |
+| `design/app-icon/` | Layered Icon Composer source artwork and flat preview; not yet the bundled iOS icon |
 | `Controllers/` | HTTP endpoints and status-code mapping |
 | `Services/` | Authentication, courses, rounds, statistics, practice, and imports |
 | `DTOs/` | Validated public request and response contracts |
@@ -219,8 +226,9 @@ CI additionally runs PostgreSQL integration tests, full browser E2E, migration S
 
 ### 2. Reach deliberate web parity
 
-- Add round pagination, filters, editing, and richer statistics to iOS.
-- Complete password change, email verification/reset, custom course, and tee workflows.
+- Round pagination and filters, round date/tee editing, password change, email verification/reset, and custom course creation are implemented in iOS.
+- Add editing for custom-course holes and tees, which the current course-update API does not support.
+- Continue narrowing gaps in detailed statistics and localization.
 - Compare web and native results against shared API contract fixtures.
 
 ### 3. Validate on real iPhones
@@ -232,6 +240,7 @@ CI additionally runs PostgreSQL integration tests, full browser E2E, migration S
 ### 4. Prepare production and App Store release
 
 - Separate development, staging, and production API configuration.
+- Import the layered icon artwork into Icon Composer, check its appearance variants, and replace the bundled icon asset for release.
 - Finish SMTP verification, backup restore rehearsal, monitoring, crash reporting, and migration rollout procedures.
 - Prepare privacy policy, terms, App Privacy answers, screenshots, reviewer credentials, and store metadata.
 - Complete external TestFlight before App Store submission.

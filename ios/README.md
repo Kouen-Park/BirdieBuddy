@@ -25,6 +25,8 @@ emails to the app instead needs Universal Links, which require an
 
 `BirdieBuddyApp/BirdieTheme.swift` mirrors the palette, card treatment, and type roles in `wwwroot/css/styles.css`. The app bundles the same Outfit, Space Grotesk, and DM Mono font files in `BirdieBuddyApp/Fonts/`, along with their licenses. The signed-in screens keep native tab navigation and accessibility controls while using the web app's field-note headers, light canvas, paper cards, dark green actions, and score accents. Add new shared colors to both token sets instead of introducing screen-specific near matches.
 
+The [bird-on-tee icon artwork](../design/app-icon/README.md) is stored as four separate SVG layers for Apple Icon Composer. It is source artwork only: the app still uses `BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png` until an Icon Composer export is added to the Xcode project.
+
 ## Xcode setup
 
 Open `BirdieBuddyApp.xcodeproj` in Xcode 16 or later. It contains the iOS 17 app target, a shared scheme, and the `BirdieBuddyAppTests` unit-test target. Both Debug and Release builds point `API_BASE_URL` at the deployed HTTPS origin, so an app launched from the device's home screen reaches the same server as one launched from Xcode. A scheme environment variable of the same name overrides it for a local or staging server — but note it only applies to processes Xcode launches, so it is the wrong tool for on-device testing that involves force-quitting and relaunching the app. For local API work, point `API_BASE_URL` at `http://localhost:5000`; Debug accepts `http` only for localhost, and Release refuses `http` and localhost outright.
