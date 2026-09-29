@@ -21,31 +21,42 @@ struct ResumeRoundBanner: View {
                 NavigationLink {
                     LiveRoundLoader(roundId: draft.id)
                 } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Round in progress")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(draft.courseName)
-                            .font(.headline)
-                        Text("\(draft.holesPlayed) of \(draft.expectedHoles) holes saved")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        if let sync = appState.roundSyncStatuses[draft.id], sync != .synced {
-                            Label(LocalizedStringKey(sync.label), systemImage: "icloud.and.arrow.up")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
+                    HStack(alignment: .center, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Round in progress")
+                                .font(BirdieTheme.mono(11))
+                                .foregroundStyle(BirdieTheme.sun)
+                            Text(draft.courseName)
+                                .font(BirdieTheme.display(23))
+                                .foregroundStyle(BirdieTheme.paper)
+                            Text("\(draft.holesPlayed) of \(draft.expectedHoles) holes saved")
+                                .font(BirdieTheme.body(13))
+                                .foregroundStyle(BirdieTheme.paper.opacity(0.72))
+                            Text("Continue this round")
+                                .font(BirdieTheme.body(13, weight: .semibold))
+                                .foregroundStyle(BirdieTheme.sun)
+                            if let sync = appState.roundSyncStatuses[draft.id], sync != .synced {
+                                Label(LocalizedStringKey(sync.label), systemImage: "icloud.and.arrow.up")
+                                    .font(BirdieTheme.body(12, weight: .semibold))
+                                    .foregroundStyle(BirdieTheme.sun)
+                            }
                         }
-                        Text("Continue this round")
-                            .font(.subheadline.bold())
+                        Spacer(minLength: 0)
+                        Image(systemName: "arrow.up.right")
+                            .font(.headline)
+                            .foregroundStyle(BirdieTheme.sun)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
+                    .padding(20)
+                    .background(BirdieTheme.night, in: RoundedRectangle(cornerRadius: 22))
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
                     .accessibilityElement(children: .combine)
                     .accessibilityHint("Reopens the round you have not finished")
                 }
-                Divider()
             } else if loadFailed {
                 Button("Retry loading round") { Task { await load() } }
+                    .padding(.horizontal, 16)
             }
         }
         .task(id: appState.user?.id) { await load() }

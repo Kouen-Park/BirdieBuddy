@@ -21,6 +21,10 @@ emails to the app instead needs Universal Links, which require an
 - The app target is iPhone-only. Adding iPad means committing to an iPad layout and iPad App Store screenshots.
 - `BirdieBuddyApp/Localizable.xcstrings` carries English source strings and Korean translations. SwiftUI string literals are localization keys, so adding UI text means adding a catalog entry. Error text produced at runtime as a `String` is not localized yet.
 
+## Visual design
+
+`BirdieBuddyApp/BirdieTheme.swift` mirrors the palette, card treatment, and type roles in `wwwroot/css/styles.css`. The app bundles the same Outfit, Space Grotesk, and DM Mono font files in `BirdieBuddyApp/Fonts/`, along with their licenses. The signed-in screens keep native tab navigation and accessibility controls while using the web app's field-note headers, light canvas, paper cards, dark green actions, and score accents. Add new shared colors to both token sets instead of introducing screen-specific near matches.
+
 ## Xcode setup
 
 Open `BirdieBuddyApp.xcodeproj` in Xcode 16 or later. It contains the iOS 17 app target, a shared scheme, and the `BirdieBuddyAppTests` unit-test target. Both Debug and Release builds point `API_BASE_URL` at the deployed HTTPS origin, so an app launched from the device's home screen reaches the same server as one launched from Xcode. A scheme environment variable of the same name overrides it for a local or staging server — but note it only applies to processes Xcode launches, so it is the wrong tool for on-device testing that involves force-quitting and relaunching the app. For local API work, point `API_BASE_URL` at `http://localhost:5000`; Debug accepts `http` only for localhost, and Release refuses `http` and localhost outright.
@@ -38,7 +42,7 @@ The app restores its Keychain session at launch. An expired access token is refr
 ## Data rules
 
 - Access and refresh tokens are stored in Keychain, never UserDefaults.
-- Drafts, outbox entries, and conflicts are user- and round-scoped in SwiftData.
+- Outbox entries and conflicts are user- and round-scoped in SwiftData; active draft snapshots are cached per user and round in Application Support.
 - A local write is acknowledged only after durable local storage succeeds.
 - A `409` is a review state, not a retryable network failure.
 - Logout preserves the signed-out user's local writes without exposing them to another account; successful account deletion removes that user's local records.

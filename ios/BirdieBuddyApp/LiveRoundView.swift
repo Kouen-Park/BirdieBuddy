@@ -44,6 +44,7 @@ enum HoleSaveOutcome: Equatable {
 
 struct LiveRoundView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var snapshot: MutableRoundSnapshot
     @State private var serverHoles: [Int: Hole]
     @State private var holeIndex = 0
@@ -95,72 +96,125 @@ struct LiveRoundView: View {
     private var strokeBreakdownIsValid: Bool { putts + penalty <= score }
 
     var body: some View {
-        Form {
-            Section {
-                Text("Hole \(holeNumber) of \(draft.expectedHoles)").font(.title2.bold())
-                    .accessibilityAddTraits(.isHeader)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(draft.courseName.uppercased())
+                            .font(BirdieTheme.mono(10))
+                            .tracking(1.5)
+                            .foregroundStyle(BirdieTheme.fairway)
+                        Text(draft.tee)
+                            .font(BirdieTheme.display(29))
+                            .foregroundStyle(BirdieTheme.ink)
+                    }
+                    Spacer(minLength: 8)
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text("\(draft.holes.count)")
+                            .font(BirdieTheme.mono(27))
+                            .foregroundStyle(BirdieTheme.ink)
+                        Text("\(draft.expectedHoles) holes")
+                            .font(BirdieTheme.mono(10))
+                            .foregroundStyle(BirdieTheme.muted)
+                    }
+                }
                 if syncStatus != .synced {
-                    // LocalizedStringKey, not the raw String: a String argument skips
-                    // the catalog, which is why this line stayed English on a Korean
-                    // device while the line below it was translated.
                     Label(LocalizedStringKey(syncStatus.label), systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
-                        .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
+                        .font(BirdieTheme.mono(11))
+                        .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? BirdieTheme.flag : BirdieTheme.fairwayDark)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 7)
+                        .background(BirdieTheme.paper, in: Capsule())
+                        .overlay(Capsule().stroke(BirdieTheme.line))
                 }
-                Text(LocalizedStringKey(status)).foregroundStyle(.secondary)
-            }
-            Section("Score") {
-                LabeledContent("Par", value: "\(expectedPar)")
-                Stepper("Score: \(score)", value: $score, in: 1...20)
-                    .accessibilityLabel("Score")
-                    .accessibilityValue("\(score) strokes")
-                Stepper("Putts: \(putts)", value: $putts, in: 0...10)
-                    .accessibilityLabel("Putts")
-                    .accessibilityValue("\(putts)")
-                Toggle("Green in regulation", isOn: $gir)
-                if isPar3 {
-                    // The server rejects a fairway value on a par 3, and a par 3 has
-                    // no fairway to hit, so the control is not offered.
-                    Text("Fairway does not apply on a par 3")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Toggle("Fairway hit", isOn: $fairway)
+                if !status.isEmpty {
+                    Text(LocalizedStringKey(status))
+                        .font(BirdieTheme.body(13))
+                        .foregroundStyle(BirdieTheme.muted)
                 }
-                Stepper("Penalty: \(penalty)", value: $penalty, in: 0...20)
-                    .accessibilityLabel("Penalty strokes")
-                    .accessibilityValue("\(penalty)")
-                if !strokeBreakdownIsValid {
-                    Label("Putts and penalties cannot exceed the score.", systemImage: "exclamationmark.triangle")
-                        .font(.footnote)
-                        .foregroundStyle(.orange)
+
+                VStack(spacing: 0) {
+                    HStack(spacing: 6) {
+                        Text("Hole")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("\(holeNumber)")
+                            .font(BirdieTheme.display(53))
+                            .foregroundStyle(BirdieTheme.paper)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+                            .frame(width: 96, height: 96)
+                            .background(BirdieTheme.night, in: Circle())
+                            .overlay(Circle().stroke(BirdieTheme.sun.opacity(0.7), lineWidth: 2))
+                            .accessibilityHidden(true)
+                        Text("Par \(expectedPar)")
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    }
+                    .font(BirdieTheme.mono(12))
+                    .foregroundStyle(BirdieTheme.muted)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Hole \(holeNumber) of \(draft.expectedHoles)")
+                    .accessibilityValue("Par \(expectedPar)")
+                    .padding(.bottom, 20)
+
+                    Divider()
+                    BirdieCounter(label: "Score", value: $score, range: 1...20)
+                    Divider()
+                    BirdieCounter(label: "Putts", value: $putts, range: 0...10)
+                    Divider()
+                    Toggle("Green in regulation", isOn: $gir)
+                        .font(BirdieTheme.body(15, weight: .semibold))
+                        .tint(BirdieTheme.fairway)
+                        .padding(.vertical, 17)
+                    Divider()
+                    if isPar3 {
+                        Text("Fairway does not apply on a par 3")
+                            .font(BirdieTheme.body(13))
+                            .foregroundStyle(BirdieTheme.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 18)
+                    } else {
+                        Toggle("Fairway hit", isOn: $fairway)
+                            .font(BirdieTheme.body(15, weight: .semibold))
+                            .tint(BirdieTheme.fairway)
+                            .padding(.vertical, 17)
+                    }
+                    Divider()
+                    BirdieCounter(label: "Penalty strokes", value: $penalty, range: 0...20, compact: true)
+                    if !strokeBreakdownIsValid {
+                        Label("Putts and penalties cannot exceed the score.", systemImage: "exclamationmark.triangle")
+                            .font(BirdieTheme.body(13))
+                            .foregroundStyle(BirdieTheme.flag)
+                            .padding(.top, 10)
+                    }
+                }
+                .padding(20)
+                .background(BirdieTheme.paper, in: UnevenRoundedRectangle(
+                    topLeadingRadius: 5, bottomLeadingRadius: 5, bottomTrailingRadius: 22, topTrailingRadius: 22))
+                .overlay(UnevenRoundedRectangle(
+                    topLeadingRadius: 5, bottomLeadingRadius: 5, bottomTrailingRadius: 22, topTrailingRadius: 22)
+                    .stroke(BirdieTheme.line, lineWidth: 1))
+                .shadow(color: BirdieTheme.night.opacity(0.07), radius: 15, y: 8)
+                .accessibilityIdentifier("liveYardageCard")
+
+                if let errorMessage {
+                    Label(errorMessage, systemImage: "exclamationmark.triangle")
+                        .font(BirdieTheme.body(13))
+                        .foregroundStyle(BirdieTheme.flag)
+                        .birdieCard()
                 }
             }
-            if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
-            Section {
-                // One button per row. Two buttons in a single Form row make the row
-                // route its tap to the first ENABLED one, so on hole 2 onwards a tap
-                // meant for Next was consumed by Previous and the round jumped back
-                // to hole 1. On hole 1 Previous is disabled, which is the only
-                // reason advancing appeared to work there.
-                previousHoleButton
-                advanceButton
-            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 22)
         }
+        .background(BirdieTheme.canvas)
         .safeAreaInset(edge: .bottom) {
-            Button(isSaving ? "Saving…" : "Save hole") { Task { await saveHole() } }
-                .disabled(isSaving || conflict != nil || !strokeBreakdownIsValid || isRoundComplete)
-                .accessibilityLabel("Save hole \(holeNumber)")
-                .accessibilityHint("Saves on this device first, then syncs when online")
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(.regularMaterial)
+            footer
         }
         // The screen stops being a live round the moment the server accepts
         // completion, so it should stop calling itself one.
         .navigationTitle(isRoundComplete ? "Saved round" : "Live round")
+        .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: $completedRound) { RoundDetailView(round: $0) }
         .onAppear { loadCurrentHole() }
         .task { await restoreConflictAndSync() }
@@ -175,6 +229,44 @@ struct LiveRoundView: View {
             })
             .interactiveDismissDisabled()
         }
+    }
+
+    private var footer: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 8) {
+                    advanceHoleAction
+                    HStack(spacing: 8) { previousHoleButton; saveHoleAction }
+                }
+            } else {
+                HStack(spacing: 8) {
+                    previousHoleButton
+                    saveHoleAction
+                    advanceHoleAction
+                }
+            }
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(BirdieTheme.canvas)
+    }
+
+    private var saveHoleAction: some View {
+        Button(isSaving ? "Saving…" : "Save hole") { Task { await saveHole() } }
+            .disabled(isSaving || conflict != nil || !strokeBreakdownIsValid || isRoundComplete)
+            .accessibilityLabel("Save hole \(holeNumber)")
+            .accessibilityHint("Saves on this device first, then syncs when online")
+            .frame(maxWidth: .infinity)
+            .tint(BirdieTheme.fairwayDark)
+    }
+
+    private var advanceHoleAction: some View {
+        advanceButton
+            .buttonStyle(.borderedProminent)
+            .tint(BirdieTheme.fairwayDark)
+            .frame(maxWidth: .infinity)
     }
 
     private var previousHoleButton: some View {
@@ -427,32 +519,79 @@ struct ConflictState: Identifiable {
 }
 
 struct ConflictReviewView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let conflict: ConflictState
     let onUseServer: () -> Void
     let onKeepLocal: () -> Void
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Hole \(conflict.holeNumber) changed on another device") {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Resolve conflict")
+                        .font(BirdieTheme.display(29))
+                        .foregroundStyle(BirdieTheme.ink)
+                    Text("Hole \(conflict.holeNumber) changed on another device")
+                        .font(BirdieTheme.body(16, weight: .semibold))
                     Text("Choose which value to keep. Your local input will not be discarded until you choose.")
+                        .font(BirdieTheme.body(14))
+                        .foregroundStyle(BirdieTheme.muted)
+                    VStack(spacing: 0) {
+                        comparisonRow("Par", local: "\(conflict.local.par ?? 0)", server: conflict.server.map { "\($0.par)" } ?? "—")
+                        comparisonRow("Score", local: "\(conflict.local.score)", server: conflict.server.map { "\($0.score)" } ?? "—")
+                        comparisonRow("Putts", local: "\(conflict.local.putts)", server: conflict.server.map { "\($0.putts)" } ?? "—")
+                        comparisonRow("GIR", local: yesNo(conflict.local.gir), server: conflict.server.map { yesNo($0.gir) } ?? "—")
+                        comparisonRow("Fairway", local: conflict.local.fairwayHit.map(yesNo) ?? "—",
+                                      server: conflict.server?.fairwayHit.map(yesNo) ?? "—")
+                        comparisonRow("Penalties", local: "\(conflict.local.penalty)",
+                                      server: conflict.server.map { "\($0.penalty)" } ?? "—")
+                    }
+                    .birdieCard()
+                    VStack(spacing: 10) {
+                        Button("Keep my value", action: onKeepLocal)
+                            .buttonStyle(.borderedProminent)
+                            .tint(BirdieTheme.fairwayDark)
+                            .accessibilityLabel("Keep this device's value for hole \(conflict.holeNumber)")
+                        Button("Use server value", action: onUseServer)
+                            .buttonStyle(.bordered)
+                            .tint(BirdieTheme.fairwayDark)
+                            .accessibilityLabel("Use the server value for hole \(conflict.holeNumber)")
+                    }
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
                 }
-                Section("On this device") {
-                    LabeledContent("Score", value: "\(conflict.local.score)")
-                    LabeledContent("Putts", value: "\(conflict.local.putts)")
-                    LabeledContent("GIR", value: conflict.local.gir ? "Yes" : "No")
-                }
-                Section("On server") {
-                    LabeledContent("Score", value: "\(conflict.server?.score ?? 0)")
-                    LabeledContent("Putts", value: "\(conflict.server?.putts ?? 0)")
-                    LabeledContent("GIR", value: conflict.server?.gir == true ? "Yes" : "No")
-                }
-                Button("Use server value", action: onUseServer)
-                    .accessibilityLabel("Use the server value for hole \(conflict.holeNumber)")
-                Button("Keep my value", action: onKeepLocal)
-                    .accessibilityLabel("Keep this device's value for hole \(conflict.holeNumber)")
+                .padding(20)
             }
+            .background(BirdieTheme.canvas)
             .navigationTitle("Resolve conflict")
+            .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    private func yesNo(_ value: Bool) -> String {
+        value ? String(localized: "Yes") : String(localized: "No")
+    }
+
+    private func comparisonRow(_ label: LocalizedStringKey, local: String, server: String) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(label).font(BirdieTheme.body(14, weight: .bold))
+                    Text("\(String(localized: "On this device")): \(local)")
+                    Text("\(String(localized: "On server")): \(server)")
+                }
+            } else {
+                HStack(spacing: 8) {
+                    Text(label).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(local).frame(width: 90, alignment: .leading)
+                    Text(server).frame(width: 90, alignment: .leading)
+                }
+                .font(BirdieTheme.mono(11))
+            }
+        }
+        .foregroundStyle(BirdieTheme.ink)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 9)
+        .overlay(alignment: .bottom) { BirdieTheme.line.frame(height: 1) }
     }
 }

@@ -22,6 +22,8 @@ struct AccountView: View {
     var body: some View {
         NavigationStack {
             Form {
+                BirdiePageHeader("Account", subtitle: "Keep your profile, password and data up to date.")
+                    .listRowBackground(Color.clear)
                 Section("Profile") {
                     TextField("Display name", text: $displayName)
                         .accessibilityLabel("Display name")
@@ -35,6 +37,8 @@ struct AccountView: View {
                         }
                     }
                     .disabled(isSaving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
+                    .buttonStyle(.borderedProminent)
+                    .tint(BirdieTheme.fairwayDark)
                 }
                 if let message { Text(message).foregroundStyle(.secondary) }
                 Section("Email") {
@@ -86,6 +90,8 @@ struct AccountView: View {
                     }
                     .disabled(isChangingPassword || currentPassword.isEmpty || !newPasswordIsValid)
                     .accessibilityLabel("Change password")
+                    .buttonStyle(.bordered)
+                    .tint(BirdieTheme.fairwayDark)
                 }
 
                 Section("Account tools") {
@@ -145,7 +151,9 @@ struct AccountView: View {
                     }
                 }
             }
-            .navigationTitle("Account")
+            .birdieListStyle()
+            .navigationTitle("Birdie Buddy")
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 displayName = appState.user?.displayName ?? ""
                 diagnostics.reloadReports()

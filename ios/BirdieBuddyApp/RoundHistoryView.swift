@@ -21,6 +21,8 @@ struct RoundHistoryView: View {
             VStack(spacing: 0) {
                 ResumeRoundBanner()
                 List {
+                BirdiePageHeader("Rounds")
+                    .listRowBackground(Color.clear)
                 Section("Filters") {
                     RoundFilterControls(selection: $selection, courses: courses, isUpdating: isReloading)
                 }
@@ -53,6 +55,7 @@ struct RoundHistoryView: View {
                             } label: {
                                 row(round)
                             }
+                            .listRowBackground(Color.clear)
                             .onAppear {
                                 // The last row coming into view is the paging trigger.
                                 if round.id == rounds.last?.id { Task { await loadNextPage() } }
@@ -69,7 +72,9 @@ struct RoundHistoryView: View {
                     }
                 }
             }
-            .navigationTitle("Rounds")
+            .birdieListStyle()
+            .navigationTitle("Birdie Buddy")
+            .navigationBarTitleDisplayMode(.inline)
             .refreshable { await reload() }
             .task {
                 if courses.isEmpty { courses = (try? await appState.api.courses()) ?? [] }
@@ -82,27 +87,33 @@ struct RoundHistoryView: View {
     }
 
     private func row(_ round: RoundSummary) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(round.courseName).font(.headline)
-            if round.isDraft {
-                Text("In progress")
-                    .font(.caption.bold())
-                    .foregroundStyle(.orange)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(round.courseName)
+                    .font(BirdieTheme.body(17, weight: .semibold))
+                    .foregroundStyle(BirdieTheme.ink)
+                Text("\(round.date) · \(round.holesPlayed)/\(round.expectedHoles) holes · \(round.tee)")
+                    .font(BirdieTheme.body(12))
+                    .foregroundStyle(BirdieTheme.muted)
+                if round.isDraft {
+                    Text("In progress")
+                        .font(BirdieTheme.mono(10))
+                        .foregroundStyle(BirdieTheme.flag)
+                }
+                if let syncStatus = appState.roundSyncStatuses[round.id], syncStatus != .synced {
+                    Label(LocalizedStringKey(syncStatus.label),
+                          systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
+                        .font(BirdieTheme.body(11))
+                        .foregroundStyle(BirdieTheme.flag)
+                }
             }
-            Text("\(round.date) · \(round.holesPlayed)/\(round.expectedHoles) holes · \(round.tee)")
-                .font(.subheadline).foregroundStyle(.secondary)
+            Spacer(minLength: 0)
             Text("\(round.totalScore) (\(StatisticsView.signedInt(round.scoreToPar)))")
-                .font(.title3.bold())
-            if let syncStatus = appState.roundSyncStatuses[round.id], syncStatus != .synced {
-                // LocalizedStringKey, not the raw String: a String argument skips the
-                // catalog and the badge renders in English on a localized device.
-                Label(LocalizedStringKey(syncStatus.label),
-                      systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
-                    .font(.caption)
-                    .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? .orange : .secondary)
-            }
+                .font(BirdieTheme.mono(17))
+                .foregroundStyle(BirdieTheme.ink)
+                .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.vertical, 4)
+        .birdieCard()
         .accessibilityElement(children: .combine)
     }
 
