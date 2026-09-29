@@ -220,7 +220,19 @@ private struct TrendChart: View {
                             .accessibilityValue(StatisticsView.number(entry.1, digits: 2))
                     }
                 }
-                .chartXAxis(dynamicTypeSize.isAccessibilitySize ? .hidden : .automatic)
+                .chartXAxis {
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        AxisMarks(values: .automatic(desiredCount: 3)) { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel {
+                                if let date = value.as(Date.self) {
+                                    Text(date, format: .dateTime.month(.twoDigits).day(.twoDigits))
+                                }
+                            }
+                        }
+                    }
+                }
                 .frame(height: min(chartHeight, 220))
                 .accessibilityLabel(title)
                 .accessibilityHidden(dynamicTypeSize.isAccessibilitySize)
