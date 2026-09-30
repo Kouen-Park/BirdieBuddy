@@ -15,8 +15,14 @@ struct PracticeView: View {
                 BirdiePageHeader("Practice")
                     .listRowBackground(Color.clear)
                 Section("Start practice") {
-                    TextField("Focus", text: $focus)
-                    TextField("Drill", text: $drill)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Focus").font(BirdieTheme.body(13)).foregroundStyle(BirdieTheme.muted)
+                        TextField("Focus", text: $focus).accessibilityLabel("Focus")
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Drill").font(BirdieTheme.body(13)).foregroundStyle(BirdieTheme.muted)
+                        TextField("Drill", text: $drill).accessibilityLabel("Drill")
+                    }
                     Stepper("Minutes: \(minutes)", value: $minutes, in: 1...240)
                     Button(isStarting ? "Starting…" : "Start session") {
                         Task {
@@ -30,15 +36,20 @@ struct PracticeView: View {
                     }
                     .disabled(isStarting || focus.trimmingCharacters(in: .whitespaces).isEmpty || drill.trimmingCharacters(in: .whitespaces).isEmpty)
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
                     .tint(BirdieTheme.fairwayDark)
                 }
-                if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+                if let errorMessage { Text(errorMessage).foregroundStyle(BirdieTheme.danger) }
                 Section("Recent sessions") {
+                    if sessions.isEmpty {
+                        ContentUnavailableView("No practice sessions yet", systemImage: "figure.golf",
+                            description: Text("Start a session to keep track of your practice."))
+                    }
                     ForEach(sessions) { session in
                         HStack(alignment: .top, spacing: 14) {
                             Text("\(sessions.firstIndex(where: { $0.id == session.id }).map { $0 + 1 } ?? 1)")
                                 .font(BirdieTheme.mono(24))
-                                .foregroundStyle(BirdieTheme.sun)
+                                .foregroundStyle(BirdieTheme.fairwayDark)
                             VStack(alignment: .leading, spacing: 4) {
                             Text(session.drillTitle)
                                 .font(BirdieTheme.display(20))
@@ -46,19 +57,19 @@ struct PracticeView: View {
                             Text("\(session.focusCode) · \(session.minutes) minutes")
                                 .font(BirdieTheme.body(13)).foregroundStyle(BirdieTheme.muted)
                             Text(session.completedAt == nil ? "In progress" : "Completed")
-                                .font(BirdieTheme.body(11, weight: .semibold))
-                                .foregroundStyle(session.completedAt == nil ? BirdieTheme.flag : BirdieTheme.fairway)
+                                .font(BirdieTheme.body(13, weight: .semibold))
+                                .foregroundStyle(session.completedAt == nil ? BirdieTheme.danger : BirdieTheme.fairway)
                             }
                         }
                         .birdieCard()
                         .accessibilityElement(children: .combine)
                         .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
                 }
             }
             .birdieListStyle()
-            .navigationTitle("Birdie Buddy")
-            .navigationBarTitleDisplayMode(.inline)
+            .birdieNavigationBrand()
             .refreshable { await load() }
             .task { await load() }
         }

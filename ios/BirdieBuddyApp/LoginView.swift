@@ -10,15 +10,8 @@ struct LoginView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 21) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "flag")
-                            .foregroundStyle(BirdieTheme.sun)
-                            .frame(width: 32, height: 32)
-                            .overlay(RoundedRectangle(cornerRadius: 9).stroke(BirdieTheme.sun))
-                        Text("Birdie Buddy")
-                            .font(BirdieTheme.display(21))
-                            .foregroundStyle(BirdieTheme.ink)
-                    }
+                    BirdieBrand(height: 36)
+                        .padding(.bottom, 8)
                     VStack(alignment: .leading, spacing: 9) {
                         Text("Welcome back")
                             .font(BirdieTheme.display(36))
@@ -45,7 +38,7 @@ struct LoginView: View {
                     if let errorMessage = appState.errorMessage {
                         Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                             .font(BirdieTheme.body(13))
-                            .foregroundStyle(BirdieTheme.flag)
+                            .foregroundStyle(BirdieTheme.danger)
                     }
                     Button {
                         isSubmitting = true
@@ -70,14 +63,14 @@ struct LoginView: View {
                     } label: {
                         Text("New here? Create an account")
                             .font(BirdieTheme.body(14, weight: .semibold))
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .disabled(isSubmitting)
                     .accessibilityLabel("Create an account")
                 }
-                .birdieCard(padding: 24)
+                .birdieCard(padding: 20)
                 .frame(maxWidth: 520)
-                .padding(20)
+                .padding(16)
                 .frame(maxWidth: .infinity)
             }
             .background(BirdieTheme.canvas)

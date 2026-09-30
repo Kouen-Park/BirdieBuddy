@@ -22,10 +22,6 @@ struct CourseDetailView: View {
             } else if let detail {
                 Form {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("BIRDIE BUDDY / FIELD NOTES")
-                            .font(BirdieTheme.mono(10))
-                            .tracking(2)
-                            .foregroundStyle(BirdieTheme.fairway)
                         Text(detail.name)
                             .font(BirdieTheme.display(29))
                             .foregroundStyle(BirdieTheme.ink)
@@ -40,7 +36,7 @@ struct CourseDetailView: View {
                             ForEach(detail.tees) { tee in Text(tee.name).tag(Optional(tee.id)) }
                         }
                     }
-                    if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+                    if let errorMessage { Text(errorMessage).foregroundStyle(BirdieTheme.danger) }
                     Section {
                         Button("Start round") {
                             Task {
@@ -56,6 +52,7 @@ struct CourseDetailView: View {
                         }
                         .disabled(selectedTeeId == nil)
                         .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
                         .tint(BirdieTheme.fairwayDark)
                     }
 

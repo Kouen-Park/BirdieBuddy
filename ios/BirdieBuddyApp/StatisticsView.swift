@@ -43,8 +43,7 @@ struct StatisticsView: View {
                 }
             }
             .birdieListStyle()
-            .navigationTitle("Birdie Buddy")
-            .navigationBarTitleDisplayMode(.inline)
+            .birdieNavigationBrand()
             .refreshable { await load() }
             .task {
                 if courses.isEmpty { courses = (try? await appState.api.courses()) ?? [] }
@@ -120,7 +119,7 @@ struct StatisticsView: View {
             Section("Trends") {
                 TrendChart(title: "Score", points: score, accent: BirdieTheme.fairway)
                 TrendChart(title: "Putts", points: putts, accent: BirdieTheme.chartPutts)
-                TrendChart(title: "GIR %", points: gir, accent: BirdieTheme.sun)
+                TrendChart(title: "GIR %", points: gir, accent: BirdieTheme.warning)
             }
         }
     }

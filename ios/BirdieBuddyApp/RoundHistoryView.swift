@@ -16,11 +16,13 @@ struct RoundHistoryView: View {
 
     var body: some View {
         NavigationStack {
-            // Above the List: this screen shows completed rounds, so the round still
-            // in progress is not among them and had no way to be reached or resumed.
-            VStack(spacing: 0) {
+            List {
+                // Scrolls with the page so an enlarged banner cannot crowd out
+                // the filters and completed rounds at accessibility text sizes.
                 ResumeRoundBanner()
-                List {
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 BirdiePageHeader("Rounds")
                     .listRowBackground(Color.clear)
                 Section("Filters") {
@@ -56,6 +58,7 @@ struct RoundHistoryView: View {
                                 row(round)
                             }
                             .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                             .onAppear {
                                 // The last row coming into view is the paging trigger.
                                 if round.id == rounds.last?.id { Task { await loadNextPage() } }
@@ -73,8 +76,7 @@ struct RoundHistoryView: View {
                 }
             }
             .birdieListStyle()
-            .navigationTitle("Birdie Buddy")
-            .navigationBarTitleDisplayMode(.inline)
+            .birdieNavigationBrand()
             .refreshable { await reload() }
             .task {
                 if courses.isEmpty { courses = (try? await appState.api.courses()) ?? [] }
@@ -82,39 +84,11 @@ struct RoundHistoryView: View {
                 await appState.refreshSyncStatuses()
             }
             .onChange(of: selection) { _, _ in Task { await reload() } }
-            }
         }
     }
 
     private func row(_ round: RoundSummary) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(round.courseName)
-                    .font(BirdieTheme.body(17, weight: .semibold))
-                    .foregroundStyle(BirdieTheme.ink)
-                Text("\(round.date) · \(round.holesPlayed)/\(round.expectedHoles) holes · \(round.tee)")
-                    .font(BirdieTheme.body(12))
-                    .foregroundStyle(BirdieTheme.muted)
-                if round.isDraft {
-                    Text("In progress")
-                        .font(BirdieTheme.mono(10))
-                        .foregroundStyle(BirdieTheme.flag)
-                }
-                if let syncStatus = appState.roundSyncStatuses[round.id], syncStatus != .synced {
-                    Label(LocalizedStringKey(syncStatus.label),
-                          systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
-                        .font(BirdieTheme.body(11))
-                        .foregroundStyle(BirdieTheme.flag)
-                }
-            }
-            Spacer(minLength: 0)
-            Text("\(round.totalScore) (\(StatisticsView.signedInt(round.scoreToPar)))")
-                .font(BirdieTheme.mono(17))
-                .foregroundStyle(BirdieTheme.ink)
-                .fixedSize(horizontal: true, vertical: false)
-        }
-        .birdieCard()
-        .accessibilityElement(children: .combine)
+        BirdieRoundRow(round: round, syncStatus: appState.roundSyncStatuses[round.id])
     }
 
     // MARK: - Paging
@@ -155,4 +129,45 @@ struct RoundHistoryView: View {
         }
         isLoadingPage = false
     }
+}
+
+struct BirdieRoundRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let round: RoundSummary
+    var syncStatus: RoundSyncStatus?
+
+    var body: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+        layout {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(round.courseName)
+                    .font(BirdieTheme.body(17, weight: .semibold))
+                    .foregroundStyle(BirdieTheme.ink)
+                Text("\(round.date) · \(round.holesPlayed)/\(round.expectedHoles) holes · \(round.tee)")
+                    .font(BirdieTheme.body(13))
+                    .foregroundStyle(BirdieTheme.muted)
+                if round.isDraft {
+                    Text("In progress")
+                        .font(BirdieTheme.body(13, weight: .semibold))
+                        .foregroundStyle(BirdieTheme.danger)
+                }
+                if let syncStatus, syncStatus != .synced {
+                    Label(LocalizedStringKey(syncStatus.label),
+                          systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
+                        .font(BirdieTheme.body(13))
+                        .foregroundStyle(BirdieTheme.danger)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Text("\(round.totalScore) (\(StatisticsView.signedInt(round.scoreToPar)))")
+                .font(BirdieTheme.mono(17))
+                .foregroundStyle(BirdieTheme.ink)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .birdieCard()
+        .accessibilityElement(children: .combine)
+    }
+
 }

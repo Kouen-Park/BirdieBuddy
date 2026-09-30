@@ -12,6 +12,9 @@ enum BirdieTheme {
     static let paper = Color(red: 252/255, green: 253/255, blue: 251/255)
     static let sun = Color(red: 230/255, green: 184/255, blue: 92/255)
     static let flag = Color(red: 229/255, green: 106/255, blue: 78/255)
+    // Keep the bright flag/sun colors for decoration; text needs more contrast.
+    static let danger = Color(red: 171/255, green: 61/255, blue: 49/255)
+    static let warning = Color(red: 137/255, green: 94/255, blue: 30/255)
     static let sky = Color(red: 119/255, green: 169/255, blue: 189/255)
     static let iris = Color(red: 135/255, green: 146/255, blue: 223/255)
     static let chartPutts = Color(red: 90/255, green: 122/255, blue: 146/255)
@@ -59,7 +62,32 @@ extension View {
         self
             .scrollContentBackground(.hidden)
             .background(BirdieTheme.canvas)
+            .foregroundStyle(BirdieTheme.ink)
             .tint(BirdieTheme.fairwayDark)
+    }
+
+    func birdieNavigationBrand() -> some View {
+        self
+            .navigationTitle("Birdie Buddy")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) { BirdieBrand() }
+            }
+            .toolbarBackground(BirdieTheme.canvas, for: .navigationBar)
+    }
+}
+
+/// Outlined vector artwork keeps the brand identical across web and native UI.
+/// This is a logotype, not reading text, so it stays within the navigation bar.
+struct BirdieBrand: View {
+    var height: CGFloat = 30
+
+    var body: some View {
+        Image("BirdieLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: height * 197 / 40, height: height)
+            .accessibilityLabel("Birdie Buddy")
     }
 }
 
@@ -74,10 +102,6 @@ struct BirdiePageHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("BIRDIE BUDDY / FIELD NOTES")
-                .font(BirdieTheme.mono(10))
-                .tracking(2)
-                .foregroundStyle(BirdieTheme.fairway)
             Text(title)
                 .font(BirdieTheme.display(32))
                 .foregroundStyle(BirdieTheme.ink)
@@ -90,6 +114,7 @@ struct BirdiePageHeader: View {
             Rectangle().fill(BirdieTheme.line).frame(height: 1).padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .listRowSeparator(.hidden)
     }
 }
 
@@ -102,7 +127,7 @@ struct BirdieMetricCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Capsule().fill(accent).frame(height: 4)
             Text(label)
-                .font(BirdieTheme.body(11, weight: .bold))
+                .font(BirdieTheme.body(13, weight: .semibold))
                 .foregroundStyle(BirdieTheme.muted)
             Text(value)
                 .font(BirdieTheme.mono(25))
@@ -116,26 +141,26 @@ struct BirdieMetricCard: View {
 }
 
 struct BirdieCounter: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let label: LocalizedStringKey
     @Binding var value: Int
     let range: ClosedRange<Int>
     var compact = false
 
     var body: some View {
-        HStack(spacing: 10) {
-            Text(label)
-                .font(BirdieTheme.body(compact ? 15 : 17, weight: .semibold))
-                .foregroundStyle(BirdieTheme.ink)
-            Spacer(minLength: 4)
-            Button { change(-1) } label: { counterButton("minus") }
-                .disabled(value <= range.lowerBound)
-            Text("\(value)")
-                .font(BirdieTheme.mono(compact ? 25 : 37))
-                .monospacedDigit()
-                .frame(minWidth: compact ? 32 : 43)
-                .foregroundStyle(BirdieTheme.ink)
-            Button { change(1) } label: { counterButton("plus") }
-                .disabled(value >= range.upperBound)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 12) {
+                    title
+                    controls.frame(maxWidth: .infinity)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    title
+                    Spacer(minLength: 4)
+                    controls
+                }
+            }
         }
         .padding(.vertical, compact ? 7 : 12)
         .accessibilityElement(children: .ignore)
@@ -154,12 +179,35 @@ struct BirdieCounter: View {
         value = min(max(value + delta, range.lowerBound), range.upperBound)
     }
 
-    private func counterButton(_ symbol: String) -> some View {
+    private var title: some View {
+        Text(label)
+            .font(BirdieTheme.body(compact ? 15 : 17, weight: .semibold))
+            .foregroundStyle(BirdieTheme.ink)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var controls: some View {
+        HStack(spacing: 10) {
+            Button { change(-1) } label: { counterButton("minus", enabled: value > range.lowerBound) }
+                .disabled(value <= range.lowerBound)
+            Text("\(value)")
+                .font(BirdieTheme.mono(compact ? 25 : 37))
+                .monospacedDigit()
+                .frame(minWidth: compact ? 32 : 43)
+                .foregroundStyle(BirdieTheme.ink)
+            Button { change(1) } label: { counterButton("plus", enabled: value < range.upperBound) }
+                .disabled(value >= range.upperBound)
+        }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func counterButton(_ symbol: String, enabled: Bool) -> some View {
         Image(systemName: symbol)
             .font(.system(size: compact ? 17 : 21, weight: .medium))
             .frame(width: compact ? 44 : 48, height: compact ? 44 : 48)
             .background(BirdieTheme.canvas, in: Circle())
             .overlay(Circle().stroke(BirdieTheme.line, lineWidth: 1))
-            .foregroundStyle(BirdieTheme.ink)
+            .foregroundStyle(BirdieTheme.ink.opacity(enabled ? 1 : 0.3))
     }
 }

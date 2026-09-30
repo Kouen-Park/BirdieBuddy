@@ -73,4 +73,21 @@ final class ScorecardLayoutTests: XCTestCase {
         XCTAssertEqual(size.width, narrowContentWidth, accuracy: 1)
         XCTAssertGreaterThan(size.height, 44)
     }
+
+    func testRoundRowStacksScoreAtAccessibilitySizes() {
+        let round = RoundSummary(id: 1, courseId: 1,
+            courseName: "Auckland Championship Golf Course", date: "2026-09-30", tee: "Championship Blue",
+            totalScore: 120, scoreToPar: 48, status: "Completed", holesPlayed: 18, expectedHoles: 18)
+        func rendered(_ typeSize: DynamicTypeSize) -> CGSize {
+            let renderer = ImageRenderer(content: BirdieRoundRow(round: round)
+                .environment(\.dynamicTypeSize, typeSize)
+                .frame(width: narrowContentWidth))
+            renderer.scale = 1
+            return renderer.uiImage?.size ?? .zero
+        }
+        let normal = rendered(.large)
+        let accessible = rendered(.accessibility5)
+        XCTAssertEqual(accessible.width, narrowContentWidth, accuracy: 1)
+        XCTAssertGreaterThan(accessible.height, normal.height * 2)
+    }
 }

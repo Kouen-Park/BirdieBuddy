@@ -18,16 +18,18 @@ struct CourseBrowserView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Remains visible when the server cannot load the course list.
-                ResumeRoundBanner()
-                ScrollView {
+            ScrollView {
+                VStack(spacing: 0) {
+                    // Keep resume available even when courses fail to load, and let
+                    // the banner scroll at large accessibility text sizes.
+                    ResumeRoundBanner()
                     VStack(alignment: .leading, spacing: 18) {
                         BirdiePageHeader("Courses", subtitle: "Courses you can select when adding a round.")
                         HStack {
                             Image(systemName: "magnifyingglass").foregroundStyle(BirdieTheme.muted)
                             TextField("Search by course or location", text: $searchText)
                                 .textInputAutocapitalization(.never)
+                                .accessibilityLabel("Search by course or location")
                         }
                         .birdieCard(padding: 16)
 
@@ -84,12 +86,11 @@ struct CourseBrowserView: View {
                     }
                     .padding(16)
                 }
-                .refreshable { await loadCourses() }
             }
+            .refreshable { await loadCourses() }
             .background(BirdieTheme.canvas)
             .navigationDestination(for: CourseSummary.self) { course in CourseDetailView(course: course) }
-            .navigationTitle("Birdie Buddy")
-            .navigationBarTitleDisplayMode(.inline)
+            .birdieNavigationBrand()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

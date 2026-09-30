@@ -38,10 +38,6 @@ struct RoundDetailView: View {
             if let detail {
                 List {
                     VStack(alignment: .leading, spacing: 7) {
-                        Text("BIRDIE BUDDY / FIELD NOTES")
-                            .font(BirdieTheme.mono(10))
-                            .tracking(2)
-                            .foregroundStyle(BirdieTheme.fairway)
                         Text(round.courseName)
                             .font(BirdieTheme.display(30))
                             .foregroundStyle(BirdieTheme.ink)
@@ -193,7 +189,7 @@ struct RoundDetailView: View {
         if let errorMessage {
             Section {
                 Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(BirdieTheme.danger)
             }
         }
     }
@@ -287,7 +283,7 @@ struct HoleRow: View {
         switch toPar {
         case ..<0: return BirdieTheme.fairway
         case 0: return BirdieTheme.ink
-        default: return BirdieTheme.flag
+        default: return BirdieTheme.danger
         }
     }
 
@@ -373,7 +369,7 @@ struct HoleRow: View {
             if hole.penalty > 0 {
                 Text("+\(hole.penalty)")
                     .font(BirdieTheme.mono(11))
-                    .foregroundStyle(BirdieTheme.flag)
+                    .foregroundStyle(BirdieTheme.danger)
             }
         }
     }
