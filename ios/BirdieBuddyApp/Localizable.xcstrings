@@ -1,6 +1,26 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Start a session to keep track of your practice.": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연습을 시작하고 기록을 남겨보세요."
+          }
+        }
+      }
+    },
+    "No practice sessions yet": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 연습 기록이 없습니다"
+          }
+        }
+      }
+    },
     "%@ · %lld (%@)" : {
       "localizations" : {
         "en" : {

@@ -30,7 +30,7 @@ struct PasswordResetView: View {
                     Section {
                         Label("Password updated. Sign in with your new password.",
                               systemImage: "checkmark.seal")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(BirdieTheme.fairwayDark)
                     }
                 } else {
                     Section("New password") {
@@ -46,7 +46,7 @@ struct PasswordResetView: View {
                     if let errorMessage {
                         Section {
                             Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
+                                .foregroundStyle(BirdieTheme.danger)
                         }
                     }
 
@@ -57,13 +57,13 @@ struct PasswordResetView: View {
                         .disabled(isSubmitting || !passwordIsValid)
                         .accessibilityLabel("Set new password")
                         .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
                         .tint(BirdieTheme.fairwayDark)
                     }
                 }
             }
             .birdieListStyle()
-            .navigationTitle("Birdie Buddy")
-            .navigationBarTitleDisplayMode(.inline)
+            .birdieNavigationBrand()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }.disabled(isSubmitting)

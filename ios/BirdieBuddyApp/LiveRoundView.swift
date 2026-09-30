@@ -121,7 +121,7 @@ struct LiveRoundView: View {
                 if syncStatus != .synced {
                     Label(LocalizedStringKey(syncStatus.label), systemImage: syncStatus == .reviewRequired ? "exclamationmark.triangle" : "icloud.and.arrow.up")
                         .font(BirdieTheme.mono(11))
-                        .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? BirdieTheme.flag : BirdieTheme.fairwayDark)
+                        .foregroundStyle(syncStatus == .attentionRequired || syncStatus == .reviewRequired ? BirdieTheme.danger : BirdieTheme.fairwayDark)
                         .padding(.horizontal, 11)
                         .padding(.vertical, 7)
                         .background(BirdieTheme.paper, in: Capsule())
@@ -183,7 +183,7 @@ struct LiveRoundView: View {
                     if !strokeBreakdownIsValid {
                         Label("Putts and penalties cannot exceed the score.", systemImage: "exclamationmark.triangle")
                             .font(BirdieTheme.body(13))
-                            .foregroundStyle(BirdieTheme.flag)
+                            .foregroundStyle(BirdieTheme.danger)
                             .padding(.top, 10)
                     }
                 }
@@ -199,7 +199,7 @@ struct LiveRoundView: View {
                 if let errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
                         .font(BirdieTheme.body(13))
-                        .foregroundStyle(BirdieTheme.flag)
+                        .foregroundStyle(BirdieTheme.danger)
                         .birdieCard()
                 }
             }

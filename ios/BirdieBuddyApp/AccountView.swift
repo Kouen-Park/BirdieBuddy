@@ -38,16 +38,17 @@ struct AccountView: View {
                     }
                     .disabled(isSaving || displayName.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
                     .tint(BirdieTheme.fairwayDark)
                 }
                 if let message { Text(message).foregroundStyle(.secondary) }
                 Section("Email") {
                     if appState.user?.emailVerified == true {
                         Label("Email verified", systemImage: "checkmark.seal")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(BirdieTheme.fairwayDark)
                     } else {
                         Label("Email not verified", systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(BirdieTheme.warning)
                         Button(isWorking ? "Sending…" : "Send verification email") {
                             Task {
                                 isWorking = true
@@ -152,8 +153,7 @@ struct AccountView: View {
                 }
             }
             .birdieListStyle()
-            .navigationTitle("Birdie Buddy")
-            .navigationBarTitleDisplayMode(.inline)
+            .birdieNavigationBrand()
             .onAppear {
                 displayName = appState.user?.displayName ?? ""
                 diagnostics.reloadReports()

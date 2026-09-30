@@ -63,7 +63,7 @@ struct SignUpView: View {
             if let errorMessage = appState.errorMessage {
                 Section {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(BirdieTheme.danger)
                 }
             }
 
@@ -88,12 +88,12 @@ struct SignUpView: View {
                 .disabled(!canSubmit)
                 .accessibilityLabel("Create account")
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .tint(BirdieTheme.fairwayDark)
             }
         }
         .birdieListStyle()
-        .navigationTitle("Birdie Buddy")
-        .navigationBarTitleDisplayMode(.inline)
+        .birdieNavigationBrand()
         .toolbar(.visible, for: .navigationBar)
         .interactiveDismissDisabled(isSubmitting)
     }

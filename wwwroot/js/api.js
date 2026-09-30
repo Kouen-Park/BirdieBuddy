@@ -195,8 +195,7 @@ function renderNav(active) {
     </button>
 
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">&#9873;</span>
-      Birdie Buddy
+      <img class="brand-logo" src="/icons/birdiebuddy-logo-light.svg" alt="Birdie Buddy" width="197" height="40" />
     </div>
 
     <ul class="nav-list">
@@ -305,8 +304,7 @@ function setupMobileNavigation() {
       </button>
 
       <div class="mobile-brand">
-        <span class="brand-mark" aria-hidden="true">&#9873;</span>
-        Birdie Buddy
+        <img class="brand-logo" src="/icons/birdiebuddy-logo.svg" alt="Birdie Buddy" width="197" height="40" />
       </div>
     `;
 

@@ -1,13 +1,12 @@
-const CACHE_NAME = 'birdiebuddy-shell-v4';
+const CACHE_NAME = 'birdiebuddy-shell-v5';
 const SHELL = [
   '/',
   '/index.html',
   '/live-round.html',
   '/rounds.html',
   '/round-details.html',
-  '/css/styles.css?v=20260909-records',
-  '/css/styles.css?v=20260908-local-assets',
-  '/js/api.js?v=20260918-member-preview',
+  '/css/styles.css?v=20260930-brand',
+  '/js/api.js?v=20260930-brand',
   '/js/live-store.js?v=20260903-rail3',
   '/js/live-round.js?v=20260903-rail3',
   '/vendor/fonts/outfit-400.ttf',
@@ -15,7 +14,13 @@ const SHELL = [
   '/vendor/fonts/outfit-600.ttf',
   '/vendor/fonts/space-grotesk-600.ttf',
   '/vendor/fonts/dm-mono-400.ttf',
-  '/icons/birdie-buddy.svg'
+  '/icons/birdie-buddy.svg',
+  '/icons/birdiebuddy-logo.svg',
+  '/icons/birdiebuddy-logo-light.svg',
+  '/icons/favicon-32.png',
+  '/icons/apple-touch-icon.png',
+  '/icons/birdiebuddy-192.png',
+  '/icons/birdiebuddy-512.png'
 ];
 
 self.addEventListener('install', event => {

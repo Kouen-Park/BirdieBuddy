@@ -33,11 +33,14 @@ struct RootView: View {
     var body: some View {
         Group {
             if appState.isRestoring {
-                VStack(spacing: 12) {
+                VStack(spacing: 24) {
+                    BirdieBrand(height: 40)
                     ProgressView()
                     Text("Restoring your session…")
                         .foregroundStyle(.secondary)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(BirdieTheme.canvas)
             } else if appState.isSignedIn {
                 MainTabView()
             } else {
