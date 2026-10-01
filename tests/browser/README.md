@@ -1,5 +1,7 @@
 # Local browser smoke checks
 
+On 2026-10-01, the brand/design branch passed 25 browser unit tests and a final full rerun of all five mobile fixture tests. [PR #15](https://github.com/Kouen-Park/BirdieBuddy/actions/runs/36714842015) also passed the PostgreSQL-backed browser E2E job. This guide covers web fixtures; see [current-status.md](../../docs/current-status.md) for native scope and remaining device checks.
+
 ## Responsive navigation checks
 
 Verified with local fixtures at 1280×720, 375×667, 320×568 and 667×375:
@@ -43,3 +45,7 @@ npm run test:e2e:fixture
 ```
 
 Failure traces, screenshots and videos are retained under `output/playwright/`. See [`docs/testing.md`](../../docs/testing.md) for the PostgreSQL-backed application journey and CI matrix.
+
+## Brand review
+
+The fixture serves the current SVG wordmarks and matching favicon assets. Check the light mobile-header logo, light-lettering sidebar logo, auth logo, and small icons in [the brand preview](../../design/brand/preview.html). Visual review and the [physical Safari checklist](iphone-safari-checklist.md) remain separate from the automated journey tests.

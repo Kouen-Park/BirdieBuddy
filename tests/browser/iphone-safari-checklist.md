@@ -1,8 +1,8 @@
 # iPhone Safari release check
 
-Status: **not executed on iPhone Safari**. This workstation has Command Line Tools but no Xcode/iOS Simulator (`xcrun --find simctl` fails). Desktop viewport checks and mocked UI tests are not a substitute.
+Status for the current candidate: **physical iPhone Safari gate not recorded**. As of 2026-10-01, full Xcode is installed and native CI tests have passed; neither native XCTest nor Chromium fixture results complete this Safari checklist. Older device observations do not certify the latest branding/layout changes.
 
-Use a physical iPhone or install Xcode plus an iOS simulator runtime, then open Safari. Record device model, iOS version, URL/build, orientation and results. Do not use a production round for destructive tests. A deployment or device-accessible development URL is required; `127.0.0.1` on the phone refers to the phone, not this Mac.
+Use Safari on a physical iPhone for the release gate. Simulator Safari can support exploratory checks but must be recorded separately. Record device model, iOS version, URL/build, orientation and results. Do not use a production round for destructive tests. A deployment or device-accessible development URL is required; `127.0.0.1` on the phone refers to the phone, not this Mac. Native-app checks live in [the iOS release checklist](../../docs/ios-release.md).
 
 | Check | Expected |
 | --- | --- |
@@ -16,6 +16,7 @@ Use a physical iPhone or install Xcode plus an iOS simulator runtime, then open 
 | Another session changes the same hole | Comparison shown; Cancel preserves input; each resolution behaves as labelled |
 | VoiceOver navigation and larger text | Menu controls labelled; hidden drawer skipped; dialog controls reachable; VoiceOver announces `Saved on this device`, `Syncing with server`, `Offline`, `Saved to server`, and conflict/error alerts |
 | Reduced Motion enabled | No unnecessary menu or page animation |
+| New brand assets after deployment and home-screen installation | Shared bird-on-tee wordmark is legible, SVG/PNG favicon loads, Apple touch/PWA icon matches the app symbol; no clipped mobile header |
 
 For the VoiceOver row, use rotor navigation to visit the live-round status region after an edit, during reconnect, and after a forced conflict. Verify the conflict dialog announces its title, comparison table caption, and all three choice buttons. Record whether each status is announced once and whether focus remains inside the dialog while it is open.
 

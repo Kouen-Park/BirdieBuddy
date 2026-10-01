@@ -2,9 +2,11 @@
 
 This runbook is for the small private beta. Never run restore commands against the production database.
 
+Reviewed on 2026-10-01. [Current status](current-status.md) records repository/CI evidence; this runbook's deployment, SMTP, and backup checks still require separate execution and recorded results.
+
 ## Release gate
 
-1. Require the GitHub checks `build-and-test`, `postgres-integration`, and `browser-e2e` for `master` in repository branch protection.
+1. Require the GitHub checks `build-and-test`, `postgres-integration`, `browser-e2e`, and `ios-tests` for `master` in repository branch protection. All four passed for [PR #15](https://github.com/Kouen-Park/BirdieBuddy/actions/runs/36714842015); verify branch-protection configuration separately.
 2. Confirm the Render deploy is live and run `./scripts/check-deployment.sh https://birdiebuddy.onrender.com`.
 3. Download the `postgres-migration-sql` CI artifact and review schema changes before a migration deploy.
 4. Record the release commit, Render deploy time, database backup/restore point, and the smoke-check result.
@@ -12,6 +14,9 @@ This runbook is for the small private beta. Never run restore commands against t
 6. Before running more than one app instance, set `DataProtection__KeyRingPath` to a persistent shared volume so instances can decrypt each other's authentication cookies.
 7. If `browser-e2e` fails, download its `playwright-report` artifact and review the trace, screenshot and application output before retrying. Do not waive the check solely because the fixture project passed.
 8. Complete the physical iPhone Safari gate below after the candidate commit is fixed. Record a new result whenever scoring, storage, service-worker or authentication behavior changes.
+9. For a native beta, also complete [the iOS release gates](ios-release.md), verify the bundled API origin survives force-quit/relaunch, and resolve the anonymous reset/verification CSRF contract gap. Do not treat web Safari checks as a native-app pass.
+
+The current brand update includes new SVG wordmarks, favicon/Apple touch/PWA icons, and service-worker cache `birdiebuddy-shell-v5`. After deployment, verify the logo on public/authenticated pages and installed home-screen icons; refreshing page assets alone may not update an already installed icon immediately. Native builds use a bundled vector logo and a flat PNG app icon.
 
 ## Email verification rollout
 
@@ -39,6 +44,8 @@ Use a read-only source credential when Render permits it. The target is erased a
 - Use authenticated `GET /api/admin/operations` with `X-Admin-Key` for the current instance's route request count, 5xx rate, average latency, and maximum latency.
 - Use authenticated `GET /api/admin/operations/beta` for the last 30 days. It reports round completion rate, resumed-round completion rate, and median hole input time.
 - Treat these beta targets as release signals: median hole input at most 10 seconds, completed rounds at least 99% of terminal rounds, and resumed drafts completed at least 95% of the time. Small samples must be shown with their counts.
+
+The web client emits `draft_resumed` and `hole_input_completed`; the native app currently emits neither. Resume/timing metrics therefore reflect recorded browser events. Overall round completion is computed from server round records, which can include both clients; do not describe these metrics as a complete native sync/conflict monitor. Native MetricKit reports are local and manually shared, not sent to this operations API.
 
 After deployment, verify both `/health/live` and `/health/ready`. A live-but-not-ready instance usually indicates a database connection or migration problem and should not receive beta traffic. Use a returned `X-Trace-Id` to correlate a tester-visible API error with structured application telemetry; do not ask testers for credentials or raw cookies.
 

@@ -1,6 +1,6 @@
 # Testing and CI guide
 
-Birdie Buddy uses layered tests because no single test runner covers browser durability, ASP.NET Core middleware and PostgreSQL behavior equally well.
+BirdieBuddy uses layered tests because no single test runner covers native persistence, browser durability, ASP.NET Core middleware, and PostgreSQL behavior equally well. The [current status](current-status.md) records the latest verified baseline.
 
 ## Prerequisites
 
@@ -9,6 +9,7 @@ Birdie Buddy uses layered tests because no single test runner covers browser dur
 - npm
 - Chromium installed through Playwright
 - PostgreSQL 16 only for database integration and full application E2E runs
+- Full Xcode and an installed iOS Simulator runtime for native tests; a physical phone is not required
 
 Install dependencies once:
 
@@ -29,6 +30,7 @@ On Linux CI, `npx playwright install --with-deps chromium` also installs require
 | Playwright fixture E2E | `npm run test:e2e:fixture` | Real Chromium mobile viewport, offline/reconnect, conflict dialog, keyboard activation and horizontal fit | Loopback in-memory mock API |
 | PostgreSQL integration | command below | Real migrations, constraints, ownership, concurrency rollback and query compatibility | Disposable local PostgreSQL |
 | Full application Playwright E2E | command below | Registration, cookie/CSRF flow, custom course creation, draft start, reload/resume, 18-hole save and completion through the real app | Disposable local PostgreSQL |
+| Native XCTest | `./scripts/test-ios.sh` | Session refresh/configuration, durable outbox and conflict isolation, offline/relaunch/sync journey, narrow Dynamic Type layouts | In-memory/local native stores and URLProtocol API fixtures; no production API |
 
 The EF in-memory provider is retained for fast request-pipeline coverage. It does not emulate relational constraints or transactions; the PostgreSQL category is the authority for those behaviors.
 
@@ -96,19 +98,50 @@ If port `4173` or `5187` is already occupied, stop the existing fixture/applicat
 
 ## CI jobs
 
-The GitHub Actions workflow has three independent required checks:
+The [CI workflow](../.github/workflows/ci.yml) has four independent jobs. It runs on pull requests and pushes to `master`; feature-branch pushes are covered when their PR is opened. Newer runs supersede older runs on the same PR, while `master` runs are retained.
 
 | Job | Responsibilities |
 |---|---|
 | `build-and-test` | Restore, Release build, full non-PostgreSQL .NET suite, migration SQL artifact, publish artifact, Node tests and Docker build |
 | `postgres-integration` | PostgreSQL 16 service plus the real migration/concurrency/constraint test category |
 | `browser-e2e` | PostgreSQL 16 service, Release app startup and both Playwright mobile projects |
+| `ios-tests` | macOS 26, Xcode 26.5, dynamic iPhone simulator selection, native XCTest including layout rendering |
 
-The browser job uploads `output/playwright/` when it fails. The `postgres-migration-sql` artifact should be reviewed before a migration deployment. Repository branch protection must require all three checks; the workflow itself cannot enforce branch settings.
+The browser job uploads `output/playwright/` when it fails; the iOS job uploads `output/ios/*.xcresult` as `ios-test-results` on failure. Review the `postgres-migration-sql` artifact before a migration deployment. Configure branch protection to require all four checks; the workflow itself does not prove that repository protection is configured. The separate `deployment-smoke.yml` workflow is manually dispatched and is not one of these four PR checks.
+
+On 2026-10-01, [PR #15's CI run](https://github.com/Kouen-Park/BirdieBuddy/actions/runs/36714842015) passed all four jobs, including 27 native tests with zero failures. Local browser checks passed 25 unit tests and all five mobile fixture tests. These results do not constitute a complete native visual or physical-device pass.
+
+## Native iOS tests
+
+The shared `BirdieBuddyApp` scheme includes `BirdieBuddyAppTests` and `ScorecardLayoutTests`. The current 27 tests cover sessions, API configuration, user-scoped cache/outbox persistence, migration, conflicts, recovery, and a mocked 18-hole offline/relaunch/sync journey. Four layout tests render the scorecard at every Dynamic Type size and check the narrow counter and large-text round row.
+
+If `xcodebuild` resolves to Command Line Tools, select the installed full Xcode for this shell without changing the machine-wide developer directory:
+
+```bash
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+xcodebuild -version
+xcrun simctl list devices available
+./scripts/test-ios.sh
+```
+
+Set `BIRDIEBUDDY_IOS_SIMULATOR_ID` to an available iPhone UDID to override automatic selection. Results are written to `output/ios/`; the derived-data path uses a per-run temporary directory. `BIRDIEBUDDY_IOS_TEST_ATTEMPTS` defaults to two. The script retries only runner exit codes 69, 70, or 74 after rebooting; build/test failures (65) are not retried.
+
+The script currently leaves the selected simulator booted. When finished, shut down that simulator, including after interrupting a stalled test run:
+
+```bash
+xcrun simctl list devices booted
+# Replace SIMULATOR_UDID with the device used by the test script.
+xcrun simctl shutdown SIMULATOR_UDID
+```
+
+A local Xcode 27.0/iOS 27.0 build succeeded during the latest design review, but both XCTest and standalone app launch stalled. That local runtime failure was not caused by a disconnected phone; GitHub's Xcode 26.5 tests subsequently passed. Separate compilation, test execution, screen review, and physical-device evidence when recording results.
+
+`design/ios-audit/CaptureTests.swift` is an optional screen-review harness outside the test target, not part of the 27-test suite. See [the design audit](../design/ios-audit/README.md) for its scope and current capture limitations.
 
 ## Adding tests
 
 - Put pure service and HTTP pipeline tests in `tests/BirdieBuddy.Tests`.
+- Put native session, outbox, journey, and layout regressions in `ios/BirdieBuddyAppTests`; fixtures must avoid real accounts and production writes.
 - Add PostgreSQL-only assertions to the `PostgreSQL` category and keep their database target safeguards intact.
 - Put DOM-free JavaScript state/view tests in `tests/browser`.
 - Put user-visible browser journeys in `tests/e2e` and use role, label or stable semantic locators where possible.
@@ -119,6 +152,8 @@ The browser job uploads `output/playwright/` when it fails. The `postgres-migrat
 ## Manual mobile gate
 
 Chromium device emulation does not reproduce Safari storage eviction, WebKit focus behavior, iOS installation or VoiceOver. Before a beta release, complete [the physical iPhone Safari checklist](../tests/browser/iphone-safari-checklist.md) and record the release commit with the evidence.
+
+For native release, complete the separate [physical iPhone gates](ios-release.md#physical-iphone-gates). A SwiftUI renderer assertion or a passing XCTest run does not validate every screen at large text sizes.
 
 ## Mobile UX acceptance matrix
 
@@ -133,3 +168,5 @@ Chromium device emulation does not reproduce Safari storage eviction, WebKit foc
 Automated checks prove DOM contracts and Chromium behavior. They do not turn the beta targets into
 synthetic pass conditions: product metrics must be measured from real, consented sessions and
 reported with their sample counts.
+
+This acceptance matrix describes the web client. Native iOS currently has no `draft_resumed` or `hole_input_completed` event emitter, so browser timing and resume metrics do not measure native usage.

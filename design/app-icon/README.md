@@ -4,6 +4,8 @@ The four SVG files in `icon-composer/` are independent, full-size 1024 × 1024 l
 
 A flat, opaque export of this artwork is bundled as `ios/BirdieBuddyApp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`. The four SVG layers remain separate source files for a future Icon Composer export.
 
+As of 2026-10-01, the same bird-on-tee symbol also appears in the outlined iOS/web wordmark and matching browser/home-screen icons. See [brand assets](../brand/README.md) for those exports and their generator. The native app icon itself remains this flat PNG; adding the vector navigation logo did not activate layered icon rendering.
+
 | Layer | Brand token | Color |
 | --- | --- | --- |
 | Background | `night` | `#0E211F` |

@@ -1,21 +1,23 @@
 # BirdieBuddy iOS 디자인 검사 — 2026-10-01
 
+[PR #15](https://github.com/Kouen-Park/BirdieBuddy/pull/15)로 변경이 `master`에 머지됐습니다. 이후 GitHub CI에서 iOS 테스트 27개가 통과했습니다. 아래의 로컬 실행 실패와 전체 화면 검증 한계는 이 CI 결과와 별도로 기록합니다. 현재 기능·릴리스 상태는 [current-status.md](../../docs/current-status.md)에 있습니다.
+
 `frontend-design-direction`, `design-system`, `make-interfaces-feel-better` 스킬의 시각 검사 기준을 SwiftUI 앱에 적용했습니다. 방향은 골프장에서 빠르게 읽는 기록 앱입니다. 기존 짙은 녹색, 밝은 종이색, 점수용 숫자 글꼴을 유지하고, 브랜드와 화면 제목을 구분했습니다.
 
 점수는 코드 검사와 수정 내용에 따른 디자인 판단입니다. 수정 후 점수는 실제 화면 재검증 전의 잠정 평가이며, 인증이나 자동 접근성 검사 결과가 아닙니다.
 
 | 검사 항목 | 수정 전 → 수정 후 / 10 | 확인 및 수정 위치 |
 | --- | --- | --- |
-| 색상 일관성 | 6 → 9 | 깃발·노랑 장식 색을 상태 글자색과 분리. 시스템 빨강·초록·주황을 공통 의미 색으로 교체. `ios/BirdieBuddyApp/BirdieTheme.swift:16`, `AccountView.swift:47` |
-| 글자 위계 | 6 → 8 | 시스템 폰트로 보이던 상단 이름을 벡터 로고로 통일. 반복되던 브랜드 문구를 본문 제목에서 제거. 통계 라벨은 11pt에서 13pt로 확대. `BirdieTheme.swift:69`, `BirdieTheme.swift:94`, `BirdieTheme.swift:121` |
-| 여백 리듬 | 7 → 8 | 기존 16/18/20pt 간격 유지. 로그인 바깥 여백을 16pt, 카드 안쪽을 20pt로 정리. `LoginView.swift:73` |
-| 컴포넌트 일관성 | 6 → 8 | 로그인·복원·상단 바에서 `BirdieBrand` 사용. 라운드/연습 카드 주변의 기본 목록 구분선을 제거. `BirdieTheme.swift:82`, `RoundHistoryView.swift:61`, `PracticeView.swift:67` |
-| 좁은 화면·큰 글씨 | 6 → 8 | 접근성 글씨 크기에서 라운드 점수와 카운터를 세로로 배치. 진행 중 라운드 배너를 스크롤 안으로 이동. `RoundHistoryView.swift:140`, `BirdieTheme.swift:152`, `CourseBrowserView.swift:25` |
-| 다크 모드 | 해당 없음 | 앱이 명시적으로 밝은 테마를 사용합니다. 별도 다크 팔레트는 추가하지 않았습니다. `BirdieBuddyApp.swift:16` |
+| 색상 일관성 | 6 → 9 | 깃발·노랑 장식 색을 상태 글자색과 분리. 시스템 빨강·초록·주황을 공통 의미 색으로 교체. `ios/BirdieBuddyApp/BirdieTheme.swift`, `AccountView.swift` |
+| 글자 위계 | 6 → 8 | 시스템 폰트로 보이던 상단 이름을 벡터 로고로 통일. 반복되던 브랜드 문구를 본문 제목에서 제거. 통계 라벨은 11pt에서 13pt로 확대. `BirdieTheme.swift`, `BirdieTheme.swift`, `BirdieTheme.swift` |
+| 여백 리듬 | 7 → 8 | 기존 16/18/20pt 간격 유지. 로그인 바깥 여백을 16pt, 카드 안쪽을 20pt로 정리. `LoginView.swift` |
+| 컴포넌트 일관성 | 6 → 8 | 로그인·복원·상단 바에서 `BirdieBrand` 사용. 라운드/연습 카드 주변의 기본 목록 구분선을 제거. `BirdieTheme.swift`, `RoundHistoryView.swift`, `PracticeView.swift` |
+| 좁은 화면·큰 글씨 | 6 → 8 | 접근성 글씨 크기에서 라운드 점수와 카운터를 세로로 배치. 진행 중 라운드 배너를 스크롤 안으로 이동. `RoundHistoryView.swift`, `BirdieTheme.swift`, `CourseBrowserView.swift` |
+| 다크 모드 | 해당 없음 | 앱이 명시적으로 밝은 테마를 사용합니다. 별도 다크 팔레트는 추가하지 않았습니다. `BirdieBuddyApp.swift` |
 | 움직임 | 8 → 8 | 추가 장식 애니메이션 없음. 기본 iOS 화면 이동·입력 동작 유지. 새 의존성 없음. |
-| 접근성 | 6 → 8 | 로고 VoiceOver 이름, 검색 필드 이름, 로그인 링크 44pt 영역, 상태 글자 대비, 비활성 카운터 구분을 개선. 조절 가능한 카운터의 VoiceOver 동작 유지. `BirdieTheme.swift:89`, `BirdieTheme.swift:207`, `LoginView.swift:66` |
-| 정보 밀도 | 6 → 8 | 본문에 반복되던 브랜드 문구 제거. 연습 입력에 항상 보이는 Focus/Drill 라벨 추가. `BirdieTheme.swift:104`, `PracticeView.swift:19` |
-| 마무리 상태 | 6 → 8 | 연습 기록이 없을 때 안내 화면 추가. 오류·경고 색상 통일. 한국어 문자열 추가. `PracticeView.swift:45`, `Localizable.xcstrings:4` |
+| 접근성 | 6 → 8 | 로고 VoiceOver 이름, 검색 필드 이름, 로그인 링크 44pt 영역, 상태 글자 대비, 비활성 카운터 구분을 개선. 조절 가능한 카운터의 VoiceOver 동작 유지. `BirdieTheme.swift`, `BirdieTheme.swift`, `LoginView.swift` |
+| 정보 밀도 | 6 → 8 | 본문에 반복되던 브랜드 문구 제거. 연습 입력에 항상 보이는 Focus/Drill 라벨 추가. `BirdieTheme.swift`, `PracticeView.swift` |
+| 마무리 상태 | 6 → 8 | 연습 기록이 없을 때 안내 화면 추가. 오류·경고 색상 통일. 한국어 문자열 추가. `PracticeView.swift`, `Localizable.xcstrings` |
 
 ## 구체적인 변경
 
@@ -39,12 +41,14 @@
 | --- | --- |
 | 최종 iOS 앱 빌드 | Xcode 27.0, iOS Simulator 대상으로 `BUILD SUCCEEDED` |
 | iOS 테스트 타깃 컴파일 | 성공. 새 큰 글씨 라운드 행 테스트를 포함한 테스트 소스가 컴파일됨 |
-| XCTest 실행·화면 캡처 | 미완료. iPhone 17e / iOS 27.0 시뮬레이터에서 앱 시작을 계속 기다림. 재부팅과 디버거 없이 실행해도 동일했고, 앱 단독 실행도 대기하여 중단함. 테스트 케이스 결과 및 새 앱 화면 캡처는 없음 |
+| 로컬 XCTest 실행·화면 캡처 | 미완료. iPhone 17e / iOS 27.0 시뮬레이터에서 앱 시작을 계속 기다림. 재부팅과 디버거 없이 실행해도 동일했고, 앱 단독 실행도 대기하여 중단함. 로컬 테스트 결과 및 새 앱 화면 캡처는 없음. 이후 시뮬레이터 종료 완료 |
+| GitHub iOS CI | [Xcode 26.5 / macOS 26 테스트](https://github.com/Kouen-Park/BirdieBuddy/actions/runs/36714842015/job/109885117758)에서 27/27 통과, 실패 0개. 모델·세션·저장/복원 테스트 23개와 레이아웃 테스트 4개 포함 |
+| PR 전체 CI | [검사 4개](https://github.com/Kouen-Park/BirdieBuddy/actions/runs/36714842015) 모두 통과: 서버 빌드·테스트, PostgreSQL 통합, 브라우저 E2E, iOS |
 | 웹 브라우저 단위 테스트 | `npm run test:browser`: 25/25 통과 |
 | 웹 모바일 fixture 테스트 | 첫 실행 4/5 통과 후 실패한 1개를 단독 재실행해 통과. 시뮬레이터 종료 후 머지 전 전체 재실행에서 5/5 통과 (9.2초) |
 | 로고 | SVG/PDF의 렌더링을 확인하고 PNG 미리보기 검사 완료. 웹·iOS 자산은 같은 윤곽선 원본 사용 |
 | 파일 검증 | `git diff --check` 통과. 문자열 카탈로그, manifest, 이미지 카탈로그 JSON 유효 |
 
-임시 테스트 캡처 코드와 실행 설정은 원복했습니다. 남겨 둔 `CaptureTests.swift`는 XCTest 파일에 추가해 실행하는 검토용 자료이며, 현재 테스트 타깃에는 포함되지 않습니다. 기기 연결은 시뮬레이터 검사에 필요하지 않습니다. 실제 iPhone에서의 레이아웃, VoiceOver, 키보드 입력은 이번 작업에서 확인하지 않았습니다.
+임시 테스트 캡처 코드와 실행 설정은 원복했습니다. 남겨 둔 `CaptureTests.swift`는 XCTest 파일에 추가해 실행하는 검토용 자료이며, 현재 테스트 타깃에는 포함되지 않습니다. 기기 연결은 시뮬레이터 검사에 필요하지 않습니다. CI의 레이아웃 렌더링 검사는 새 디자인의 모든 화면을 캡처하거나 시각적으로 평가한 결과가 아닙니다. 실제 iPhone에서의 최신 레이아웃, VoiceOver, 키보드 입력은 이번 변경 이후 확인하지 않았습니다. 이전 기기 검증 자료는 당시 빌드에 대한 기록입니다.
 
 로고 원본과 재생성 방법은 [`../brand/README.md`](../brand/README.md), 미리보기는 [`../brand/preview.html`](../brand/preview.html)에 있습니다.
